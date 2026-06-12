@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aidrobe Outfit Carousel Demo</title>
+    <style>
+      :root {
+        --cream: #f7f3ec;
+        --panel: #fffdf8;
+        --ink: #1c1c1a;
+        --muted: #817c70;
+        --border: #e6dfd2;
+        --sage: #7f8f6f;
+        --sage-dark: #6f8060;
+        --peach: #f5d8cd;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at 30% 10%, rgba(245, 216, 205, 0.28), transparent 34%),
+          linear-gradient(135deg, #eee7dc, #f9f6f0 44%, #e5dfd3);
+        color: var(--ink);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Microsoft YaHei",
+          sans-serif;
+      }
+
+      .stage {
+        display: flex;
+        align-items: center;
+        gap: 46px;
+        padding: 40px;
+      }
+
+      .notes {
+        width: 330px;
+      }
+
+      .notes h1 {
+        margin: 0;
+        font-size: 42px;
+        line-height: 1.06;
+        letter-spacing: 0;
+      }
+
+      .notes p {
+        margin: 18px 0 0;
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.7;
+      }
+
+      .phone {
+        width: 390px;
+        height: 844px;
+        overflow: hidden;
+        border: 10px solid #111;
+        border-radius: 54px;
+        background: var(--cream);
+        box-shadow: 0 34px 80px rgba(28, 28, 26, 0.24);
+        position: relative;
+      }
+
+      .island {
+        position: absolute;
+        top: 12px;
+        left: 50%;
+        width: 126px;
+        height: 36px;
+        transform: translateX(-50%);
+        border-radius: 99px;
+        background: #050505;
+        z-index: 5;
+      }
+
+      .screen {
+        height: 100%;
+        overflow-y: auto;
+        padding: 60px 16px 26px;
+        scrollbar-width: none;
+      }
+
+      .screen::-webkit-scrollbar {
+        display: none;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 16px;
+      }
+
+      .icon-button {
+        width: 42px;
+        height: 42px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: rgba(255, 253, 248, 0.82);
+        color: var(--ink);
+        font-size: 22px;
+      }
+
+      .hero {
+        margin-top: 24px;
+      }
+
+      .hero h2 {
+        margin: 0;
+        font-size: 36px;
+        line-height: 1.16;
+        letter-spacing: 0;
+      }
+
+      .hero span {
+        display: block;
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 16px;
+      }
+
+      .chips {
+        display: flex;
+        gap: 10px;
+        margin-top: 22px;
+      }
+
+      .chip {
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--panel);
+        padding: 10px 18px;
+        color: var(--ink);
+        font-size: 15px;
+      }
+
+      .chip.active {
+        background: var(--sage);
+        border-color: var(--sage);
+        color: #fff;
+      }
+
+      .mixer {
+        margin-top: 20px;
+        padding: 18px 14px 8px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 28px;
+        background: rgba(255, 253, 248, 0.78);
+      }
+
+      .lane {
+        padding-bottom: 18px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .lane + .lane {
+        padding-top: 18px;
+      }
+
+      .lane:last-child {
+        border-bottom: 0;
+      }
+
+      .lane-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+
+      .lane-title strong {
+        display: block;
+        font-size: 18px;
+      }
+
+      .lane-title span {
+        display: block;
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .arrows {
+        display: flex;
+        gap: 8px;
+      }
+
+      .arrow {
+        width: 36px;
+        height: 36px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--panel);
+        color: var(--ink);
+        font-size: 27px;
+        line-height: 1;
+        cursor: pointer;
+      }
+
+      .strip {
+        display: flex;
+        gap: 12px;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: none;
+        padding-bottom: 2px;
+      }
+
+      .strip::-webkit-scrollbar {
+        display: none;
+      }
+
+      .item {
+        flex: 0 0 150px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        background: var(--panel);
+        scroll-snap-align: center;
+        position: relative;
+        cursor: pointer;
+        transition:
+          transform 0.18s ease,
+          border-color 0.18s ease;
+      }
+
+      .item.selected {
+        border-color: var(--sage);
+        transform: translateY(-2px);
+      }
+
+      .item.selected::after {
+        content: "✓";
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 26px;
+        height: 26px;
+        display: grid;
+        place-items: center;
+        border-radius: 999px;
+        background: var(--sage);
+        color: #fff;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .item-img {
+        height: 142px;
+        display: grid;
+        place-items: center;
+        background: var(--cream);
+      }
+
+      .item-img img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+
+      .item-meta {
+        padding: 9px 11px 12px;
+      }
+
+      .item-meta b {
+        display: block;
+        overflow: hidden;
+        color: var(--ink);
+        font-size: 14px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .item-meta small {
+        display: block;
+        margin-top: 3px;
+        overflow: hidden;
+        color: var(--muted);
+        font-size: 12px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .context {
+        display: flex;
+        margin-top: 16px;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--panel);
+        color: var(--ink);
+        font-size: 13px;
+      }
+
+      .context span {
+        flex: 1;
+        text-align: center;
+      }
+
+      .reason {
+        margin-top: 14px;
+        padding: 17px 18px;
+        border-radius: 24px;
+        background: #fbf5ea;
+      }
+
+      .reason-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+      }
+
+      .reason h3 {
+        margin: 0;
+        font-size: 20px;
+      }
+
+      .reason p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .ghost {
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: transparent;
+        padding: 9px 13px;
+        color: var(--ink);
+        white-space: nowrap;
+        cursor: pointer;
+      }
+
+      .actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+      }
+
+      .actions button {
+        height: 54px;
+        flex: 1;
+        border-radius: 999px;
+        font-size: 16px;
+        font-weight: 650;
+        cursor: pointer;
+      }
+
+      .secondary {
+        border: 1px solid var(--border);
+        background: var(--panel);
+        color: var(--ink);
+      }
+
+      .primary {
+        border: 1px solid var(--sage);
+        background: var(--sage);
+        color: #fff;
+      }
+
+      .toast {
+        position: sticky;
+        bottom: 10px;
+        margin: 16px auto 0;
+        width: fit-content;
+        max-width: 310px;
+        border-radius: 999px;
+        background: rgba(28, 28, 26, 0.92);
+        color: #fff;
+        padding: 10px 14px;
+        font-size: 13px;
+        opacity: 0;
+        transform: translateY(8px);
+        transition:
+          opacity 0.18s ease,
+          transform 0.18s ease;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @media (max-width: 860px) {
+        .stage {
+          display: block;
+          padding: 18px;
+        }
+
+        .notes {
+          width: min(390px, 100%);
+          margin: 0 auto 22px;
+        }
+
+        .notes h1 {
+          font-size: 30px;
+        }
+
+        .phone {
+          width: min(390px, calc(100vw - 28px));
+          height: 844px;
+          margin: 0 auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="stage">
+      <section class="notes">
+        <h1>Aidrobe 电脑演示版</h1>
+        <p>
+          不需要 iPhone。这里演示的是今日页核心交互：上装、下装、鞋包三条独立滑动轨道。点击左右箭头或衣物卡片，就能单独替换某一类。
+        </p>
+      </section>
+
+      <section class="phone" aria-label="Aidrobe iPhone preview">
+        <div class="island"></div>
+        <div class="screen">
+          <div class="topbar">
+            <span>5月4日 周一 · 08:30 出门</span>
+            <button class="icon-button" type="button" aria-label="添加衣物">＋</button>
+          </div>
+
+          <div class="hero">
+            <h2>今天，穿成喜欢的自己</h2>
+            <span>衣以载心，容以悦己</span>
+          </div>
+
+          <div class="chips" role="tablist" aria-label="穿搭场景">
+            <button class="chip active" type="button">通勤</button>
+            <button class="chip" type="button">轻松</button>
+            <button class="chip" type="button">正式</button>
+          </div>
+
+          <div class="mixer" id="mixer"></div>
+
+          <div class="context">
+            <span>18°C 微风</span>
+            <span>08:30 出门</span>
+            <span id="sceneLabel">通勤</span>
+          </div>
+
+          <div class="reason">
+            <div class="reason-row">
+              <div>
+                <h3>稳妥之选</h3>
+                <p id="reasonText"></p>
+              </div>
+              <button class="ghost" type="button" id="styleButton">换个风格</button>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="secondary" type="button" id="shuffleButton">换一套</button>
+            <button class="primary" type="button" id="wearButton">今天穿这套</button>
+          </div>
+
+          <div class="toast" id="toast"></div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const ASSET_BASE = "../../src/assets/wardrobe/";
+      const groups = [
+        {
+          key: "tops",
+          title: "上装",
+          items: [
+            {
+              name: "米白棉衬衫",
+              tone: "干净 / 稳妥",
+              image: "top-cream-shirt.png",
+            },
+            {
+              name: "燕麦色短袖针织",
+              tone: "柔和 / 轻松",
+              image: "top-oat-knit.png",
+            },
+          ],
+        },
+        {
+          key: "bottoms",
+          title: "下装",
+          items: [
+            {
+              name: "深靛牛仔直筒裤",
+              tone: "利落 / 日常",
+              image: "bottom-indigo-jeans.png",
+            },
+            {
+              name: "米色西装裤",
+              tone: "轻商务 / 松弛",
+              image: "bottom-ivory-trousers.png",
+            },
+          ],
+        },
+        {
+          key: "accessories",
+          title: "鞋包",
+          items: [
+            {
+              name: "白色帆布鞋",
+              tone: "舒适 / 清爽",
+              image: "shoes-white-canvas.png",
+            },
+            {
+              name: "米白托特包",
+              tone: "通勤 / 温柔",
+              image: "bag-cream-tote.png",
+            },
+          ],
+        },
+      ];
+
+      const selected = { tops: 0, bottoms: 0, accessories: 0 };
+      const mixer = document.getElementById("mixer");
+      const reasonText = document.getElementById("reasonText");
+      const toast = document.getElementById("toast");
+
+      function selectedItems() {
+        return groups.map((group) => group.items[selected[group.key]]);
+      }
+
+      function updateReason() {
+        const [top, bottom, accessory] = selectedItems();
+        reasonText.textContent = `${top.name}、${bottom.name}和${accessory.name}组合干净利落，适合专注投入的一天。`;
+      }
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add("show");
+        window.clearTimeout(showToast.timer);
+        showToast.timer = window.setTimeout(() => toast.classList.remove("show"), 1800);
+      }
+
+      function render() {
+        mixer.innerHTML = "";
+        for (const group of groups) {
+          const lane = document.createElement("section");
+          lane.className = "lane";
+          lane.innerHTML = `
+            <div class="lane-head">
+              <div class="lane-title">
+                <strong>${group.title}</strong>
+                <span>${selected[group.key] + 1} / ${group.items.length}</span>
+              </div>
+              <div class="arrows">
+                <button class="arrow" type="button" data-dir="-1" aria-label="上一件${group.title}">‹</button>
+                <button class="arrow" type="button" data-dir="1" aria-label="下一件${group.title}">›</button>
+              </div>
+            </div>
+            <div class="strip"></div>
+          `;
+
+          lane.querySelectorAll(".arrow").forEach((button) => {
+            button.addEventListener("click", () => {
+              const dir = Number(button.dataset.dir);
+              selected[group.key] =
+                (selected[group.key] + dir + group.items.length) % group.items.length;
+              render();
+            });
+          });
+
+          const strip = lane.querySelector(".strip");
+          group.items.forEach((item, index) => {
+            const card = document.createElement("button");
+            card.type = "button";
+            card.className = `item ${selected[group.key] === index ? "selected" : ""}`;
+            card.innerHTML = `
+              <div class="item-img">
+                <img src="${ASSET_BASE + item.image}" alt="${item.name}" />
+              </div>
+              <div class="item-meta">
+                <b>${item.name}</b>
+                <small>${item.tone}</small>
+              </div>
+            `;
+            card.addEventListener("click", () => {
+              selected[group.key] = index;
+              render();
+            });
+            strip.appendChild(card);
+          });
+
+          mixer.appendChild(lane);
+        }
+        updateReason();
+      }
+
+      document.querySelectorAll(".chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          document.querySelectorAll(".chip").forEach((item) => item.classList.remove("active"));
+          chip.classList.add("active");
+          document.getElementById("sceneLabel").textContent = chip.textContent;
+        });
+      });
+
+      document.getElementById("shuffleButton").addEventListener("click", () => {
+        for (const group of groups) {
+          selected[group.key] = (selected[group.key] + 1) % group.items.length;
+        }
+        render();
+      });
+
+      document.getElementById("styleButton").addEventListener("click", () => {
+        selected.tops = (selected.tops + 1) % groups[0].items.length;
+        render();
+      });
+
+      document.getElementById("wearButton").addEventListener("click", () => {
+        showToast("已记录：今天穿这套");
+      });
+
+      render();
+    </script>
+  </body>
+</html>

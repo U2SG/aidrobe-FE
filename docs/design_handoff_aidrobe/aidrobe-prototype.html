@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Aidrobe — 完整原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; background: #1F1B16; font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif; color: #F5EFE6; }
+
+  /* layout */
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0; height: 56px;
+    background: rgba(31,27,22,0.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(245,239,230,0.08);
+    z-index: 50; display: flex; align-items: center; padding: 0 24px; gap: 24px;
+  }
+  .brand { font-family: 'Noto Serif SC', serif; font-size: 17px; font-weight: 600; letter-spacing: 0.5px; color: #F5EFE6; }
+  .brand-mark { color: #B08D5B; }
+  .meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: rgba(245,239,230,0.55); letter-spacing: 0.6px; }
+  .view-tabs { margin-left: auto; display: flex; gap: 4px; padding: 3px; background: rgba(245,239,230,0.06); border-radius: 10px; }
+  .view-tab {
+    padding: 7px 14px; font-size: 12px; color: rgba(245,239,230,0.6);
+    background: transparent; border: none; cursor: pointer; border-radius: 7px;
+    font-family: inherit; transition: all 200ms;
+  }
+  .view-tab.active { background: rgba(245,239,230,0.14); color: #F5EFE6; }
+  .view-tab:hover:not(.active) { color: rgba(245,239,230,0.85); }
+
+  .stage { position: absolute; inset: 56px 0 0 0; }
+  .pane { position: absolute; inset: 0; opacity: 0; pointer-events: none; transition: opacity 320ms; }
+  .pane.active { opacity: 1; pointer-events: auto; }
+
+  /* prototype pane — single phone centered */
+  .proto-pane { display: flex; align-items: center; justify-content: center; padding: 24px; gap: 32px; }
+  .proto-meta {
+    width: 280px; padding: 24px; background: rgba(245,239,230,0.04); border-radius: 16px;
+    border: 1px solid rgba(245,239,230,0.06);
+  }
+  .proto-meta h3 { font-family: 'Noto Serif SC', serif; font-size: 18px; font-weight: 600; margin: 0 0 12px; color: #F5EFE6; }
+  .proto-meta p { font-size: 12px; color: rgba(245,239,230,0.65); line-height: 1.7; margin: 0 0 14px; }
+  .proto-meta .label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #B08D5B; letter-spacing: 1px; margin: 0 0 8px; }
+  .proto-meta ul { padding-left: 0; margin: 0; list-style: none; }
+  .proto-meta li { font-size: 11px; color: rgba(245,239,230,0.55); padding: 5px 0; border-top: 1px solid rgba(245,239,230,0.06); display: flex; justify-content: space-between; }
+  .proto-meta li:first-child { border-top: none; }
+  .proto-meta li b { color: rgba(245,239,230,0.85); font-weight: 500; }
+  .proto-jump { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+  .proto-jump button {
+    text-align: left; padding: 9px 12px; background: rgba(245,239,230,0.05);
+    color: rgba(245,239,230,0.85); border: 1px solid rgba(245,239,230,0.08);
+    border-radius: 8px; cursor: pointer; font-size: 12px; font-family: inherit;
+    transition: all 180ms;
+  }
+  .proto-jump button:hover { background: rgba(245,239,230,0.1); color: #F5EFE6; }
+
+  /* device frame */
+  .device {
+    width: 390px; height: 844px;
+    background: #F5EFE6; border-radius: 54px;
+    box-shadow: 0 0 0 11px #1A1714, 0 0 0 12px #2A2520, 0 30px 70px rgba(0,0,0,0.5), 0 50px 120px rgba(0,0,0,0.35);
+    position: relative; overflow: hidden;
+  }
+  .device::before {
+    content: ''; position: absolute; top: 11px; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 36px; background: #1A1714; border-radius: 22px; z-index: 30;
+  }
+  .device-screen { position: absolute; inset: 0; overflow: hidden; }
+
+  /* canvas pane scrolls — uses DesignCanvas */
+  .canvas-pane #canvas-mount { width: 100%; height: 100%; }
+
+  /* anim keyframes */
+  @keyframes aidrobe-fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes aidrobe-slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  @keyframes aidrobe-pop { 0% { transform: scale(0); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+  @keyframes aidrobe-float { 0%, 100% { transform: translateY(0) scale(var(--s, 1)) rotate(var(--r, 0deg)); } 50% { transform: translateY(-6px) scale(var(--s, 1)) rotate(var(--r, 0deg)); } }
+  @keyframes aidrobe-spin { to { transform: rotate(360deg); } }
+  @keyframes aidrobe-scan { 0%, 100% { transform: translateY(-100%); } 50% { transform: translateY(100%); } }
+  @keyframes aidrobe-slide-in-r { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @keyframes aidrobe-slide-in-l { from { transform: translateX(-40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @keyframes aidrobe-rise { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .aidrobe-press { transition: transform 120ms ease, box-shadow 120ms ease; }
+  .aidrobe-press:active { transform: scale(0.97); }
+
+  /* design canvas overrides for our dark stage */
+  body { color-scheme: dark; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="brand"><span class="brand-mark">a</span>idrobe</span>
+  <span class="meta">v0.1 · 内测原型 · 10 屏</span>
+  <div class="view-tabs">
+    <button class="view-tab active" data-view="prototype">真机原型</button>
+    <button class="view-tab" data-view="canvas">全屏概览</button>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="pane proto-pane active" data-pane="prototype">
+    <div class="proto-meta" id="proto-meta-card">
+      <p class="label">交互原型 · 可点击</p>
+      <h3>用真机壳走一遍今日决策流</h3>
+      <p>底部 4 个 Tab 可切换；点击「今天穿这套」会出反馈层；下面快捷跳转可以直接打开次级页面。</p>
+
+      <div class="proto-jump">
+        <button data-overlay="outfit">↗ 推荐详情页</button>
+        <button data-overlay="swap">↗ 替换单品面板</button>
+        <button data-overlay="item">↗ 衣物详情页</button>
+        <button data-overlay="link-import">↗ 链接导入（小红书）</button>
+        <button data-overlay="style-profile">↗ 风格画像编辑</button>
+        <button data-overlay="fit-feedback">↗ 回家反馈闭环</button>
+        <button data-overlay="insights">↗ 衣橱洞察</button>
+        <button data-overlay="calendar">↗ 穿搭日历</button>
+      </div>
+
+      <ul style="margin-top: 16px;">
+        <li><span>设备</span><b>iPhone 14 Pro</b></li>
+        <li><span>视觉</span><b>米色衬线 + 实物</b></li>
+        <li><span>当前 Tab</span><b id="meta-tab">今日</b></li>
+      </ul>
+    </div>
+
+    <div class="device">
+      <div class="device-screen" id="device-mount"></div>
+    </div>
+
+    <div class="proto-meta" style="opacity: 0.85;">
+      <p class="label">设计差异化</p>
+      <h3>四件事让 Aidrobe 不像 Acloset</h3>
+      <ul>
+        <li><span>① 时间敏感</span><b>距出门 X 分</b></li>
+        <li><span>② 现实可执行</span><b>取衣 / 待洗</b></li>
+        <li><span>③ 合身度</span><b>fit_status</b></li>
+        <li><span>④ 中国渠道</span><b>小红书 / 得物</b></li>
+      </ul>
+      <p style="margin-top: 16px; font-size: 11px; color: rgba(176,141,91,0.85); line-height: 1.6;">
+        每张屏的右侧 / 顶部都贴有这 4 件事的痕迹 — 时间标签、待洗状态、合身度条、链接导入。
+      </p>
+    </div>
+  </div>
+
+  <div class="pane canvas-pane" data-pane="canvas">
+    <div id="canvas-mount"></div>
+  </div>
+</div>
+
+<!-- React + Babel -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script src="tokens.js"></script>
+<script type="text/babel" src="ui.jsx"></script>
+<script type="text/babel" src="screens/today.jsx"></script>
+<script type="text/babel" src="screens/main.jsx"></script>
+<script type="text/babel" src="screens/extras.jsx"></script>
+<script type="text/babel" src="screens/more.jsx"></script>
+<script type="text/babel" src="screens/shell.jsx"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+
+<script type="text/babel">
+  // Mount prototype shell (single phone)
+  const protoRoot = ReactDOM.createRoot(document.getElementById('device-mount'));
+  let setShellTab; // exposed via shell ref
+  protoRoot.render(<PrototypeShell/>);
+
+  // Tab meta sync — listen for messages
+  window.addEventListener('aidrobe-tab-change', (e) => {
+    const map = { today: '今日', wardrobe: '衣橱', add: '添加', style: '风格' };
+    document.getElementById('meta-tab').textContent = map[e.detail] || '今日';
+  });
+
+  // Quick-jump buttons → dispatch nav events
+  document.querySelectorAll('[data-overlay]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('aidrobe-nav', {
+        detail: { type: 'open-overlay', target: btn.dataset.overlay }
+      }));
+    });
+  });
+
+  // View toggle
+  document.querySelectorAll('.view-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const view = btn.dataset.view;
+      document.querySelectorAll('.view-tab').forEach(b => b.classList.toggle('active', b === btn));
+      document.querySelectorAll('.pane').forEach(p => p.classList.toggle('active', p.dataset.pane === view));
+      if (view === 'canvas' && !window.__canvasMounted) {
+        window.__canvasMounted = true;
+        mountCanvas();
+      }
+    });
+  });
+
+  function Phone({ children, label }) {
+    return (
+      <div style={{
+        width: 390, height: 844, background: window.AidrobeTokens.bg,
+        borderRadius: 48, overflow: 'hidden',
+        boxShadow: '0 0 0 8px #1A1714, 0 20px 50px rgba(0,0,0,0.18)',
+        position: 'relative',
+      }}>
+        <div style={{
+          position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
+          width: 110, height: 30, background: '#1A1714', borderRadius: 18, zIndex: 30,
+        }}/>
+        {children}
+      </div>
+    );
+  }
+
+  function CanvasView() {
+    return (
+      <DesignCanvas>
+        <DCSection id="onboarding" title="① Onboarding · 4 步进入">
+          <DCArtboard id="onb-1" label="01 欢迎" width={390} height={844}>
+            <Phone><OnboardingScreen step={1}/></Phone>
+          </DCArtboard>
+          <DCArtboard id="onb-2" label="02 出门时间" width={390} height={844}>
+            <Phone><OnboardingScreen step={2}/></Phone>
+          </DCArtboard>
+          <DCArtboard id="onb-3" label="03 风格标签" width={390} height={844}>
+            <Phone><OnboardingScreen step={3}/></Phone>
+          </DCArtboard>
+          <DCArtboard id="onb-4" label="04 录入 3 件" width={390} height={844}>
+            <Phone><OnboardingScreen step={4}/></Phone>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="core" title="② 主导航 4 屏 · 优化版">
+          <DCArtboard id="today" label="今日 · 时间敏感" width={390} height={844}>
+            <Phone><TodayScreen/></Phone>
+          </DCArtboard>
+          <DCArtboard id="wardrobe" label="衣橱 · Whering 式洞察" width={390} height={844}>
+            <Phone><WardrobeScreen/></Phone>
+          </DCArtboard>
+          <DCArtboard id="add" label="添加 · 主次入口分明" width={390} height={844}>
+            <Phone><AddScreen/></Phone>
+          </DCArtboard>
+          <DCArtboard id="style" label="风格 · 学习状态可视" width={390} height={844}>
+            <Phone><StyleScreen/></Phone>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="detail" title="③ 次级页面 · 决策深入">
+          <DCArtboard id="outfit" label="推荐详情 · 替换 / 取衣 / 待洗" width={390} height={844}>
+            <Phone><OutfitDetailScreen/></Phone>
+          </DCArtboard>
+          <DCArtboard id="swap" label="替换面板 · 候选排序" width={390} height={844}>
+            <Phone><SwapPanelScreen/></Phone>
+          </DCArtboard>
+          <DCArtboard id="item" label="衣物详情 · 合身 / 记录" width={390} height={844}>
+            <Phone><ItemDetailScreen/></Phone>
+          </DCArtboard>
+          <DCArtboard id="import" label="导入确认 · AI 识别" width={390} height={844}>
+            <Phone><ImportConfirmScreen/></Phone>
+          </DCArtboard>
+          <DCArtboard id="link-import" label="链接导入 · 小红书 / 得物" width={390} height={844}>
+            <Phone><LinkImportScreen/></Phone>
+          </DCArtboard>
+          <DCArtboard id="style-profile" label="风格画像 · 调权重" width={390} height={844}>
+            <Phone><StyleProfileScreen/></Phone>
+          </DCArtboard>
+          <DCArtboard id="fit-feedback" label="回家反馈 · 闭环" width={390} height={844}>
+            <Phone><FitFeedbackScreen/></Phone>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="data" title="④ 数据洞察与历史">
+          <DCArtboard id="insights" label="衣橱洞察 · 色彩 / 频率" width={390} height={844}>
+            <Phone><InsightsScreen/></Phone>
+          </DCArtboard>
+          <DCArtboard id="calendar" label="穿搭日历 · 历史" width={390} height={844}>
+            <Phone><CalendarScreen/></Phone>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+    );
+  }
+
+  function mountCanvas() {
+    const root = ReactDOM.createRoot(document.getElementById('canvas-mount'));
+    root.render(<CanvasView/>);
+  }
+</script>
+
+</body>
+</html>

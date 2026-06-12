@@ -1,0 +1,212 @@
+import { useNavigation } from '@react-navigation/native';
+import { useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
+
+import { updateUserSettings } from '@/api/settings';
+import { useTrack } from '@/hooks/useTrack';
+import { useOnboardingStore } from '@/store/onboarding';
+import { useToastStore } from '@/store/toast';
+
+const T = {
+  bg: '#F5EFE6',
+  card: '#FFFFFF',
+  ink: '#1A1714',
+  ink2: '#3A332B',
+  ink3: '#807468',
+  ink4: '#B8AC9D',
+  accent: '#B08D5B',
+  divider: '#EBE3D5',
+  shadowSm: {
+    shadowColor: '#3C2814',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  } as const,
+};
+
+const TIMES = ['07:30:00', '08:00:00', '08:30:00', '09:00:00', '09:30:00'];
+
+export function DepartureTimeScreen() {
+  const navigation = useNavigation();
+  const [time, setTime] = useState('08:30:00');
+  const [saving, setSaving] = useState(false);
+  const setCompleted = useOnboardingStore((state) => state.setCompleted);
+  const showToast = useToastStore((state) => state.show);
+  const track = useTrack();
+
+  const finish = () => {
+    setCompleted(true);
+    if (navigation.canGoBack()) navigation.goBack();
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await updateUserSettings({ departureTime: time });
+      track('departure_time_saved', { time });
+      finish();
+    } catch {
+      showToast({ message: '保存失败，请稍后重试', kind: 'error' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: T.bg }}>
+      {/* Progress */}
+      <View style={{ flexDirection: 'row', gap: 6, paddingHorizontal: 24, paddingTop: 60 }}>
+        {[1, 2, 3, 4].map((i) => (
+          <View
+            key={i}
+            style={{
+              flex: 1,
+              height: 3,
+              borderRadius: 2,
+              backgroundColor: i <= 2 ? T.ink : T.divider,
+            }}
+          />
+        ))}
+      </View>
+
+      <View
+        style={{
+          flex: 1,
+          paddingHorizontal: 28,
+          paddingTop: 32,
+          paddingBottom: 36,
+          justifyContent: 'space-between',
+        }}
+      >
+        <View>
+          <Text
+            style={{
+              fontSize: 11,
+              fontFamily: 'monospace',
+              letterSpacing: 1.2,
+              color: T.accent,
+              marginBottom: 12,
+            }}
+          >
+            STEP 02 / 04
+          </Text>
+          <Text style={{ fontSize: 28, fontWeight: '600', color: T.ink, lineHeight: 34 }}>
+            你一般几点出门？
+          </Text>
+          <Text style={{ marginTop: 8, fontSize: 13, color: T.ink3, lineHeight: 20 }}>
+            我们会在你出门前 90 分钟提前算好今天的方案，打开就能看。
+          </Text>
+
+          {/* Time display */}
+          <View
+            style={{
+              marginTop: 32,
+              padding: 24,
+              backgroundColor: T.card,
+              borderRadius: 18,
+              alignItems: 'center',
+              ...T.shadowSm,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+              <Text
+                style={{
+                  fontSize: 64,
+                  fontWeight: '600',
+                  color: T.ink,
+                  letterSpacing: -2,
+                  lineHeight: 74,
+                }}
+              >
+                {time.slice(0, 2)}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 64,
+                  fontWeight: '300',
+                  color: T.ink3,
+                  lineHeight: 74,
+                }}
+              >
+                :
+              </Text>
+              <Text
+                style={{
+                  fontSize: 64,
+                  fontWeight: '600',
+                  color: T.ink,
+                  letterSpacing: -2,
+                  lineHeight: 74,
+                }}
+              >
+                {time.slice(3, 5)}
+              </Text>
+            </View>
+            <Text style={{ marginTop: 4, fontSize: 11, color: T.ink3 }}>工作日 · 可分别设置</Text>
+
+            {/* Quick time chips */}
+            <View
+              style={{
+                marginTop: 20,
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              {TIMES.map((t) => (
+                <Pressable
+                  key={t}
+                  onPress={() => setTime(t)}
+                  style={{
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                    borderRadius: 10,
+                    backgroundColor: time === t ? T.ink : 'transparent',
+                    borderWidth: 1,
+                    borderColor: time === t ? T.ink : T.divider,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      color: time === t ? '#fff' : T.ink2,
+                      fontFamily: 'monospace',
+                    }}
+                  >
+                    {t.slice(0, 5)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        <View style={{ gap: 10 }}>
+          <Pressable
+            onPress={save}
+            disabled={saving}
+            style={({ pressed }) => ({
+              height: 54,
+              borderRadius: 14,
+              backgroundColor: T.ink,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: saving || pressed ? 0.75 : 1,
+            })}
+          >
+            <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>下一步</Text>
+          </Pressable>
+          <Pressable
+            onPress={finish}
+            disabled={saving}
+            style={{ height: 44, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text style={{ fontSize: 12, color: T.ink3 }}>跳过</Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
