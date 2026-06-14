@@ -106,14 +106,14 @@ export function AddItemScreen({ navigation }: Props) {
   const pickFromCamera = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) { showToast({ message: '需要相机权限', kind: 'error' }); return; }
-    const result = await ImagePicker.launchCameraAsync({ quality: 1, mediaTypes: ImagePicker.MediaType.Images });
+    const result = await ImagePicker.launchCameraAsync({ quality: 1, mediaTypes: ['images'] });
     if (!result.canceled && result.assets[0]) void handlePicked(result.assets[0].uri, 'camera');
   };
 
   const pickFromLibrary = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) { showToast({ message: '需要相册权限', kind: 'error' }); return; }
-    const result = await ImagePicker.launchImageLibraryAsync({ quality: 1, mediaTypes: ImagePicker.MediaType.Images });
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 1, mediaTypes: ['images'] });
     if (!result.canceled && result.assets[0]) void handlePicked(result.assets[0].uri, 'album');
   };
 
