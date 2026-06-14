@@ -5,7 +5,9 @@ import { DiscoverHubScreen } from '@/screens/discover/DiscoverHubScreen';
 import { InsightsScreen } from '@/screens/discover/InsightsScreen';
 import { PackingListDetailScreen } from '@/screens/discover/PackingListDetailScreen';
 import { PackingListScreen } from '@/screens/discover/PackingListScreen';
+import { AddInspirationScreen } from '@/screens/discover/AddInspirationScreen';
 import { SenseCheckScreen } from '@/screens/discover/SenseCheckScreen';
+import { StyleInspirationsScreen } from '@/screens/discover/StyleInspirationsScreen';
 import { WardrobeReportScreen } from '@/screens/discover/WardrobeReportScreen';
 import { colors } from '@/theme/design';
 import type { DiscoverStackParamList } from '@/types/navigation';
@@ -41,6 +43,16 @@ export function DiscoverNavigator() {
         options={{ presentation: 'modal', headerShown: false }}
       />
       <Stack.Screen name="SenseCheck" component={SenseCheckScreen} options={{ headerShown: false }} />
+      <Stack.Screen
+        name="StyleInspirations"
+        component={StyleInspirationsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="AddInspiration"
+        component={AddInspirationScreen}
+        options={{ presentation: 'modal', headerShown: false }}
+      />
     </Stack.Navigator>
   );
 }

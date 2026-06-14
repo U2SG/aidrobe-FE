@@ -49,6 +49,8 @@ export type DiscoverStackParamList = {
   PackingListDetail: { id: string };
   CreatePackingList: undefined;
   SenseCheck: undefined;
+  StyleInspirations: undefined;
+  AddInspiration: undefined;
 };
 
 export type MainTabsParamList = {

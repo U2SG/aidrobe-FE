@@ -162,7 +162,7 @@ export function DiscoverHubScreen({ navigation }: Props) {
               icon="bookmark"
               title="风格灵感"
               subtitle="收藏图 · 学习风格"
-              onPress={() => comingSoon('风格灵感')}
+              onPress={() => navigation.navigate('StyleInspirations')}
             />
           </View>
         </View>
