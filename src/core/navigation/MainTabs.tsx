@@ -3,13 +3,20 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { colors, type } from '@/theme/design';
 import type { MainTabsParamList } from '@/types/navigation';
+import { DiscoverNavigator } from './DiscoverNavigator';
 import { SettingsNavigator } from './SettingsNavigator';
 import { TodayNavigator } from './TodayNavigator';
 import { WardrobeNavigator } from './WardrobeNavigator';
 
 const Tabs = createBottomTabNavigator<MainTabsParamList>();
 
-function TabIcon({ name, active }: { name: 'home' | 'wardrobe' | 'person'; active: boolean }) {
+function TabIcon({
+  name,
+  active,
+}: {
+  name: 'home' | 'wardrobe' | 'compass' | 'person';
+  active: boolean;
+}) {
   return (
     <SystemIcon
       name={name}
@@ -55,6 +62,14 @@ export function MainTabs() {
         options={{
           title: '衣橱',
           tabBarIcon: ({ focused }) => <TabIcon name="wardrobe" active={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="DiscoverTab"
+        component={DiscoverNavigator}
+        options={{
+          title: '发现',
+          tabBarIcon: ({ focused }) => <TabIcon name="compass" active={focused} />,
         }}
       />
       <Tabs.Screen

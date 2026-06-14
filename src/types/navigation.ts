@@ -40,9 +40,20 @@ export type SettingsStackParamList = {
   DepartureTime: undefined;
 };
 
+// V4 — Discover hub: wardrobe tools + seasonal insights.
+export type DiscoverStackParamList = {
+  DiscoverHub: undefined;
+  Insights: undefined;
+  WardrobeReport: { period?: string } | undefined;
+  PackingList: undefined;
+  PackingListDetail: { id: string };
+  CreatePackingList: undefined;
+};
+
 export type MainTabsParamList = {
   TodayTab: NavigatorScreenParams<TodayStackParamList>;
   WardrobeTab: NavigatorScreenParams<WardrobeStackParamList>;
+  DiscoverTab: NavigatorScreenParams<DiscoverStackParamList>;
   SettingsTab: NavigatorScreenParams<SettingsStackParamList>;
 };
 
