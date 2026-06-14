@@ -27,7 +27,8 @@ type IconName =
   | 'more'
   | 'download'
   | 'exclamation'
-  | 'recycle';
+  | 'recycle'
+  | 'calendar';
 
 interface Props {
   name: IconName;
@@ -188,6 +189,14 @@ export function SystemIcon({
           <Circle {...common} cx="12" cy="12" r="8" />
           <Path {...common} d="M12 7.5v5" />
           <Circle cx="12" cy="16.5" r="1" fill={color} />
+        </>
+      ) : null}
+      {name === 'calendar' ? (
+        <>
+          <Rect {...common} x="4" y="5.5" width="16" height="14.5" rx="2.5" />
+          <Line {...common} x1="4" y1="10" x2="20" y2="10" />
+          <Line {...common} x1="8" y1="3.5" x2="8" y2="6.5" />
+          <Line {...common} x1="16" y1="3.5" x2="16" y2="6.5" />
         </>
       ) : null}
       {name === 'recycle' ? (

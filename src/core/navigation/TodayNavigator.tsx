@@ -1,7 +1,9 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { FeedbackSheetScreen } from '@/screens/today/FeedbackSheetScreen';
+import { OutfitCalendarScreen } from '@/screens/today/OutfitCalendarScreen';
 import { OutfitDetailScreen } from '@/screens/today/OutfitDetailScreen';
+import { OutfitPlanPickerScreen } from '@/screens/today/OutfitPlanPickerScreen';
 import { TodayScreen } from '@/screens/today/TodayScreen';
 import { colors } from '@/theme/design';
 import type { TodayStackParamList } from '@/types/navigation';
@@ -25,11 +27,25 @@ export function TodayNavigator() {
         options={{ title: '搭配详情', headerShown: false }}
       />
       <Stack.Screen
+        name="OutfitCalendar"
+        component={OutfitCalendarScreen}
+        options={{ title: '穿搭日历', headerShown: false }}
+      />
+      <Stack.Screen
         name="FeedbackSheet"
         component={FeedbackSheetScreen}
         options={{
           presentation: 'modal',
           title: '反馈',
+        }}
+      />
+      <Stack.Screen
+        name="OutfitPlanPicker"
+        component={OutfitPlanPickerScreen}
+        options={{
+          presentation: 'modal',
+          title: '计划穿搭',
+          headerShown: false,
         }}
       />
     </Stack.Navigator>

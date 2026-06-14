@@ -420,7 +420,23 @@ export function TodayScreen({ navigation }: Props) {
             <Text style={{ fontSize: 14, color: T.ink2 }}>分钟</Text>
           </View>
         </View>
-        <CountdownRing minutes={remaining} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Pressable
+            onPress={() => navigation.navigate('OutfitCalendar')}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: T.card,
+              alignItems: 'center',
+              justifyContent: 'center',
+              ...T.shadowSm,
+            }}
+          >
+            <SystemIcon name="calendar" size={18} color={T.ink} />
+          </Pressable>
+          <CountdownRing minutes={remaining} />
+        </View>
       </View>
 
       {todayQuery.data?.guidanceText ? (

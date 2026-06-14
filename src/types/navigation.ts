@@ -18,6 +18,8 @@ export type TodayStackParamList = {
   Today: undefined;
   OutfitDetail: { outfitId: string };
   FeedbackSheet: { outfitId: string };
+  OutfitCalendar: undefined;
+  OutfitPlanPicker: { plannedDate: string };
 };
 
 export type WardrobeStackParamList = {

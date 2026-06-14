@@ -74,8 +74,9 @@ export async function updateOutfitPlan(
   );
 }
 
-// Server derives the worn date (today) — no body. Consumes the plan
-// (returned status is "cancelled") and writes an idempotent wear-history row.
+// No body. Records the wear on the plan's own planned_date (not "today"),
+// consumes the plan (returned status is "cancelled"), and writes an idempotent
+// wear-history row.
 export async function markPlanWorn(id: string): Promise<WearPlanResult> {
   const data = await apiPost<ServerWearPlanResponse>(`/v1/outfit-plans/${id}/wear`);
   return {
