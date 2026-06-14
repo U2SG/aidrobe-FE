@@ -1,6 +1,8 @@
 import { Circle, Svg } from 'react-native-svg';
 import { Text, View } from 'react-native';
 
+import { colors, type } from '@/theme/design';
+
 interface Props {
   minutes: number;
   max?: number;
@@ -14,12 +16,12 @@ export function CountdownRing({ minutes, max = 90 }: Props) {
 
   const urgent = minutes <= 20;
   const tight = minutes <= 40;
-  const color = urgent ? '#B85C4A' : tight ? '#B08D5B' : '#7A9B6E';
+  const color = urgent ? colors.danger : tight ? colors.warning : colors.success;
 
   return (
     <View style={{ width: 64, height: 64, position: 'relative' }}>
       <Svg width="64" height="64" viewBox="0 0 64 64" style={{ transform: [{ rotate: '-90deg' }] }}>
-        <Circle cx="32" cy="32" r={r} fill="none" stroke="#EBE3D5" strokeWidth="3" />
+        <Circle cx="32" cy="32" r={r} fill="none" stroke={colors.separator} strokeWidth="3" />
         <Circle
           cx="32"
           cy="32"
@@ -45,16 +47,17 @@ export function CountdownRing({ minutes, max = 90 }: Props) {
       >
         <Text
           style={{
-            fontFamily: 'serif',
             fontSize: 20,
-            fontWeight: '600',
-            color: '#1A1714',
+            fontWeight: '700',
+            color: colors.label,
             lineHeight: 22,
           }}
         >
           {minutes}
         </Text>
-        <Text style={{ fontSize: 9, color: '#807468', marginTop: 1 }}>分钟</Text>
+        <Text style={{ ...type.caption, fontSize: 9, color: colors.tertiaryLabel, marginTop: 1 }}>
+          分钟
+        </Text>
       </View>
     </View>
   );

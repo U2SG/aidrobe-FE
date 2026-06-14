@@ -5,9 +5,11 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View 
 
 import { createImportTask } from '@/api/importTasks';
 import { createPresignedUpload, uploadToPresigned } from '@/api/uploads';
+import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useTrack } from '@/hooks/useTrack';
 import { useImportDraftStore } from '@/store/importDraft';
 import { useToastStore } from '@/store/toast';
+import { colors, radius, shadow } from '@/theme/design';
 import type { ImportSourceType } from '@/types/api';
 import type { WardrobeStackParamList } from '@/types/navigation';
 import { compressImage, MAX_UPLOAD_BYTES } from '@/utils/image';
@@ -26,30 +28,18 @@ function detectLinkSource(url: string): ImportSourceType {
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'AddItem'>;
 
 const T = {
-  bg: '#F5EFE6',
-  bgAlt: '#FAF6EE',
-  card: '#FFFFFF',
-  cardSoft: '#F8F3E9',
-  ink: '#1A1714',
-  ink2: '#3A332B',
-  ink3: '#807468',
-  ink4: '#B8AC9D',
-  divider: '#EBE3D5',
-  accent: '#B08D5B',
-  shadowSm: {
-    shadowColor: '#3C2814',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  } as const,
-  shadowMd: {
-    shadowColor: '#3C2814',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.07,
-    shadowRadius: 12,
-    elevation: 4,
-  } as const,
+  bg: colors.groupedBackground,
+  bgAlt: colors.background,
+  card: colors.elevated,
+  cardSoft: colors.secondaryElevated,
+  ink: colors.label,
+  ink2: colors.secondaryLabel,
+  ink3: colors.tertiaryLabel,
+  ink4: colors.quaternaryLabel,
+  divider: colors.separator,
+  accent: colors.accent,
+  shadowSm: shadow.soft,
+  shadowMd: shadow.elevated,
 };
 
 export function AddItemScreen({ navigation }: Props) {
@@ -116,14 +106,14 @@ export function AddItemScreen({ navigation }: Props) {
   const pickFromCamera = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) { showToast({ message: '需要相机权限', kind: 'error' }); return; }
-    const result = await ImagePicker.launchCameraAsync({ quality: 1, mediaTypes: ImagePicker.MediaTypeOptions.Images });
+    const result = await ImagePicker.launchCameraAsync({ quality: 1, mediaTypes: ImagePicker.MediaType.Images });
     if (!result.canceled && result.assets[0]) void handlePicked(result.assets[0].uri, 'camera');
   };
 
   const pickFromLibrary = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) { showToast({ message: '需要相册权限', kind: 'error' }); return; }
-    const result = await ImagePicker.launchImageLibraryAsync({ quality: 1, mediaTypes: ImagePicker.MediaTypeOptions.Images });
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 1, mediaTypes: ImagePicker.MediaType.Images });
     if (!result.canceled && result.assets[0]) void handlePicked(result.assets[0].uri, 'album');
   };
 
@@ -135,7 +125,9 @@ export function AddItemScreen({ navigation }: Props) {
           <Text style={{ fontSize: 30, fontWeight: '600', color: T.ink }}>添加衣物</Text>
           <Text style={{ marginTop: 8, fontSize: 13, color: T.ink3 }}>选择最方便的方式加入衣橱</Text>
         </View>
-        <Text style={{ fontSize: 22, marginTop: 4 }}>🔔</Text>
+        <View style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center', marginTop: 2 }}>
+          <SystemIcon name="bell" size={22} color={T.ink2} />
+        </View>
       </View>
 
       <ScrollView
@@ -148,7 +140,7 @@ export function AddItemScreen({ navigation }: Props) {
           onPress={pickFromCamera}
           style={({ pressed }) => ({
             backgroundColor: T.ink,
-            borderRadius: 20,
+            borderRadius: radius.xl,
             padding: 20,
             flexDirection: 'row',
             alignItems: 'center',
@@ -169,15 +161,15 @@ export function AddItemScreen({ navigation }: Props) {
             style={{
               width: 72,
               height: 72,
-              borderRadius: 14,
+              borderRadius: radius.lg,
               backgroundColor: 'rgba(255,255,255,0.08)',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Text style={{ fontSize: 36 }}>📷</Text>
+            <SystemIcon name="camera" size={36} color="#fff" strokeWidth={1.6} />
           </View>
-          <Text style={{ fontSize: 20, color: 'rgba(255,255,255,0.5)' }}>›</Text>
+          <SystemIcon name="chevronRight" size={22} color="rgba(255,255,255,0.55)" />
         </Pressable>
 
         <Text
@@ -198,7 +190,7 @@ export function AddItemScreen({ navigation }: Props) {
         <AddEntry
           title="从相册导入"
           sub="批量选择，适合已有照片"
-          icon="🖼️"
+          icon="photo"
           onPress={pickFromLibrary}
         />
 
@@ -206,7 +198,7 @@ export function AddItemScreen({ navigation }: Props) {
         <AddEntry
           title="粘贴商品链接"
           sub="淘宝 · 京东 · 小红书 · 得物 · 自动识别 SKU 与版型"
-          icon="🔗"
+          icon="link"
           onPress={() => setLinkModalOpen(true)}
         />
 
@@ -214,33 +206,33 @@ export function AddItemScreen({ navigation }: Props) {
         <AddEntry
           title="从其他 App 分享"
           sub="得物、小红书、淘宝、微信 · 直接分享到 Aidrobe"
-          icon="📤"
+          icon="share"
           onPress={() => setLinkModalOpen(true)}
         />
 
         {/* Tips */}
-        <View style={{ backgroundColor: T.cardSoft, borderRadius: 14, padding: 14, marginTop: 8 }}>
+        <View style={{ backgroundColor: T.cardSoft, borderRadius: radius.lg, padding: 14, marginTop: 8 }}>
           <Text style={{ fontSize: 12, color: T.ink3, marginBottom: 10, letterSpacing: 0.4 }}>
             小提示
           </Text>
           <View style={{ flexDirection: 'row', gap: 14 }}>
             {[
-              { icon: '👔', title: '单件拍摄更准', sub: '避免遮挡' },
-              { icon: '⬜', title: '尽量纯色背景', sub: '减少干扰' },
-              { icon: '☀️', title: '光线充足', sub: '识别更精准' },
+              { icon: 'camera', title: '单件拍摄更准', sub: '避免遮挡' },
+              { icon: 'photo', title: '尽量纯色背景', sub: '减少干扰' },
+              { icon: 'sparkle', title: '光线充足', sub: '识别更精准' },
             ].map((tip) => (
               <View key={tip.title} style={{ flex: 1, gap: 4 }}>
                 <View
                   style={{
                     width: 28,
                     height: 28,
-                    borderRadius: 14,
+                    borderRadius: radius.pill,
                     backgroundColor: T.bg,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Text style={{ fontSize: 14 }}>{tip.icon}</Text>
+                  <SystemIcon name={tip.icon as 'camera' | 'photo' | 'sparkle'} size={15} color={T.ink2} />
                 </View>
                 <Text style={{ fontSize: 11, fontWeight: '600', color: T.ink2 }}>{tip.title}</Text>
                 <Text style={{ fontSize: 10, color: T.ink3 }}>{tip.sub}</Text>
@@ -265,7 +257,7 @@ export function AddItemScreen({ navigation }: Props) {
         >
           <Pressable
             onPress={() => {}}
-            style={{ backgroundColor: T.card, borderRadius: 22, padding: 22, gap: 14, ...T.shadowMd }}
+            style={{ backgroundColor: T.card, borderRadius: radius.xl, padding: 22, gap: 14, ...T.shadowMd }}
           >
             <View>
               <Text style={{ fontSize: 20, fontWeight: '600', color: T.ink }}>粘贴商品链接</Text>
@@ -286,7 +278,7 @@ export function AddItemScreen({ navigation }: Props) {
               style={{
                 borderWidth: 1,
                 borderColor: T.divider,
-                borderRadius: 12,
+                borderRadius: radius.md,
                 paddingHorizontal: 14,
                 paddingVertical: 12,
                 fontSize: 14,
@@ -297,14 +289,14 @@ export function AddItemScreen({ navigation }: Props) {
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <Pressable
                 onPress={() => !submittingLink && setLinkModalOpen(false)}
-                style={{ flex: 1, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: T.cardSoft }}
+                style={{ flex: 1, borderRadius: radius.md, paddingVertical: 13, alignItems: 'center', backgroundColor: T.cardSoft }}
               >
                 <Text style={{ fontSize: 15, fontWeight: '600', color: T.ink2 }}>取消</Text>
               </Pressable>
               <Pressable
                 onPress={submitLink}
                 disabled={submittingLink}
-                style={{ flex: 2, borderRadius: 12, paddingVertical: 13, alignItems: 'center', backgroundColor: T.ink, opacity: submittingLink ? 0.7 : 1 }}
+                style={{ flex: 2, borderRadius: radius.md, paddingVertical: 13, alignItems: 'center', backgroundColor: T.ink, opacity: submittingLink ? 0.7 : 1 }}
               >
                 {submittingLink ? (
                   <ActivityIndicator color="#fff" />
@@ -328,27 +320,21 @@ function AddEntry({
 }: {
   title: string;
   sub: string;
-  icon: string;
+  icon: 'photo' | 'link' | 'share';
   onPress: () => void;
 }) {
   const T = {
-    card: '#FFFFFF',
-    ink: '#1A1714',
-    ink3: '#807468',
-    shadowSm: {
-      shadowColor: '#3C2814',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.06,
-      shadowRadius: 4,
-      elevation: 2,
-    } as const,
+    card: colors.elevated,
+    ink: colors.label,
+    ink3: colors.tertiaryLabel,
+    shadowSm: shadow.soft,
   };
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
         backgroundColor: T.card,
-        borderRadius: 20,
+        borderRadius: radius.xl,
         padding: 16,
         flexDirection: 'row',
         alignItems: 'center',
@@ -363,8 +349,19 @@ function AddEntry({
         </Text>
         <Text style={{ fontSize: 12, color: T.ink3, lineHeight: 17 }}>{sub}</Text>
       </View>
-      <Text style={{ fontSize: 28 }}>{icon}</Text>
-      <Text style={{ fontSize: 20, color: T.ink3 }}>›</Text>
+      <View
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: radius.md,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.background,
+        }}
+      >
+        <SystemIcon name={icon} size={20} color={T.ink} />
+      </View>
+      <SystemIcon name="chevronRight" size={18} color={T.ink3} />
     </Pressable>
   );
 }

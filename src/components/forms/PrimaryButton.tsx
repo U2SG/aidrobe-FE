@@ -1,5 +1,7 @@
 import { ActivityIndicator, Pressable, Text } from 'react-native';
 
+import { colors, radius, type } from '@/theme/design';
+
 interface Props {
   label: string;
   onPress: () => void;
@@ -13,14 +15,20 @@ export function PrimaryButton({ label, onPress, loading, disabled }: Props) {
     <Pressable
       onPress={onPress}
       disabled={isDisabled}
-      className={`h-12 items-center justify-center rounded-full ${
-        isDisabled ? 'bg-brand-500/60' : 'bg-brand-600 active:bg-brand-700'
-      }`}
+      android_ripple={isDisabled ? undefined : { color: 'rgba(255,255,255,0.16)' }}
+      style={{
+        minHeight: 50,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: radius.md,
+        backgroundColor: colors.label,
+        opacity: isDisabled ? 0.42 : 1,
+      }}
     >
       {loading ? (
         <ActivityIndicator color="#fff" />
       ) : (
-        <Text className="text-base font-semibold text-white">{label}</Text>
+        <Text style={{ ...type.body, fontWeight: '700', color: colors.inverse }}>{label}</Text>
       )}
     </Pressable>
   );

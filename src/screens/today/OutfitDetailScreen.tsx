@@ -7,8 +7,10 @@ import { getWardrobeItem } from '@/api/wardrobe';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
+import { SystemIcon } from '@/components/ui/SystemIcon';
 import { Tag } from '@/components/ui/Tag';
 import { useTrack } from '@/hooks/useTrack';
+import { colors, shadow } from '@/theme/design';
 import type { ItemCategory, OutfitObstacle, OutfitScores, WardrobeItem } from '@/types/api';
 import type { TodayStackParamList } from '@/types/navigation';
 import { renderI18n } from '@/utils/i18n';
@@ -16,36 +18,24 @@ import { renderI18n } from '@/utils/i18n';
 type Props = NativeStackScreenProps<TodayStackParamList, 'OutfitDetail'>;
 
 const T = {
-  bg: '#F5EFE6',
-  bgAlt: '#FAF6EE',
-  card: '#FFFFFF',
-  cardSoft: '#F8F3E9',
-  cardInner: '#FBF7EF',
-  ink: '#1A1714',
-  ink2: '#3A332B',
-  ink3: '#807468',
-  ink4: '#B8AC9D',
-  divider: '#EBE3D5',
-  accent: '#B08D5B',
-  accentBg: '#F4E8D1',
-  ok: '#7A9B6E',
-  warn: '#C8924A',
-  warnBg: '#F4E8D1',
-  red: '#B85C4A',
-  shadowSm: {
-    shadowColor: '#3C2814',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  } as const,
-  shadowMd: {
-    shadowColor: '#3C2814',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.07,
-    shadowRadius: 12,
-    elevation: 4,
-  } as const,
+  bg: colors.groupedBackground,
+  bgAlt: colors.background,
+  card: colors.elevated,
+  cardSoft: colors.secondaryElevated,
+  cardInner: colors.background,
+  ink: colors.label,
+  ink2: colors.secondaryLabel,
+  ink3: colors.tertiaryLabel,
+  ink4: colors.quaternaryLabel,
+  divider: colors.separator,
+  accent: colors.accent,
+  accentBg: colors.accentSoft,
+  ok: colors.success,
+  warn: colors.warning,
+  warnBg: colors.warningBg,
+  red: colors.danger,
+  shadowSm: shadow.soft,
+  shadowMd: shadow.elevated,
 };
 
 type GarmentKind = 'shirt' | 'blazer' | 'trousers' | 'sweater' | 'jeans' | 'dress' | 'skirt' | 'tee' | 'loafer' | 'sneaker' | 'bag';
@@ -204,7 +194,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
             ...T.shadowSm,
           }}
         >
-          <Text style={{ fontSize: 18, color: T.ink }}>‹</Text>
+          <SystemIcon name="chevronLeft" size={18} color={T.ink} />
         </Pressable>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <Pressable
@@ -218,7 +208,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
               ...T.shadowSm,
             }}
           >
-            <Text style={{ fontSize: 16, color: T.ink2 }}>⤵</Text>
+            <SystemIcon name="download" size={18} color={T.ink2} />
           </Pressable>
           <Pressable
             style={{
@@ -231,7 +221,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
               ...T.shadowSm,
             }}
           >
-            <Text style={{ fontSize: 16, color: T.ink2 }}>···</Text>
+            <SystemIcon name="more" size={20} color={T.ink2} />
           </Pressable>
         </View>
       </View>
@@ -269,7 +259,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                 justifyContent: 'center',
               }}
             >
-              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>!</Text>
+              <SystemIcon name="exclamation" size={18} color="#fff" strokeWidth={2} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 13, fontWeight: '600', color: '#5C4F3F', marginBottom: 4 }}>
@@ -456,13 +446,13 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                           left: 0,
                           right: 0,
                           bottom: 0,
-                          backgroundColor: 'rgba(245,239,230,0.55)',
+                          backgroundColor: 'rgba(242,242,247,0.68)',
                           borderRadius: 10,
                           alignItems: 'center',
                           justifyContent: 'center',
                         }}
                       >
-                        <Text style={{ fontSize: 18 }}>♻</Text>
+                        <SystemIcon name="recycle" size={19} color={T.warn} />
                       </View>
                     )}
                   </View>
@@ -557,7 +547,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
               justifyContent: 'center',
             }}
           >
-            <Text style={{ fontSize: 20 }}>♡</Text>
+            <SystemIcon name="heart" size={21} color={T.ink2} />
           </Pressable>
           <Pressable
             onPress={handleWear}

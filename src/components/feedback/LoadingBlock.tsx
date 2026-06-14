@@ -1,10 +1,16 @@
 import { ActivityIndicator, Text, View } from 'react-native';
 
+import { colors, type } from '@/theme/design';
+
 export function LoadingBlock({ label }: { label?: string }) {
   return (
-    <View className="items-center justify-center py-12">
-      <ActivityIndicator color="#3f4ee0" />
-      {label ? <Text className="mt-3 text-sm text-ink-500">{label}</Text> : null}
+    <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 48 }}>
+      <ActivityIndicator color={colors.accent} />
+      {label ? (
+        <Text style={{ ...type.callout, marginTop: 12, color: colors.tertiaryLabel }}>
+          {label}
+        </Text>
+      ) : null}
     </View>
   );
 }

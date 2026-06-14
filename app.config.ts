@@ -40,6 +40,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       ITSAppUsesNonExemptEncryption: false,
     },
   },
+  android: {
+    package: 'app.aidrobe.android',
+    versionCode: 1,
+  },
   plugins: [
     'expo-dev-client',
     'expo-secure-store',

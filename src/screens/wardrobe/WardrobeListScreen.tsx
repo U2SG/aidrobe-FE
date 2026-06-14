@@ -10,38 +10,28 @@ import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { SystemIcon } from '@/components/ui/SystemIcon';
+import { colors, radius, shadow } from '@/theme/design';
 import type { ItemCategory, WardrobeItem } from '@/types/api';
 import type { WardrobeStackParamList } from '@/types/navigation';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'WardrobeList'>;
 
 const T = {
-  bg: '#F5EFE6',
-  bgAlt: '#FAF6EE',
-  card: '#FFFFFF',
-  cardSoft: '#F8F3E9',
-  cardInner: '#FBF7EF',
-  ink: '#1A1714',
-  ink2: '#3A332B',
-  ink3: '#807468',
-  ink4: '#B8AC9D',
-  divider: '#EBE3D5',
-  accent: '#B08D5B',
-  ok: '#7A9B6E',
-  shadowSm: {
-    shadowColor: '#3C2814',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  } as const,
-  shadowMd: {
-    shadowColor: '#3C2814',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.07,
-    shadowRadius: 12,
-    elevation: 4,
-  } as const,
+  bg: colors.groupedBackground,
+  bgAlt: colors.background,
+  card: colors.elevated,
+  cardSoft: colors.secondaryElevated,
+  cardInner: colors.background,
+  ink: colors.label,
+  ink2: colors.secondaryLabel,
+  ink3: colors.tertiaryLabel,
+  ink4: colors.quaternaryLabel,
+  divider: colors.separator,
+  accent: colors.accent,
+  ok: colors.success,
+  shadowSm: shadow.soft,
+  shadowMd: shadow.elevated,
 };
 
 const CATEGORIES: { key: ItemCategory | 'all'; label: string }[] = [
@@ -65,7 +55,7 @@ function ItemCard({
       <View
         style={{
           backgroundColor: T.card,
-          borderRadius: 18,
+          borderRadius: radius.lg,
           padding: 12,
           ...T.shadowSm,
           gap: 8,
@@ -75,7 +65,7 @@ function ItemCard({
           style={{
             height: 130,
             backgroundColor: T.cardInner,
-            borderRadius: 12,
+            borderRadius: radius.md,
             alignItems: 'center',
             justifyContent: 'center',
           }}
@@ -83,7 +73,7 @@ function ItemCard({
           {item.imageUrl ? (
             <Image
               source={{ uri: item.imageUrl }}
-              style={{ width: '100%', height: '100%', borderRadius: 12 }}
+              style={{ width: '100%', height: '100%', borderRadius: radius.md }}
               resizeMode="contain"
             />
           ) : (
@@ -189,8 +179,8 @@ export function WardrobeListScreen({ navigation }: Props) {
                 )}
               </View>
               {/* Bell icon */}
-              <View style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 22 }}>🔔</Text>
+            <View style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}>
+                <SystemIcon name="bell" size={22} color={T.ink2} />
               </View>
             </View>
 
@@ -201,7 +191,7 @@ export function WardrobeListScreen({ navigation }: Props) {
                   flex: 1,
                   height: 44,
                   backgroundColor: T.card,
-                  borderRadius: 12,
+                  borderRadius: radius.md,
                   flexDirection: 'row',
                   alignItems: 'center',
                   paddingHorizontal: 14,
@@ -209,7 +199,7 @@ export function WardrobeListScreen({ navigation }: Props) {
                   ...T.shadowSm,
                 }}
               >
-                <Text style={{ fontSize: 14 }}>🔍</Text>
+                <SystemIcon name="search" size={17} color={T.ink3} />
                 <Text style={{ color: T.ink4, fontSize: 14 }}>搜索衣物 · 颜色 · 品类</Text>
               </View>
               <Pressable
@@ -217,15 +207,16 @@ export function WardrobeListScreen({ navigation }: Props) {
                   width: 80,
                   height: 44,
                   backgroundColor: T.card,
-                  borderRadius: 12,
+                  borderRadius: radius.md,
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 6,
+                  gap: 7,
                   ...T.shadowSm,
                 }}
               >
-                <Text style={{ fontSize: 13, color: T.ink2 }}>☰ 筛选</Text>
+                <SystemIcon name="slider" size={16} color={T.ink2} />
+                <Text style={{ fontSize: 13, color: T.ink2, fontWeight: '600' }}>筛选</Text>
               </Pressable>
             </View>
 
@@ -242,7 +233,7 @@ export function WardrobeListScreen({ navigation }: Props) {
                   style={{
                     paddingHorizontal: 16,
                     paddingVertical: 8,
-                    borderRadius: 999,
+                    borderRadius: radius.pill,
                     backgroundColor: category === cat.key ? T.ink : 'transparent',
                     borderWidth: 1,
                     borderColor: category === cat.key ? T.ink : T.divider,
@@ -274,10 +265,13 @@ export function WardrobeListScreen({ navigation }: Props) {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={{ fontSize: 16 }}>📈</Text>
+                  <SystemIcon name="chart" size={18} color={T.ink2} />
                   <Text style={{ fontSize: 14, fontWeight: '600', color: T.ink }}>本周穿搭洞察</Text>
                 </View>
-                <Text style={{ fontSize: 11, color: T.ink3 }}>查看全部 ›</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                  <Text style={{ fontSize: 11, color: T.ink3 }}>查看全部</Text>
+                  <SystemIcon name="chevronRight" size={13} color={T.ink3} />
+                </View>
               </View>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {insightChips.map((chip, i) => (

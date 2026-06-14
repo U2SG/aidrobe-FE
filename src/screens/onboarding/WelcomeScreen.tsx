@@ -6,31 +6,27 @@ import { Pressable, Text, View } from 'react-native';
 import { loginWithApple } from '@/api/auth';
 import { APP_ENV } from '@/api/client';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
+import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useTrack } from '@/hooks/useTrack';
 import { useAuthStore } from '@/store/auth';
 import { useOnboardingStore } from '@/store/onboarding';
 import { useToastStore } from '@/store/toast';
+import { colors, shadow } from '@/theme/design';
 import type { OnboardingStackParamList } from '@/types/navigation';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Welcome'>;
 
 const T = {
-  bg: '#F5EFE6',
-  ink: '#1A1714',
-  ink2: '#3A332B',
-  ink3: '#807468',
-  ink4: '#B8AC9D',
-  accent: '#B08D5B',
-  card: '#FFFFFF',
-  cardInner: '#FBF7EF',
-  divider: '#EBE3D5',
-  shadowSm: {
-    shadowColor: '#3C2814',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  } as const,
+  bg: colors.groupedBackground,
+  ink: colors.label,
+  ink2: colors.secondaryLabel,
+  ink3: colors.tertiaryLabel,
+  ink4: colors.quaternaryLabel,
+  accent: colors.accent,
+  card: colors.elevated,
+  cardInner: colors.background,
+  divider: colors.separator,
+  shadowSm: shadow.soft,
 };
 
 const HERO_PIECES: {
@@ -44,6 +40,16 @@ const HERO_PIECES: {
   { kind: 'shirt', x: 175, y: 30, scale: 1.0, rot: 4 },
   { kind: 'trousers', x: 90, y: 110, scale: 0.95, rot: 0 },
   { kind: 'loafer', x: 200, y: 175, scale: 0.7, rot: 8 },
+];
+
+const BENEFITS: {
+  icon: 'clock' | 'sparkle' | 'wardrobe';
+  title: string;
+  body: string;
+}[] = [
+  { icon: 'clock', title: '省时间', body: '出门前直接看 3 套方案' },
+  { icon: 'sparkle', title: '少纠结', body: '稳妥、省时、有风格各一套' },
+  { icon: 'wardrobe', title: '能落地', body: '只用你找得到、能穿的衣服' },
 ];
 
 export function WelcomeScreen({ navigation }: Props) {
@@ -143,10 +149,44 @@ export function WelcomeScreen({ navigation }: Props) {
           <Text style={{ marginTop: 20, fontSize: 14, color: T.ink2, lineHeight: 23 }}>
             基于你真实拥有、现在能穿、找得到、来得及拿的衣服，给出 3 套穿搭决策。
           </Text>
+          <View style={{ marginTop: 18, gap: 8 }}>
+            {BENEFITS.map((item) => (
+              <View
+                key={item.title}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: 12,
+                  borderRadius: 14,
+                  backgroundColor: 'rgba(255,255,255,0.72)',
+                  borderWidth: 1,
+                  borderColor: T.divider,
+                }}
+              >
+                <View
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 10,
+                    backgroundColor: colors.accentSoft,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <SystemIcon name={item.icon} size={17} color={T.accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: T.ink }}>{item.title}</Text>
+                  <Text style={{ marginTop: 2, fontSize: 11, color: T.ink3 }}>{item.body}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
         </View>
 
         {/* Hero illustration */}
-        <View style={{ height: 260, position: 'relative', marginHorizontal: -20 }}>
+        <View style={{ height: 220, position: 'relative', marginHorizontal: -20 }}>
           {HERO_PIECES.map((p, i) => (
             <View
               key={i}
@@ -168,14 +208,15 @@ export function WelcomeScreen({ navigation }: Props) {
             <Pressable
               onPress={signInWithApple}
               disabled={signingIn}
-              style={({ pressed }) => ({
+              android_ripple={signingIn ? undefined : { color: 'rgba(255,255,255,0.14)' }}
+              style={{
                 height: 54,
                 borderRadius: 14,
                 backgroundColor: T.ink,
                 alignItems: 'center',
                 justifyContent: 'center',
-                opacity: signingIn || pressed ? 0.75 : 1,
-              })}
+                opacity: signingIn ? 0.75 : 1,
+              }}
             >
               <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>
                 使用 Apple 登录
@@ -184,14 +225,14 @@ export function WelcomeScreen({ navigation }: Props) {
           ) : (
             <Pressable
               onPress={() => navigation.navigate('Permission')}
-              style={({ pressed }) => ({
+              android_ripple={{ color: 'rgba(255,255,255,0.14)' }}
+              style={{
                 height: 54,
                 borderRadius: 14,
                 backgroundColor: T.ink,
                 alignItems: 'center',
                 justifyContent: 'center',
-                opacity: pressed ? 0.75 : 1,
-              })}
+              }}
             >
               <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>开始使用</Text>
             </Pressable>

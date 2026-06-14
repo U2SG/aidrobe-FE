@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import { Animated, Text, View } from 'react-native';
 
 import { Tag } from '@/components/ui/Tag';
+import { SystemIcon } from '@/components/ui/SystemIcon';
+import { colors, radius } from '@/theme/design';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -18,13 +20,13 @@ export type StreamStatus = 'idle' | 'streaming' | 'done' | 'error';
 // ── Theme (matches TodayScreen palette) ──────────────────────────────────────
 
 const C = {
-  ink: '#1A1714',
-  ink2: '#3A332B',
-  ink3: '#807468',
-  ink4: '#B8AC9D',
-  accent: '#B08D5B',
-  bgAlt: '#FAF6EE',
-  divider: '#EBE3D5',
+  ink: colors.label,
+  ink2: colors.secondaryLabel,
+  ink3: colors.tertiaryLabel,
+  ink4: colors.quaternaryLabel,
+  accent: colors.accent,
+  bgAlt: colors.background,
+  divider: colors.separator,
 };
 
 // ── Node renderers ───────────────────────────────────────────────────────────
@@ -32,10 +34,11 @@ const C = {
 function HeadingNode({ props }: { props: Record<string, unknown> }) {
   const text = String(props.text ?? '');
   const icon = String(props.icon ?? '');
-  const emoji = icon === 'sparkle' ? '✦' : icon === 'shield' ? '🛡' : icon === 'clock' ? '⏱' : null;
+  const iconName =
+    icon === 'sparkle' || icon === 'shield' || icon === 'clock' ? icon : null;
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-      {emoji ? <Text style={{ fontSize: 15 }}>{emoji}</Text> : null}
+      {iconName ? <SystemIcon name={iconName} size={17} color={C.ink} /> : null}
       <Text style={{ fontSize: 17, fontWeight: '700', color: C.ink, letterSpacing: -0.3 }}>
         {text}
       </Text>
@@ -53,7 +56,7 @@ function SubtextNode({ props }: { props: Record<string, unknown> }) {
 
 function ReasonNode({ props }: { props: Record<string, unknown> }) {
   return (
-    <View style={{ padding: 12, backgroundColor: C.bgAlt, borderRadius: 12, marginTop: 4 }}>
+    <View style={{ padding: 12, backgroundColor: C.bgAlt, borderRadius: radius.md, marginTop: 4 }}>
       <Text style={{ fontSize: 12, color: C.ink2, lineHeight: 19 }}>
         &ldquo;{String(props.text ?? '')}&rdquo;
       </Text>
@@ -85,7 +88,7 @@ function TipNode({ props }: { props: Record<string, unknown> }) {
 function AnimatedNode({ children }: { children: React.ReactNode }) {
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(anim, { toValue: 1, duration: 340, useNativeDriver: true }).start();
+    Animated.timing(anim, { toValue: 1, duration: 340, useNativeDriver: false }).start();
   }, [anim]);
   return (
     <Animated.View
@@ -108,7 +111,7 @@ function SkeletonBar({ width, opacity }: { width: `${number}%` | number; opacity
         height: 12,
         width,
         backgroundColor: C.divider,
-        borderRadius: 6,
+        borderRadius: radius.xs,
         opacity,
       }}
     />
@@ -120,8 +123,8 @@ function StreamingPlaceholder() {
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: false }),
+        Animated.timing(pulse, { toValue: 0.4, duration: 700, useNativeDriver: false }),
       ]),
     ).start();
   }, [pulse]);
@@ -129,7 +132,7 @@ function StreamingPlaceholder() {
     <Animated.View style={{ gap: 10, opacity: pulse }}>
       <SkeletonBar width="55%" opacity={1} />
       <SkeletonBar width="38%" opacity={0.7} />
-      <View style={{ height: 52, backgroundColor: C.bgAlt, borderRadius: 12, marginTop: 4 }} />
+      <View style={{ height: 52, backgroundColor: C.bgAlt, borderRadius: radius.md, marginTop: 4 }} />
       <View style={{ flexDirection: 'row', gap: 6 }}>
         <SkeletonBar width={70} opacity={0.8} />
         <SkeletonBar width={60} opacity={0.65} />
@@ -146,8 +149,8 @@ function StreamingCursor() {
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(blink, { toValue: 0, duration: 500, useNativeDriver: true }),
-        Animated.timing(blink, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(blink, { toValue: 0, duration: 500, useNativeDriver: false }),
+        Animated.timing(blink, { toValue: 1, duration: 500, useNativeDriver: false }),
       ]),
     ).start();
   }, [blink]);

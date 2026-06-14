@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { FlatList, Image, Pressable, Text, View } from 'react-native';
 
+import { SystemIcon } from '@/components/ui/SystemIcon';
 import type { ShowcaseItem } from '@/data/wardrobeShowcase';
 
 interface Props {
@@ -37,7 +38,7 @@ export function OutfitCarouselLane({ title, countLabel, items, selectedIndex, on
             onPress={() => move(-1)}
             className="h-10 w-10 items-center justify-center rounded-full border border-closet-border bg-closet-panel"
           >
-            <Text className="text-2xl leading-7 text-closet-ink">‹</Text>
+            <SystemIcon name="chevronLeft" size={18} color="#111113" />
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -45,7 +46,7 @@ export function OutfitCarouselLane({ title, countLabel, items, selectedIndex, on
             onPress={() => move(1)}
             className="h-10 w-10 items-center justify-center rounded-full border border-closet-border bg-closet-panel"
           >
-            <Text className="text-2xl leading-7 text-closet-ink">›</Text>
+            <SystemIcon name="chevronRight" size={18} color="#111113" />
           </Pressable>
         </View>
       </View>
@@ -91,7 +92,7 @@ export function OutfitCarouselLane({ title, countLabel, items, selectedIndex, on
               </View>
               {selected ? (
                 <View className="absolute right-2 top-2 h-7 w-7 items-center justify-center rounded-full bg-closet-sage">
-                  <Text className="text-sm font-semibold text-white">✓</Text>
+                  <SystemIcon name="check" size={15} color="#fff" strokeWidth={2.3} />
                 </View>
               ) : null}
             </Pressable>

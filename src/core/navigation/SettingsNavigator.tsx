@@ -2,6 +2,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { DepartureTimeScreen } from '@/screens/onboarding/DepartureTimeScreen';
 import { SettingsScreen } from '@/screens/settings/SettingsScreen';
+import { colors } from '@/theme/design';
 import type { SettingsStackParamList } from '@/types/navigation';
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
@@ -10,12 +11,13 @@ export function SettingsNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: '#f7f3ec' },
+        headerStyle: { backgroundColor: colors.groupedBackground },
         headerShadowVisible: false,
-        headerTintColor: '#1c1c1a',
+        headerTintColor: colors.label,
+        headerTitleStyle: { fontWeight: '700' },
       }}
     >
-      <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: '设置' }} />
+      <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: '设置', headerShown: false }} />
       <Stack.Screen
         name="DepartureTime"
         component={DepartureTimeScreen}

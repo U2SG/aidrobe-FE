@@ -10,8 +10,10 @@ import {
 } from '@/api/recommendations';
 import { getWardrobeItem } from '@/api/wardrobe';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
+import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useTrack } from '@/hooks/useTrack';
 import { useToastStore } from '@/store/toast';
+import { colors, shadow } from '@/theme/design';
 import type {
   FeedbackKind,
   FitFeedbackType,
@@ -23,36 +25,30 @@ import type { TodayStackParamList } from '@/types/navigation';
 type Props = NativeStackScreenProps<TodayStackParamList, 'FeedbackSheet'>;
 
 const T = {
-  bg: '#F5EFE6',
-  bgAlt: '#FAF6EE',
-  card: '#FFFFFF',
-  cardSoft: '#F8F3E9',
-  cardInner: '#FBF7EF',
-  ink: '#1A1714',
-  ink2: '#3A332B',
-  ink3: '#807468',
-  ink4: '#B8AC9D',
-  divider: '#EBE3D5',
-  accent: '#B08D5B',
-  accentBg: '#EFE5D2',
-  shadowSm: {
-    shadowColor: '#3C2814',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  } as const,
+  bg: colors.groupedBackground,
+  bgAlt: colors.background,
+  card: colors.elevated,
+  cardSoft: colors.secondaryElevated,
+  cardInner: colors.background,
+  ink: colors.label,
+  ink2: colors.secondaryLabel,
+  ink3: colors.tertiaryLabel,
+  ink4: colors.quaternaryLabel,
+  divider: colors.separator,
+  accent: colors.accent,
+  accentBg: colors.accentSoft,
+  shadowSm: shadow.soft,
 };
 
 type FitChoice = 'tight' | 'fit' | 'loose';
 
 // V3+ A: 4-tier overall (love/like/neutral/dislike) on the wire.
 // Frontend exposes 4 buttons that map directly to server enum.
-const OVERALL_OPTIONS: { id: FeedbackKind; emoji: string; label: string }[] = [
-  { id: 'love', emoji: '🤍', label: '很喜欢' },
-  { id: 'like', emoji: '😊', label: '不错' },
-  { id: 'neutral', emoji: '😐', label: '一般' },
-  { id: 'dislike', emoji: '😶', label: '不喜欢' },
+const OVERALL_OPTIONS: { id: FeedbackKind; mark: string; label: string }[] = [
+  { id: 'love', mark: '爱', label: '很喜欢' },
+  { id: 'like', mark: '好', label: '不错' },
+  { id: 'neutral', mark: '平', label: '一般' },
+  { id: 'dislike', mark: '差', label: '不喜欢' },
 ];
 
 // Fallback tag list when /feedback-tags is empty (e.g. flag off, fresh deploy).
@@ -183,7 +179,7 @@ export function FeedbackSheetScreen({ navigation, route }: Props) {
         }}
       >
         <Pressable onPress={() => navigation.goBack()}>
-          <Text style={{ fontSize: 22, color: T.ink2 }}>✕</Text>
+          <SystemIcon name="x" size={22} color={T.ink2} />
         </Pressable>
         <Text style={{ fontSize: 13, color: T.ink3, fontFamily: 'monospace' }}>21:48 · 回家了</Text>
         <View style={{ width: 40 }} />
@@ -278,7 +274,26 @@ export function FeedbackSheetScreen({ navigation, route }: Props) {
                 ...T.shadowSm,
               }}
             >
-              <Text style={{ fontSize: 22 }}>{o.emoji}</Text>
+              <View
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 14,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: overall === o.id ? 'rgba(255,255,255,0.14)' : T.bgAlt,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: '700',
+                    color: overall === o.id ? '#fff' : T.ink2,
+                  }}
+                >
+                  {o.mark}
+                </Text>
+              </View>
               <Text style={{ fontSize: 11, color: overall === o.id ? '#fff' : T.ink2 }}>{o.label}</Text>
             </Pressable>
           ))}

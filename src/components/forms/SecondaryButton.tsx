@@ -1,5 +1,7 @@
 import { Pressable, Text } from 'react-native';
 
+import { colors, radius, type } from '@/theme/design';
+
 interface Props {
   label: string;
   onPress: () => void;
@@ -11,15 +13,19 @@ export function SecondaryButton({ label, onPress, disabled }: Props) {
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      className={`h-12 items-center justify-center rounded-full border ${
-        disabled
-          ? 'border-closet-border bg-closet-panel'
-          : 'border-closet-border bg-closet-panel active:bg-ink-100'
-      }`}
+      android_ripple={disabled ? undefined : { color: colors.fill }}
+      style={{
+        minHeight: 50,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: radius.md,
+        borderWidth: 1,
+        borderColor: colors.separator,
+        backgroundColor: colors.elevated,
+        opacity: disabled ? 0.44 : 1,
+      }}
     >
-      <Text className={`text-base font-medium ${disabled ? 'text-ink-300' : 'text-closet-ink'}`}>
-        {label}
-      </Text>
+      <Text style={{ ...type.body, fontWeight: '600', color: colors.label }}>{label}</Text>
     </Pressable>
   );
 }

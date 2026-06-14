@@ -6,23 +6,18 @@ import { updateUserSettings } from '@/api/settings';
 import { useTrack } from '@/hooks/useTrack';
 import { useOnboardingStore } from '@/store/onboarding';
 import { useToastStore } from '@/store/toast';
+import { colors, shadow } from '@/theme/design';
 
 const T = {
-  bg: '#F5EFE6',
-  card: '#FFFFFF',
-  ink: '#1A1714',
-  ink2: '#3A332B',
-  ink3: '#807468',
-  ink4: '#B8AC9D',
-  accent: '#B08D5B',
-  divider: '#EBE3D5',
-  shadowSm: {
-    shadowColor: '#3C2814',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  } as const,
+  bg: colors.groupedBackground,
+  card: colors.elevated,
+  ink: colors.label,
+  ink2: colors.secondaryLabel,
+  ink3: colors.tertiaryLabel,
+  ink4: colors.quaternaryLabel,
+  accent: colors.accent,
+  divider: colors.separator,
+  shadowSm: shadow.soft,
 };
 
 const TIMES = ['07:30:00', '08:00:00', '08:30:00', '09:00:00', '09:30:00'];

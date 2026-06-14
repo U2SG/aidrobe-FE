@@ -6,9 +6,11 @@ import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { getUserSettings } from '@/api/settings';
 import { SecondaryButton } from '@/components/forms/SecondaryButton';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
+import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useAuthStore } from '@/store/auth';
 import { useOnboardingStore } from '@/store/onboarding';
 import { useToastStore } from '@/store/toast';
+import { colors, radius, shadow, type } from '@/theme/design';
 import type { SettingsStackParamList } from '@/types/navigation';
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'Settings'>;
@@ -37,10 +39,10 @@ export function SettingsScreen({ navigation }: Props) {
 
   return (
     <ScreenContainer>
-      <ScrollView contentContainerStyle={{ paddingVertical: 12, gap: 18 }}>
-        <View className="rounded-[28px] border border-closet-border bg-closet-panel p-5">
-          <Text className="text-[30px] font-bold text-closet-ink">设置</Text>
-          <Text className="mt-2 text-sm leading-5 text-closet-muted">
+      <ScrollView contentContainerStyle={{ paddingVertical: 16, gap: 22 }}>
+        <View style={{ paddingHorizontal: 2 }}>
+          <Text style={{ ...type.largeTitle, color: colors.label }}>设置</Text>
+          <Text style={{ ...type.callout, color: colors.tertiaryLabel, marginTop: 6 }}>
             Aidrobe 只保留 V1 Slim 必要设置：出门时间、数据说明和隐私信息。
           </Text>
         </View>
@@ -84,7 +86,7 @@ export function SettingsScreen({ navigation }: Props) {
           />
         </Section>
 
-        <View className="pt-1">
+        <View style={{ paddingTop: 2 }}>
           <SecondaryButton label="退出登录" onPress={signOut} />
         </View>
       </ScrollView>
@@ -95,8 +97,25 @@ export function SettingsScreen({ navigation }: Props) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View>
-      <Text className="mb-2 px-2 text-xs font-medium text-closet-muted">{title}</Text>
-      <View className="overflow-hidden rounded-[24px] border border-closet-border bg-closet-panel">
+      <Text
+        style={{
+          ...type.caption,
+          marginBottom: 8,
+          paddingHorizontal: 4,
+          color: colors.tertiaryLabel,
+          textTransform: 'uppercase',
+        }}
+      >
+        {title}
+      </Text>
+      <View
+        style={{
+          overflow: 'hidden',
+          borderRadius: radius.lg,
+          backgroundColor: colors.elevated,
+          ...shadow.soft,
+        }}
+      >
         {children}
       </View>
     </View>
@@ -118,10 +137,60 @@ function Row({
     <Pressable
       onPress={disabled ? undefined : onPress}
       disabled={disabled}
-      className="flex-row items-center justify-between border-b border-closet-border px-4 py-4 last:border-b-0"
+      android_ripple={disabled ? undefined : { color: colors.fill }}
+      style={{
+        backgroundColor: colors.elevated,
+        opacity: disabled ? 0.55 : 1,
+      }}
     >
-      <Text className={`text-base ${disabled ? 'text-ink-300' : 'text-closet-ink'}`}>{label}</Text>
-      {detail ? <Text className="text-sm text-closet-muted">{detail}</Text> : null}
+      <View
+        style={{
+          minHeight: 56,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.separatorSoft,
+        }}
+      >
+        <Text
+          numberOfLines={1}
+          style={{ ...type.body, color: colors.label, flexShrink: 0 }}
+        >
+          {label}
+        </Text>
+        <View
+          style={{
+            flex: 1,
+            minWidth: 0,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: 6,
+          }}
+        >
+          {detail ? (
+            <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={{
+                ...type.callout,
+                color: colors.tertiaryLabel,
+                flexShrink: 1,
+                textAlign: 'right',
+              }}
+            >
+              {detail}
+            </Text>
+          ) : null}
+          {!disabled ? (
+            <SystemIcon name="chevronRight" size={14} color={colors.quaternaryLabel} />
+          ) : null}
+        </View>
+      </View>
     </Pressable>
   );
 }

@@ -6,33 +6,29 @@ import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-nativ
 import { confirmImportTask, getImportTask } from '@/api/importTasks';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
+import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useTrack } from '@/hooks/useTrack';
 import { useImportDraftStore } from '@/store/importDraft';
+import { colors, shadow } from '@/theme/design';
 import type { ConfirmImportTaskBody, ItemCategory } from '@/types/api';
 import type { WardrobeStackParamList } from '@/types/navigation';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'ImportConfirm'>;
 
 const T = {
-  bg: '#F5EFE6',
-  bgAlt: '#FAF6EE',
-  card: '#FFFFFF',
-  cardSoft: '#F8F3E9',
-  cardInner: '#FBF7EF',
-  ink: '#1A1714',
-  ink2: '#3A332B',
-  ink3: '#807468',
-  ink4: '#B8AC9D',
-  divider: '#EBE3D5',
-  accent: '#B08D5B',
-  ok: '#7A9B6E',
-  shadowSm: {
-    shadowColor: '#3C2814',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  } as const,
+  bg: colors.groupedBackground,
+  bgAlt: colors.background,
+  card: colors.elevated,
+  cardSoft: colors.secondaryElevated,
+  cardInner: colors.background,
+  ink: colors.label,
+  ink2: colors.secondaryLabel,
+  ink3: colors.tertiaryLabel,
+  ink4: colors.quaternaryLabel,
+  divider: colors.separator,
+  accent: colors.accent,
+  ok: colors.success,
+  shadowSm: shadow.soft,
 };
 
 const CATEGORY_OPTIONS: { id: ItemCategory; label: string }[] = [
@@ -120,7 +116,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
       {/* Nav */}
       <View style={{ paddingTop: 52, paddingHorizontal: 16, paddingBottom: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Pressable onPress={() => navigation.popToTop()}>
-          <Text style={{ fontSize: 22, color: T.ink2 }}>✕</Text>
+          <SystemIcon name="x" size={22} color={T.ink2} />
         </Pressable>
         <Text style={{ fontSize: 13, color: T.ink2 }}>识别 1 / 1</Text>
         <View style={{ width: 40 }} />
@@ -288,7 +284,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
 function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <View style={{ marginBottom: 12 }}>
-      <Text style={{ fontSize: 11, color: '#807468', marginBottom: 8, paddingHorizontal: 4, letterSpacing: 0.4 }}>
+      <Text style={{ fontSize: 11, color: colors.tertiaryLabel, marginBottom: 8, paddingHorizontal: 4, letterSpacing: 0.4 }}>
         {label}
       </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>{children}</View>
@@ -304,12 +300,12 @@ function ChoiceChip({ active, onPress, label }: { active: boolean; onPress: () =
         paddingHorizontal: 14,
         paddingVertical: 7,
         borderRadius: 999,
-        backgroundColor: active ? '#1A1714' : 'transparent',
+        backgroundColor: active ? colors.label : 'transparent',
         borderWidth: 1,
-        borderColor: active ? '#1A1714' : '#EBE3D5',
+        borderColor: active ? colors.label : colors.separator,
       }}
     >
-      <Text style={{ fontSize: 12, color: active ? '#fff' : '#3A332B' }}>{label}</Text>
+      <Text style={{ fontSize: 12, color: active ? colors.inverse : colors.secondaryLabel }}>{label}</Text>
     </Pressable>
   );
 }

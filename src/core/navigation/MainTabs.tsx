@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, View } from 'react-native';
 
+import { SystemIcon } from '@/components/ui/SystemIcon';
+import { colors, type } from '@/theme/design';
 import type { MainTabsParamList } from '@/types/navigation';
 import { SettingsNavigator } from './SettingsNavigator';
 import { TodayNavigator } from './TodayNavigator';
@@ -8,33 +9,14 @@ import { WardrobeNavigator } from './WardrobeNavigator';
 
 const Tabs = createBottomTabNavigator<MainTabsParamList>();
 
-const T = {
-  bg: '#F5EFE6',
-  ink: '#1A1714',
-  ink3: '#807468',
-  divider: '#EBE3D5',
-};
-
-function TabIcon({ name, active }: { name: 'home' | 'closet' | 'me'; active: boolean }) {
-  const c = active ? T.ink : T.ink3;
-  if (name === 'home') {
-    return (
-      <View style={{ width: 26, height: 26, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontSize: active ? 22 : 20, color: c }}>⌂</Text>
-      </View>
-    );
-  }
-  if (name === 'closet') {
-    return (
-      <View style={{ width: 26, height: 26, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontSize: 18, color: c }}>🗂</Text>
-      </View>
-    );
-  }
+function TabIcon({ name, active }: { name: 'home' | 'wardrobe' | 'person'; active: boolean }) {
   return (
-    <View style={{ width: 26, height: 26, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontSize: 18, color: c }}>👤</Text>
-    </View>
+    <SystemIcon
+      name={name}
+      size={24}
+      color={active ? colors.label : colors.tertiaryLabel}
+      strokeWidth={active ? 2.2 : 1.8}
+    />
   );
 }
 
@@ -44,18 +26,18 @@ export function MainTabs() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: T.bg,
-          borderTopColor: T.divider,
+          backgroundColor: colors.background,
+          borderTopColor: colors.separatorSoft,
           borderTopWidth: 1,
-          height: 83,
-          paddingBottom: 28,
-          paddingTop: 10,
+          height: 84,
+          paddingBottom: 26,
+          paddingTop: 9,
         },
-        tabBarActiveTintColor: T.ink,
-        tabBarInactiveTintColor: T.ink3,
+        tabBarActiveTintColor: colors.label,
+        tabBarInactiveTintColor: colors.tertiaryLabel,
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '500',
+          ...type.caption,
+          fontWeight: '600',
         },
       }}
     >
@@ -72,7 +54,7 @@ export function MainTabs() {
         component={WardrobeNavigator}
         options={{
           title: '衣橱',
-          tabBarIcon: ({ focused }) => <TabIcon name="closet" active={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="wardrobe" active={focused} />,
         }}
       />
       <Tabs.Screen
@@ -80,7 +62,7 @@ export function MainTabs() {
         component={SettingsNavigator}
         options={{
           title: '我的',
-          tabBarIcon: ({ focused }) => <TabIcon name="me" active={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="person" active={focused} />,
         }}
       />
     </Tabs.Navigator>

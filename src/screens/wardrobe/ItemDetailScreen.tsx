@@ -13,30 +13,26 @@ import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { SystemIcon } from '@/components/ui/SystemIcon';
 import { SHOWCASE_WARDROBE } from '@/data/wardrobeShowcase';
+import { colors, shadow } from '@/theme/design';
 import type { ItemCategory, UpdateWardrobeItemBody, WardrobeItem } from '@/types/api';
 import type { WardrobeStackParamList } from '@/types/navigation';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'ItemDetail'>;
 
 const T = {
-  bg: '#F5EFE6',
-  card: '#FFFFFF',
-  cardSoft: '#F8F3E9',
-  cardInner: '#FBF7EF',
-  ink: '#1A1714',
-  ink2: '#3A332B',
-  ink3: '#807468',
-  ink4: '#B8AC9D',
-  divider: '#EBE3D5',
-  accent: '#B08D5B',
-  shadowSm: {
-    shadowColor: '#3C2814',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  } as const,
+  bg: colors.groupedBackground,
+  card: colors.elevated,
+  cardSoft: colors.secondaryElevated,
+  cardInner: colors.background,
+  ink: colors.label,
+  ink2: colors.secondaryLabel,
+  ink3: colors.tertiaryLabel,
+  ink4: colors.quaternaryLabel,
+  divider: colors.separator,
+  accent: colors.accent,
+  shadowSm: shadow.soft,
 };
 
 const CATEGORY_OPTIONS: { key: ItemCategory; label: string }[] = [
@@ -48,7 +44,7 @@ const CATEGORY_OPTIONS: { key: ItemCategory; label: string }[] = [
   { key: 'accessory', label: '配饰' },
 ];
 
-const LOG_COLORS = ['#EBE3D5', '#EAE0CC', '#B08D5B', '#1A1714'];
+const LOG_COLORS = [colors.separatorSoft, '#D7D3CC', colors.accent, colors.label];
 
 // V3+ A — convert daily_counts dict to a 60-cell intensity array (oldest → newest).
 // Server caps at 365 days; we use 60 for the heatmap. Levels: 0 / 1 / 2-3 / 4+.
@@ -150,13 +146,13 @@ export function ItemDetailScreen({ navigation, route }: Props) {
           onPress={() => navigation.goBack()}
           style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: T.card, alignItems: 'center', justifyContent: 'center', ...T.shadowSm }}
         >
-          <Text style={{ fontSize: 18, color: T.ink }}>‹</Text>
+          <SystemIcon name="chevronLeft" size={18} color={T.ink} />
         </Pressable>
         <Pressable
           onPress={confirmDelete}
           style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: T.card, alignItems: 'center', justifyContent: 'center', ...T.shadowSm }}
         >
-          <Text style={{ fontSize: 16, color: T.ink2 }}>🗑</Text>
+          <SystemIcon name="trash" size={18} color={T.ink2} />
         </Pressable>
       </View>
 

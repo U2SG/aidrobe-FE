@@ -1,5 +1,7 @@
 import { G, Path, Pattern, Line, Svg, Text as SvgText } from 'react-native-svg';
 
+import { colors } from '@/theme/design';
+
 type GarmentKind =
   | 'shirt'
   | 'blazer'
@@ -52,7 +54,7 @@ export function GarmentSvg({ kind, size = 80 }: Props) {
         <Line x1="0" y1="0" x2="0" y2="4" stroke="#000" strokeOpacity="0.04" strokeWidth="2" />
       </Pattern>
       <G>
-        <Path d={PATHS[kind]} fill="#EAE3D4" stroke="#C9BEA8" strokeWidth="1.2" />
+        <Path d={PATHS[kind]} fill="#E7E5E0" stroke="#C9C5BE" strokeWidth="1.2" />
         <Path d={PATHS[kind]} fill={`url(#${patternId})`} />
       </G>
       <SvgText
@@ -60,7 +62,7 @@ export function GarmentSvg({ kind, size = 80 }: Props) {
         y="105"
         textAnchor="middle"
         fontSize="9"
-        fill="#B8AC9D"
+        fill={colors.quaternaryLabel}
         fontFamily="Courier"
         letterSpacing="0.5"
       >

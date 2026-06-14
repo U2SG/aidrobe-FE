@@ -10,10 +10,12 @@ import { getUserSettings } from '@/api/settings';
 import { useToastStore } from '@/store/toast';
 import { CountdownRing } from '@/components/ui/CountdownRing';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
+import { SystemIcon } from '@/components/ui/SystemIcon';
 import { Tag } from '@/components/ui/Tag';
 import { useGenUIStream } from '@/hooks/useGenUIStream';
 import { GenUIRenderer } from '@/lib/genui/renderer';
 import { useTrack } from '@/hooks/useTrack';
+import { colors, radius, shadow } from '@/theme/design';
 import type { OutfitSummary, OutfitVariant } from '@/types/api';
 import type { MainTabsParamList, TodayStackParamList } from '@/types/navigation';
 
@@ -23,34 +25,22 @@ type Props = CompositeScreenProps<
 >;
 
 const T = {
-  bg: '#F5EFE6',
-  bgAlt: '#FAF6EE',
-  card: '#FFFFFF',
-  cardSoft: '#F8F3E9',
-  cardInner: '#FBF7EF',
-  ink: '#1A1714',
-  ink2: '#3A332B',
-  ink3: '#807468',
-  ink4: '#B8AC9D',
-  divider: '#EBE3D5',
-  accent: '#B08D5B',
-  ok: '#7A9B6E',
-  warn: '#C8924A',
-  red: '#B85C4A',
-  shadowSm: {
-    shadowColor: '#3C2814',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  } as const,
-  shadowMd: {
-    shadowColor: '#3C2814',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.07,
-    shadowRadius: 12,
-    elevation: 4,
-  } as const,
+  bg: colors.groupedBackground,
+  bgAlt: colors.background,
+  card: colors.elevated,
+  cardSoft: colors.secondaryElevated,
+  cardInner: colors.background,
+  ink: colors.label,
+  ink2: colors.secondaryLabel,
+  ink3: colors.tertiaryLabel,
+  ink4: colors.quaternaryLabel,
+  divider: colors.separator,
+  accent: colors.accent,
+  ok: colors.success,
+  warn: colors.warning,
+  red: colors.danger,
+  shadowSm: shadow.soft,
+  shadowMd: shadow.elevated,
 };
 
 type StrategyKey = 'safe' | 'fast' | 'stylish';
@@ -142,9 +132,7 @@ function useRemainingMinutes(departureTime: string | null): number {
 
 function StrategyIconInline({ icon, active }: { icon: 'shield' | 'clock' | 'sparkle'; active?: boolean }) {
   const c = active ? T.ink : T.ink3;
-  if (icon === 'shield') return <Text style={{ color: c, fontSize: 16 }}>🛡</Text>;
-  if (icon === 'clock') return <Text style={{ color: c, fontSize: 16 }}>⏱</Text>;
-  return <Text style={{ color: c, fontSize: 16 }}>✦</Text>;
+  return <SystemIcon name={icon} size={18} color={c} strokeWidth={1.9} />;
 }
 
 function StrategyTabs({
@@ -160,7 +148,15 @@ function StrategyTabs({
     { id: 'stylish', label: '更有风格' },
   ];
   return (
-    <View style={{ flexDirection: 'row', backgroundColor: '#EBE3D2', borderRadius: 999, padding: 4, marginHorizontal: 20 }}>
+    <View
+      style={{
+        flexDirection: 'row',
+        backgroundColor: T.cardSoft,
+        borderRadius: radius.pill,
+        padding: 4,
+        marginHorizontal: 20,
+      }}
+    >
       {tabs.map((t) => (
         <Pressable
           key={t.id}
@@ -168,7 +164,7 @@ function StrategyTabs({
           style={{
             flex: 1,
             paddingVertical: 10,
-            borderRadius: 999,
+            borderRadius: radius.pill,
             backgroundColor: active === t.id ? '#fff' : 'transparent',
             alignItems: 'center',
             ...(active === t.id ? T.shadowSm : {}),
@@ -231,7 +227,7 @@ function AnimatedPiece({
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     anim.setValue(0);
-    Animated.timing(anim, { toValue: 1, duration: 600, delay, useNativeDriver: true }).start();
+    Animated.timing(anim, { toValue: 1, duration: 600, delay, useNativeDriver: false }).start();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [piecesKey]);
   return (
@@ -292,8 +288,8 @@ function MiniOutfitCard({
 }) {
   return (
     <Pressable onPress={onPress} style={{ flex: 1 }}>
-      <View style={{ backgroundColor: T.card, borderRadius: 18, padding: 14, ...T.shadowSm }}>
-        <View style={{ height: 110, backgroundColor: T.cardInner, borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
+      <View style={{ backgroundColor: T.card, borderRadius: radius.lg, padding: 14, ...T.shadowSm }}>
+        <View style={{ height: 110, backgroundColor: T.cardInner, borderRadius: radius.md, overflow: 'hidden', position: 'relative' }}>
           {pieces.map((p, i) => (
             <View key={i} style={{ position: 'absolute', left: p.x, top: p.y, transform: [{ scale: p.scale }] }}>
               <GarmentSvg kind={p.kind} size={54} />
@@ -397,7 +393,7 @@ export function TodayScreen({ navigation }: Props) {
   const riseAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     riseAnim.setValue(0);
-    Animated.timing(riseAnim, { toValue: 1, duration: 480, delay: 80, useNativeDriver: true }).start();
+    Animated.timing(riseAnim, { toValue: 1, duration: 480, delay: 80, useNativeDriver: false }).start();
   }, [strategy, riseAnim]);
 
   return (
@@ -462,7 +458,7 @@ export function TodayScreen({ navigation }: Props) {
           marginHorizontal: 16,
           marginTop: 14,
           backgroundColor: T.card,
-          borderRadius: 24,
+          borderRadius: radius.xl,
           padding: 18,
           paddingBottom: 14,
           ...T.shadowMd,
@@ -483,7 +479,7 @@ export function TodayScreen({ navigation }: Props) {
                     style={{
                       width: 36,
                       height: 36,
-                      borderRadius: 10,
+                      borderRadius: radius.md,
                       backgroundColor: T.cardSoft,
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -499,7 +495,7 @@ export function TodayScreen({ navigation }: Props) {
                   </Text>
                 </View>
 
-                <View style={{ padding: 9, backgroundColor: T.cardSoft, borderRadius: 10 }}>
+                <View style={{ padding: 9, backgroundColor: T.cardSoft, borderRadius: radius.md }}>
                   <Text
                     style={{ fontSize: 9, color: T.accent, letterSpacing: 0.6, fontWeight: '600', fontFamily: 'monospace' }}
                   >
@@ -518,7 +514,7 @@ export function TodayScreen({ navigation }: Props) {
               <OutfitCanvas key={strategy} pieces={preset.pieces} />
             </View>
 
-            <View style={{ marginTop: 4, marginBottom: 12, padding: 12, backgroundColor: T.bgAlt, borderRadius: 12 }}>
+            <View style={{ marginTop: 4, marginBottom: 12, padding: 12, backgroundColor: T.bgAlt, borderRadius: radius.md }}>
               <Text style={{ fontSize: 12, color: T.ink2, lineHeight: 19 }}>
                 &ldquo;{reason}&rdquo;
               </Text>
@@ -531,7 +527,7 @@ export function TodayScreen({ navigation }: Props) {
           style={({ pressed }) => ({
             height: 50,
             backgroundColor: T.ink,
-            borderRadius: 14,
+            borderRadius: radius.md,
             alignItems: 'center',
             justifyContent: 'center',
             opacity: pressed ? 0.88 : 1,
