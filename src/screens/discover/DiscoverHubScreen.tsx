@@ -148,7 +148,7 @@ export function DiscoverHubScreen({ navigation }: Props) {
               icon="bag"
               title="该不该买"
               subtitle="对照现有衣橱"
-              onPress={() => comingSoon('购物理性检查')}
+              onPress={() => navigation.navigate('SenseCheck')}
             />
           </View>
           <View style={{ flexDirection: 'row', gap: 12 }}>

@@ -24,6 +24,8 @@ export const ANALYTICS_EVENTS = {
   wardrobe_report_viewed: 'wardrobe_report_viewed',
   packing_list_viewed: 'packing_list_viewed',
   packing_list_created: 'packing_list_created',
+  sense_check_viewed: 'sense_check_viewed',
+  sense_check_run: 'sense_check_run',
 } as const;
 
 export type AnalyticsEvent = keyof typeof ANALYTICS_EVENTS;

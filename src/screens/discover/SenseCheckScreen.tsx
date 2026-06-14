@@ -1,0 +1,257 @@
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+
+import { getSenseCheckHistory, senseCheck } from '@/api/shopping';
+import { getWardrobeItem } from '@/api/wardrobe';
+import { SystemIcon } from '@/components/ui/SystemIcon';
+import { Tag } from '@/components/ui/Tag';
+import { useTrack } from '@/hooks/useTrack';
+import { useToastStore } from '@/store/toast';
+import { colors, radius, shadow, spacing, type } from '@/theme/design';
+import type { SenseCheckResult } from '@/types/api';
+import type { DiscoverStackParamList } from '@/types/navigation';
+
+type Props = NativeStackScreenProps<DiscoverStackParamList, 'SenseCheck'>;
+
+const T = {
+  bg: colors.groupedBackground,
+  card: colors.elevated,
+  cardSoft: colors.secondaryElevated,
+  ink: colors.label,
+  ink2: colors.secondaryLabel,
+  ink3: colors.tertiaryLabel,
+  accent: colors.accent,
+};
+
+const VERDICT: Record<string, { label: string; color: string; bg: string }> = {
+  buy: { label: '建议入手', color: colors.success, bg: colors.successBg },
+  consider: { label: '再考虑', color: colors.warning, bg: colors.warningBg },
+  skip: { label: '别买了', color: colors.danger, bg: colors.dangerBg },
+};
+
+function statusCode(err: unknown): number | undefined {
+  return (err as { response?: { status?: number } })?.response?.status;
+}
+
+function ResultCard({ result }: { result: SenseCheckResult }) {
+  const v = VERDICT[result.verdict] ?? { label: result.verdict, color: T.ink, bg: T.cardSoft };
+  const ids = useMemo(() => result.similarItems.map((s) => s.itemId), [result]);
+  const itemQueries = useQueries({
+    queries: ids.map((iid) => ({
+      queryKey: ['wardrobeItem', iid],
+      queryFn: () => getWardrobeItem(iid),
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
+  const nameById = useMemo(() => {
+    const m = new Map<string, string>();
+    itemQueries.forEach((q, i) => {
+      const iid = ids[i];
+      if (iid && q.data) m.set(iid, q.data.name);
+    });
+    return m;
+  }, [itemQueries, ids]);
+
+  return (
+    <View style={{ backgroundColor: T.card, borderRadius: radius.xl, padding: 16, gap: 14, ...shadow.soft }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ backgroundColor: v.bg, borderRadius: radius.sm, paddingHorizontal: 12, paddingVertical: 6 }}>
+          <Text style={{ ...type.title2, color: v.color }}>{v.label}</Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={{ ...type.title2, color: T.ink }}>{result.outfitPotential}</Text>
+          <Text style={{ ...type.caption, color: T.ink3 }}>可搭套数</Text>
+        </View>
+      </View>
+
+      <Text style={{ ...type.body, color: T.ink2, lineHeight: 22 }}>{result.reason}</Text>
+
+      {result.similarItems.length > 0 ? (
+        <View>
+          <Text style={{ ...type.footnote, color: T.ink3, marginBottom: 8 }}>衣橱里的相似单品</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+            {result.similarItems.map((s) => (
+              <View key={s.itemId} style={{ width: 72 }}>
+                <View style={{ width: 72, height: 72, borderRadius: radius.md, backgroundColor: T.cardSoft }} />
+                <Text style={{ ...type.caption, color: T.ink2, marginTop: 6 }} numberOfLines={1}>
+                  {nameById.get(s.itemId) ?? '衣橱单品'}
+                </Text>
+                <Text style={{ ...type.caption, color: T.accent }}>{Math.round(s.similarity * 100)}% 相似</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+
+      {result.wardrobeGap.length > 0 ? (
+        <View>
+          <Text style={{ ...type.footnote, color: T.ink3, marginBottom: 8 }}>衣橱真正缺的</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {result.wardrobeGap.map((g) => (
+              <Tag key={g}>{g}</Tag>
+            ))}
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+export function SenseCheckScreen({ navigation }: Props) {
+  const qc = useQueryClient();
+  const track = useTrack();
+  const showToast = useToastStore((s) => s.show);
+  const [url, setUrl] = useState('');
+  const [current, setCurrent] = useState<SenseCheckResult | null>(null);
+
+  useEffect(() => {
+    track('sense_check_viewed', {});
+  }, [track]);
+
+  const historyQuery = useQuery({
+    queryKey: ['senseCheckHistory'],
+    queryFn: () => getSenseCheckHistory(20),
+    staleTime: 60 * 1000,
+    retry: 1,
+  });
+
+  const checkMutation = useMutation({
+    mutationFn: (sourceUrl: string) => senseCheck({ sourceUrl }),
+    onSuccess: (result) => {
+      setCurrent(result);
+      qc.invalidateQueries({ queryKey: ['senseCheckHistory'] });
+      track('sense_check_run', { verdict: result.verdict });
+    },
+    onError: (err: unknown) => {
+      const code = statusCode(err);
+      if (code === 500 || code === 422) {
+        showToast({ message: '无法解析该链接，换一个试试', kind: 'error' });
+      }
+      // Other errors handled by the axios interceptor.
+    },
+  });
+
+  const canCheck = url.trim().length > 0 && !checkMutation.isPending;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: T.bg }}>
+      {/* Header */}
+      <View
+        style={{
+          paddingTop: 52,
+          paddingHorizontal: 16,
+          paddingBottom: 8,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+        }}
+      >
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: T.card,
+            alignItems: 'center',
+            justifyContent: 'center',
+            ...shadow.soft,
+          }}
+        >
+          <SystemIcon name="chevronLeft" size={18} color={T.ink} />
+        </Pressable>
+        <Text style={{ ...type.title2, color: T.ink }}>该不该买</Text>
+      </View>
+
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: spacing.screen, paddingBottom: 100, gap: 16 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Input */}
+        <View style={{ backgroundColor: T.card, borderRadius: radius.xl, padding: 16, gap: 12, ...shadow.soft }}>
+          <Text style={{ ...type.footnote, color: T.ink3 }}>粘贴商品链接</Text>
+          <TextInput
+            value={url}
+            onChangeText={setUrl}
+            placeholder="https://..."
+            placeholderTextColor={colors.quaternaryLabel}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            style={{
+              backgroundColor: T.bg,
+              borderRadius: radius.md,
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              ...type.body,
+              color: T.ink,
+            }}
+          />
+          <Pressable
+            onPress={() => canCheck && checkMutation.mutate(url.trim())}
+            disabled={!canCheck}
+            style={{
+              minHeight: 50,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: radius.md,
+              backgroundColor: colors.label,
+              opacity: canCheck ? 1 : 0.42,
+            }}
+          >
+            <Text style={{ ...type.body, fontWeight: '700', color: colors.inverse }}>
+              {checkMutation.isPending ? '检查中…' : '检查一下'}
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Current result */}
+        {current ? <ResultCard result={current} /> : null}
+
+        {/* History */}
+        {historyQuery.data && historyQuery.data.length > 0 ? (
+          <View>
+            <Text style={{ ...type.headline, color: T.ink, marginBottom: 12 }}>最近检查</Text>
+            <View style={{ gap: 10 }}>
+              {historyQuery.data.map((h) => {
+                const v = VERDICT[h.verdict] ?? { label: h.verdict, color: T.ink, bg: T.cardSoft };
+                return (
+                  <Pressable
+                    key={h.id}
+                    onPress={() => setCurrent(h)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                      backgroundColor: T.card,
+                      borderRadius: radius.lg,
+                      padding: 12,
+                      ...shadow.soft,
+                    }}
+                  >
+                    <View style={{ width: 44, height: 44, borderRadius: radius.sm, backgroundColor: T.cardSoft }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ ...type.body, color: T.ink }} numberOfLines={1}>
+                        {h.sourceUrl || '商品图'}
+                      </Text>
+                      <Text style={{ ...type.caption, color: T.ink3, marginTop: 2 }} numberOfLines={1}>
+                        {h.reason}
+                      </Text>
+                    </View>
+                    <View style={{ backgroundColor: v.bg, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}>
+                      <Text style={{ ...type.caption, color: v.color, fontWeight: '700' }}>{v.label}</Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
+      </ScrollView>
+    </View>
+  );
+}
