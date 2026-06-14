@@ -661,3 +661,540 @@ export interface AuthTokenResponse {
   token_type: 'bearer';
   expires_in: number;
 }
+
+// ============================================================================
+// V4 surface — ask / packing list / outfit calendar / shopping sense-check /
+// style inspirations / OOTD poster / outfit visual assets / wardrobe report.
+// These backend routers return the V3-style direct body (no envelope) except
+// /style/* which wraps in ResponseModel; the client interceptor unwraps both.
+// ============================================================================
+
+// --- Ask Aidrobe (M15) -----------------------------------------------------
+
+export interface AskContext {
+  date?: string;
+  scene?: string;
+  timeLeftMinutes?: number;
+}
+
+export interface AskBody {
+  question: string;
+  context?: AskContext;
+}
+
+export interface AskResult {
+  askSessionId: string;
+  answer: string;
+  itemRefs: string[];
+  tokensUsed: number;
+}
+
+export interface ServerAskResponse {
+  ask_session_id: string;
+  answer: string;
+  item_refs: string[];
+  tokens_used: number;
+}
+
+export interface AskHistoryEntry {
+  askSessionId: string;
+  question: string;
+  answer: string | null;
+  itemRefs: string[];
+  createdAt: string;
+}
+
+export interface ServerAskHistoryItem {
+  ask_session_id: string;
+  question: string;
+  answer?: string | null;
+  item_refs?: string[];
+  created_at: string;
+}
+
+// --- Packing list (M16) ----------------------------------------------------
+
+export type PackingListStatus = 'draft' | 'active' | 'archived' | (string & NonNullable<unknown>);
+
+export interface PackingEntry {
+  itemId: string;
+  day: number;
+  scene: string;
+  notes: string;
+}
+
+export interface ServerPackingItem {
+  item_id: string;
+  day: number;
+  scene: string;
+  notes: string;
+}
+
+export interface PackingList {
+  id: string;
+  destination: string | null;
+  days: number | null;
+  scenes: string[];
+  departureDate: string | null;
+  items: PackingEntry[];
+  status: PackingListStatus;
+}
+
+export interface ServerPackingListResponse {
+  packing_list_id: string;
+  destination?: string | null;
+  days?: number | null;
+  scenes: string[];
+  departure_date?: string | null;
+  items: ServerPackingItem[];
+  status: string;
+}
+
+export interface CreatePackingListBody {
+  destination?: string;
+  days: number;
+  scenes: string[];
+  weatherHint?: string;
+  departureDate?: string;
+}
+
+export interface UpdatePackingListBody {
+  items?: PackingEntry[];
+  status?: string;
+}
+
+// --- Outfit plan / calendar (V4) -------------------------------------------
+
+export type OutfitPlanStatus = 'planned' | 'cancelled' | (string & NonNullable<unknown>);
+
+export interface OutfitPlan {
+  id: string;
+  outfitId: string;
+  plannedDate: string;
+  status: OutfitPlanStatus;
+}
+
+export interface ServerOutfitPlanResponse {
+  outfit_plan_id: string;
+  outfit_id: string;
+  planned_date: string;
+  status: string;
+}
+
+export interface WearPlanResult {
+  outfitPlanId: string;
+  wearHistoryId: string;
+  wornDate: string;
+  status: string;
+}
+
+export interface ServerWearPlanResponse {
+  outfit_plan_id: string;
+  wear_history_id: string;
+  worn_date: string;
+  status: string;
+}
+
+export interface CreateOutfitPlanBody {
+  outfitId: string;
+  plannedDate: string;
+}
+
+export interface UpdateOutfitPlanBody {
+  plannedDate?: string;
+  // Only "planned" (restore) or "cancelled" are accepted server-side.
+  status?: 'planned' | 'cancelled';
+}
+
+// Calendar cells embed the lean outfit-history OutfitSummary shape.
+export interface CalendarOutfit {
+  outfitId: string;
+  outfitType: string;
+  title: string;
+  reason: string | null;
+}
+
+export interface ServerCalendarOutfit {
+  outfit_id: string;
+  outfit_type: string;
+  title: string;
+  reason_text?: string | null;
+}
+
+export type CalendarCellKind = 'worn' | 'planned' | (string & NonNullable<unknown>);
+
+export interface CalendarCell {
+  kind: CalendarCellKind;
+  outfit: CalendarOutfit | null;
+  wearHistoryId: string | null;
+  ootdImageUrl: string | null;
+  outfitPlanId: string | null;
+  status: string | null;
+}
+
+export interface ServerCalendarCell {
+  kind: string;
+  outfit?: ServerCalendarOutfit | null;
+  wear_history_id?: string | null;
+  ootd_image_url?: string | null;
+  outfit_plan_id?: string | null;
+  status?: string | null;
+}
+
+export interface CalendarDay {
+  date: string;
+  cells: CalendarCell[];
+}
+
+export interface ServerCalendarDay {
+  date: string;
+  cells: ServerCalendarCell[];
+}
+
+export interface ServerOutfitPlanCalendarResponse {
+  days: ServerCalendarDay[];
+}
+
+export interface CalendarQuery {
+  start: string;
+  end: string;
+}
+
+// --- Shopping sense-check (M17) --------------------------------------------
+
+export type SenseCheckVerdict = 'buy' | 'consider' | 'skip' | (string & NonNullable<unknown>);
+
+export interface SimilarItem {
+  itemId: string;
+  similarity: number;
+}
+
+export interface ServerSimilarItem {
+  item_id: string;
+  similarity: number;
+}
+
+export interface SenseCheckResult {
+  verdict: SenseCheckVerdict;
+  reason: string;
+  similarItems: SimilarItem[];
+  wardrobeGap: string[];
+  outfitPotential: number;
+}
+
+export interface ServerSenseCheckResponse {
+  verdict: string;
+  reason: string;
+  similar_items: ServerSimilarItem[];
+  wardrobe_gap: string[];
+  outfit_potential: number;
+}
+
+export interface SenseCheckBody {
+  imageUrl?: string;
+  sourceUrl?: string;
+}
+
+export interface SenseCheckHistoryEntry extends SenseCheckResult {
+  id: string;
+  imageUrl: string | null;
+  sourceUrl: string | null;
+  createdAt: string;
+}
+
+export interface ServerSenseCheckHistoryItem {
+  sense_check_id: string;
+  verdict: string;
+  reason: string;
+  image_url: string | null;
+  source_url: string | null;
+  similar_items: ServerSimilarItem[];
+  wardrobe_gap: string[];
+  outfit_potential: number;
+  created_at: string;
+}
+
+export interface ServerSenseCheckHistoryResponse {
+  items: ServerSenseCheckHistoryItem[];
+}
+
+// --- Style inspirations / PDF ingest (M18 / M19) ---------------------------
+
+export interface Inspiration {
+  id: string;
+  imageUrl: string | null;
+  sourceUrl: string | null;
+  sourceType: string;
+  learnStatus: string;
+  createdAt: string;
+}
+
+export interface ServerInspirationResponse {
+  id: string;
+  image_url: string | null;
+  source_url?: string | null;
+  source_type: string;
+  learn_status?: string;
+  created_at: string;
+}
+
+export interface InspirationList {
+  items: Inspiration[];
+  limit: number;
+  offset: number;
+}
+
+export interface ServerInspirationListResponse {
+  items: ServerInspirationResponse[];
+  limit: number;
+  offset: number;
+}
+
+export interface ServerBatchInspirationResponse {
+  items: ServerInspirationResponse[];
+}
+
+export interface AddInspirationBody {
+  imageUrl?: string;
+  sourceUrl?: string;
+}
+
+export interface PdfStyleSourceBody {
+  fileUrl: string;
+  title?: string;
+}
+
+export interface PdfStyleSourceResult {
+  sourceId: string;
+  status: string;
+  estimatedPages: number;
+}
+
+export interface ServerPdfStyleSourceResponse {
+  source_id: string;
+  status: string;
+  estimated_pages: number;
+}
+
+export interface InspirationListQuery {
+  limit?: number;
+  offset?: number;
+}
+
+// --- OOTD poster (V4) ------------------------------------------------------
+
+export type OotdPosterTemplate = 'minimal' | 'studio' | 'street';
+
+export interface CreateOotdPosterBody {
+  ootdImageUrl?: string;
+  wearHistoryId?: string;
+  templateId?: OotdPosterTemplate;
+  // Must be true after the consent + "AI preview only" notice is shown.
+  consent: boolean;
+}
+
+export interface OotdPosterResult {
+  assetId: string;
+  generationStatus: string;
+  disclaimer: string;
+}
+
+export interface ServerCreateOotdPosterResponse {
+  asset_id: string;
+  generation_status: string;
+  disclaimer: string;
+}
+
+// --- Outfit visual assets / signed URLs (M10 / E5) -------------------------
+// E5: image_url is a short-lived signed URL (~30 min TTL) when the backend
+// storage is private. DO NOT persist these past the session — re-fetch via the
+// parent endpoint when the TTL elapses.
+
+export interface OutfitVisualAsset {
+  assetId: string;
+  generationStatus: string;
+  imageUrl: string | null;
+  visualType: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+}
+
+export interface ServerOutfitVisualAssetResponse {
+  asset_id: string;
+  generation_status: string;
+  image_url?: string | null;
+  visual_type?: string | null;
+  error_code?: string | null;
+  error_message?: string | null;
+}
+
+export interface WardrobeItemImage {
+  imageType: string;
+  imageUrl: string | null;
+}
+
+export interface WardrobeItemImages {
+  itemId: string;
+  images: WardrobeItemImage[];
+}
+
+export interface ServerWardrobeItemImage {
+  image_type: string;
+  image_url: string | null;
+}
+
+export interface ServerWardrobeItemImagesResponse {
+  item_id: string;
+  images: ServerWardrobeItemImage[];
+}
+
+// --- Insights extension: style trend / cost-per-wear / wardrobe report ------
+
+export interface StyleTrendEntry {
+  yearMonth: string;
+  tags: Record<string, number>;
+}
+
+export interface ServerStyleTrendEntry {
+  year_month: string;
+  tags: Record<string, number>;
+}
+
+export interface ServerStyleTrendResponse {
+  trend: ServerStyleTrendEntry[];
+}
+
+export interface CostPerWearItem {
+  itemId: string;
+  title: string;
+  purchasePrice: number | null;
+  wearCount: number;
+  costPerWear: number | null;
+}
+
+export interface ServerCostPerWearItem {
+  item_id: string;
+  title: string;
+  // Backend Decimal → Pydantic v2 serializes to a JSON string (verified via
+  // openapi.yaml: anyOf[string, null]). Convert to number client-side.
+  purchase_price?: string | null;
+  wear_count: number;
+  cost_per_wear?: string | null;
+}
+
+// M21: half-year / annual "wardrobe wrapped" report. Gated by
+// ENABLE_WARDROBE_REPORT (503 when off). `period` is like "2026-H1".
+export interface ReportTopItem {
+  itemId: string;
+  title: string;
+  category: string;
+  coverImageUrl: string | null;
+  wearCount: number;
+}
+
+export interface ServerReportTopItem {
+  item_id: string;
+  title: string;
+  category: string;
+  cover_image_url?: string | null;
+  wear_count: number;
+}
+
+export interface ReportOutfitCombo {
+  outfitId: string;
+  title: string;
+  wearCount: number;
+}
+
+export interface ServerReportOutfitCombo {
+  outfit_id: string;
+  title: string;
+  wear_count: number;
+}
+
+export interface ReportCostPerWear {
+  itemId: string;
+  title: string;
+  purchasePrice: number;
+  wearCount: number;
+  costPerWear: number;
+}
+
+export interface ServerReportCostPerWear {
+  item_id: string;
+  title: string;
+  // Required Decimal → JSON string (openapi.yaml: type string). Convert client-side.
+  purchase_price: string;
+  wear_count: number;
+  cost_per_wear: string;
+}
+
+export interface ReportIdleItem {
+  itemId: string;
+  title: string;
+  category: string;
+  coverImageUrl: string | null;
+  lastWorn: string | null;
+  idleDays: number | null;
+}
+
+export interface ServerReportIdleItem {
+  item_id: string;
+  title: string;
+  category: string;
+  cover_image_url?: string | null;
+  last_worn?: string | null;
+  idle_days?: number | null;
+}
+
+export interface ReportStyleTrend {
+  period: string;
+  prevPeriod: string;
+  current: Record<string, number>;
+  previous: Record<string, number>;
+  rising: string[];
+  fading: string[];
+}
+
+export interface ServerReportStyleTrend {
+  period: string;
+  prev_period: string;
+  current: Record<string, number>;
+  previous: Record<string, number>;
+  rising: string[];
+  fading: string[];
+}
+
+export interface WardrobeReport {
+  period: string;
+  label: string;
+  startDate: string;
+  endDate: string;
+  isEmpty: boolean;
+  totalWears: number;
+  topItems: ReportTopItem[];
+  topCombos: ReportOutfitCombo[];
+  colorPalette: Record<string, number>;
+  styleKeywords: string[];
+  styleTrend: ReportStyleTrend | null;
+  highestCostPerWear: ReportCostPerWear | null;
+  longestIdleItem: ReportIdleItem | null;
+  recommendationAdoptionRate: number;
+}
+
+export interface ServerWardrobeReportResponse {
+  period: string;
+  label: string;
+  start_date: string;
+  end_date: string;
+  is_empty: boolean;
+  total_wears: number;
+  top_items: ServerReportTopItem[];
+  top_combos: ServerReportOutfitCombo[];
+  color_palette: Record<string, number>;
+  style_keywords: string[];
+  style_trend?: ServerReportStyleTrend | null;
+  highest_cost_per_wear?: ServerReportCostPerWear | null;
+  longest_idle_item?: ServerReportIdleItem | null;
+  recommendation_adoption_rate: number;
+}
