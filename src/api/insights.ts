@@ -69,9 +69,9 @@ export async function getCostPerWear(): Promise<CostPerWearItem[]> {
   return data.map((it) => ({
     itemId: it.item_id,
     title: it.title,
-    purchasePrice: it.purchase_price ?? null,
+    purchasePrice: it.purchase_price != null ? Number(it.purchase_price) : null,
     wearCount: it.wear_count,
-    costPerWear: it.cost_per_wear ?? null,
+    costPerWear: it.cost_per_wear != null ? Number(it.cost_per_wear) : null,
   }));
 }
 
@@ -114,9 +114,9 @@ export async function getWardrobeReport(period: string): Promise<WardrobeReport>
       ? {
           itemId: data.highest_cost_per_wear.item_id,
           title: data.highest_cost_per_wear.title,
-          purchasePrice: data.highest_cost_per_wear.purchase_price,
+          purchasePrice: Number(data.highest_cost_per_wear.purchase_price),
           wearCount: data.highest_cost_per_wear.wear_count,
-          costPerWear: data.highest_cost_per_wear.cost_per_wear,
+          costPerWear: Number(data.highest_cost_per_wear.cost_per_wear),
         }
       : null,
     longestIdleItem: data.longest_idle_item

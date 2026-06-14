@@ -1075,9 +1075,11 @@ export interface CostPerWearItem {
 export interface ServerCostPerWearItem {
   item_id: string;
   title: string;
-  purchase_price?: number | null;
+  // Backend Decimal → Pydantic v2 serializes to a JSON string (verified via
+  // openapi.yaml: anyOf[string, null]). Convert to number client-side.
+  purchase_price?: string | null;
   wear_count: number;
-  cost_per_wear?: number | null;
+  cost_per_wear?: string | null;
 }
 
 // M21: half-year / annual "wardrobe wrapped" report. Gated by
@@ -1121,9 +1123,10 @@ export interface ReportCostPerWear {
 export interface ServerReportCostPerWear {
   item_id: string;
   title: string;
-  purchase_price: number;
+  // Required Decimal → JSON string (openapi.yaml: type string). Convert client-side.
+  purchase_price: string;
   wear_count: number;
-  cost_per_wear: number;
+  cost_per_wear: string;
 }
 
 export interface ReportIdleItem {
