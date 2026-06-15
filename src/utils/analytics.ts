@@ -28,6 +28,8 @@ export const ANALYTICS_EVENTS = {
   sense_check_run: 'sense_check_run',
   inspiration_viewed: 'inspiration_viewed',
   inspiration_added: 'inspiration_added',
+  ask_viewed: 'ask_viewed',
+  ask_sent: 'ask_sent',
 } as const;
 
 export type AnalyticsEvent = keyof typeof ANALYTICS_EVENTS;

@@ -4,7 +4,6 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useTrack } from '@/hooks/useTrack';
-import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { DiscoverStackParamList } from '@/types/navigation';
 
@@ -88,14 +87,10 @@ function ToolCard({
 
 export function DiscoverHubScreen({ navigation }: Props) {
   const track = useTrack();
-  const showToast = useToastStore((s) => s.show);
 
   useEffect(() => {
     track('discover_viewed', {});
   }, [track]);
-
-  const comingSoon = (name: string) =>
-    showToast({ message: `${name} 即将上线`, kind: 'info' });
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -109,7 +104,7 @@ export function DiscoverHubScreen({ navigation }: Props) {
           衣橱工具与本季洞察
         </Text>
 
-        <AskBar onPress={() => comingSoon('Ask 问答')} />
+        <AskBar onPress={() => navigation.navigate('AskAidrobe')} />
 
         {/* Report hero */}
         <Pressable

@@ -6,6 +6,7 @@ import { InsightsScreen } from '@/screens/discover/InsightsScreen';
 import { PackingListDetailScreen } from '@/screens/discover/PackingListDetailScreen';
 import { PackingListScreen } from '@/screens/discover/PackingListScreen';
 import { AddInspirationScreen } from '@/screens/discover/AddInspirationScreen';
+import { AskAidrobeScreen } from '@/screens/discover/AskAidrobeScreen';
 import { SenseCheckScreen } from '@/screens/discover/SenseCheckScreen';
 import { StyleInspirationsScreen } from '@/screens/discover/StyleInspirationsScreen';
 import { WardrobeReportScreen } from '@/screens/discover/WardrobeReportScreen';
@@ -53,6 +54,7 @@ export function DiscoverNavigator() {
         component={AddInspirationScreen}
         options={{ presentation: 'modal', headerShown: false }}
       />
+      <Stack.Screen name="AskAidrobe" component={AskAidrobeScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

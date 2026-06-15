@@ -51,6 +51,7 @@ export type DiscoverStackParamList = {
   SenseCheck: undefined;
   StyleInspirations: undefined;
   AddInspiration: undefined;
+  AskAidrobe: undefined;
 };
 
 export type MainTabsParamList = {
