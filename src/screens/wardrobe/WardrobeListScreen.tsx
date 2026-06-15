@@ -178,9 +178,18 @@ export function WardrobeListScreen({ navigation }: Props) {
                   </View>
                 )}
               </View>
-              {/* Bell icon */}
-            <View style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}>
-                <SystemIcon name="bell" size={22} color={T.ink2} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Pressable
+                  onPress={() => navigation.navigate('AddItem')}
+                  hitSlop={8}
+                  style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <SystemIcon name="plus" size={24} color={T.ink} />
+                </Pressable>
+                {/* Bell icon */}
+                <View style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}>
+                  <SystemIcon name="bell" size={22} color={T.ink2} />
+                </View>
               </View>
             </View>
 
