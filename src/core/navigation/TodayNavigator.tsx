@@ -1,6 +1,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { FeedbackSheetScreen } from '@/screens/today/FeedbackSheetScreen';
+import { OotdPosterScreen } from '@/screens/today/OotdPosterScreen';
 import { OutfitDetailScreen } from '@/screens/today/OutfitDetailScreen';
 import { TodayScreen } from '@/screens/today/TodayScreen';
 import { colors } from '@/theme/design';
@@ -31,6 +32,11 @@ export function TodayNavigator() {
           presentation: 'modal',
           title: '反馈',
         }}
+      />
+      <Stack.Screen
+        name="OotdPoster"
+        component={OotdPosterScreen}
+        options={{ presentation: 'modal', headerShown: false }}
       />
     </Stack.Navigator>
   );

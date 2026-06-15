@@ -19,6 +19,8 @@ export const ANALYTICS_EVENTS = {
   outfit_detail_viewed: 'outfit_detail_viewed',
   outfit_worn: 'outfit_worn',
   outfit_feedback_sent: 'outfit_feedback_sent',
+  ootd_poster_started: 'ootd_poster_started',
+  ootd_poster_generated: 'ootd_poster_generated',
 } as const;
 
 export type AnalyticsEvent = keyof typeof ANALYTICS_EVENTS;
