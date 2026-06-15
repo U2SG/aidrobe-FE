@@ -721,6 +721,7 @@ export interface PackingEntry {
   day: number;
   scene: string;
   notes: string;
+  packed: boolean;
 }
 
 export interface ServerPackingItem {
@@ -728,6 +729,7 @@ export interface ServerPackingItem {
   day: number;
   scene: string;
   notes: string;
+  packed: boolean;
 }
 
 export interface PackingList {

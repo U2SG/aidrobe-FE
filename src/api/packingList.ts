@@ -19,6 +19,7 @@ function toPackingList(data: ServerPackingListResponse): PackingList {
       day: it.day,
       scene: it.scene,
       notes: it.notes,
+      packed: it.packed,
     })),
     status: data.status,
   };
@@ -56,6 +57,7 @@ export async function updatePackingList(
         day: it.day,
         scene: it.scene,
         notes: it.notes,
+        packed: it.packed,
       })),
       status: body.status,
     }),

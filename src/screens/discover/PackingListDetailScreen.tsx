@@ -1,9 +1,9 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { getPackingList } from '@/api/packingList';
+import { getPackingList, updatePackingList } from '@/api/packingList';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
@@ -39,9 +39,7 @@ const SCENE_LABEL: Record<string, string> = {
 
 export function PackingListDetailScreen({ navigation, route }: Props) {
   const { id } = route.params;
-  // v1: per-item "packed" check is local-only (backend PackingItem has no
-  // packed field — see docs/v4-ui/08-backend-gaps.md #3).
-  const [checked, setChecked] = useState<Set<number>>(new Set());
+  const qc = useQueryClient();
 
   const query = useQuery({ queryKey: ['packingList', id], queryFn: () => getPackingList(id), retry: 1 });
   const list = query.data;
@@ -60,14 +58,22 @@ export function PackingListDetailScreen({ navigation, route }: Props) {
   }, [list]);
 
   const total = list?.items.length ?? 0;
+  const packedCount = (list?.items ?? []).filter((it) => it.packed).length;
 
-  const toggle = (index: number) =>
-    setChecked((cur) => {
-      const next = new Set(cur);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
+  // packed is server-persisted (PackingItem.packed). Toggle optimistically,
+  // write the full items list back via PATCH, resync on error.
+  const updateMutation = useMutation({
+    mutationFn: (items: PackingEntry[]) => updatePackingList(id, { items }),
+    onError: () => qc.invalidateQueries({ queryKey: ['packingList', id] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['packingLists'] }),
+  });
+
+  const toggle = (index: number) => {
+    if (!list) return;
+    const next = list.items.map((it, i) => (i === index ? { ...it, packed: !it.packed } : it));
+    qc.setQueryData(['packingList', id], { ...list, items: next });
+    updateMutation.mutate(next);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -91,7 +97,7 @@ export function PackingListDetailScreen({ navigation, route }: Props) {
             ))}
           </View>
           <Text style={{ ...type.footnote, color: T.ink3, marginBottom: 16 }}>
-            已打包 {checked.size} / {total}
+            已打包 {packedCount} / {total}
           </Text>
 
           {byDay.map(([day, entries]) => (
@@ -99,7 +105,7 @@ export function PackingListDetailScreen({ navigation, route }: Props) {
               <Text style={{ ...type.headline, color: T.ink, marginBottom: 10 }}>Day {day}</Text>
               <View style={{ gap: 10 }}>
                 {entries.map(({ entry, index }) => {
-                  const isChecked = checked.has(index);
+                  const isChecked = entry.packed;
                   return (
                     <Pressable
                       key={index}
