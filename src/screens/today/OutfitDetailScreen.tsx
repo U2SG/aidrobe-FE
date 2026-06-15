@@ -521,6 +521,38 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
             {!apiPrepSteps && fullItems.length === 0 && <Tag>无需熨烫</Tag>}
           </View>
         </View>
+
+        <Pressable
+          onPress={() => navigation.navigate('OotdPoster', { outfitId })}
+          style={{
+            marginTop: 14,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            padding: 14,
+            backgroundColor: T.card,
+            borderRadius: 14,
+            ...T.shadowSm,
+          }}
+        >
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              backgroundColor: T.accentBg,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <SystemIcon name="sparkle" size={18} color={T.accent} strokeWidth={1.9} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: T.ink }}>生成 OOTD 海报</Text>
+            <Text style={{ fontSize: 11, color: T.ink3, marginTop: 2 }}>用穿着自拍生成风格化海报</Text>
+          </View>
+          <SystemIcon name="chevronRight" size={18} color={T.ink3} />
+        </Pressable>
       </ScrollView>
 
       <View

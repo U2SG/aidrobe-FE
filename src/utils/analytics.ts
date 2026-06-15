@@ -33,6 +33,8 @@ export const ANALYTICS_EVENTS = {
   inspiration_added: 'inspiration_added',
   ask_viewed: 'ask_viewed',
   ask_sent: 'ask_sent',
+  ootd_poster_started: 'ootd_poster_started',
+  ootd_poster_generated: 'ootd_poster_generated',
 } as const;
 
 export type AnalyticsEvent = keyof typeof ANALYTICS_EVENTS;

@@ -20,6 +20,7 @@ export type TodayStackParamList = {
   FeedbackSheet: { outfitId: string };
   OutfitCalendar: undefined;
   OutfitPlanPicker: { plannedDate: string };
+  OotdPoster: { outfitId?: string } | undefined;
 };
 
 export type WardrobeStackParamList = {
