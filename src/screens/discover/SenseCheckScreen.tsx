@@ -1,18 +1,20 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { getSenseCheckHistory, senseCheck } from '@/api/shopping';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
+import { SystemIcon } from '@/components/ui/SystemIcon';
 import { Tag } from '@/components/ui/Tag';
 import { useTrack } from '@/hooks/useTrack';
 import { useWardrobeItemNames } from '@/hooks/useWardrobeItemNames';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
-import type { SenseCheckResult } from '@/types/api';
+import type { SenseCheckBody, SenseCheckResult } from '@/types/api';
 import type { DiscoverStackParamList } from '@/types/navigation';
 import { httpStatus } from '@/utils/http';
+import { pickAndUploadImage, uploadErrorMessage } from '@/utils/imageUpload';
 
 type Props = NativeStackScreenProps<DiscoverStackParamList, 'SenseCheck'>;
 
@@ -86,6 +88,9 @@ export function SenseCheckScreen({ navigation }: Props) {
   const track = useTrack();
   const showToast = useToastStore((s) => s.show);
   const [url, setUrl] = useState('');
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [current, setCurrent] = useState<SenseCheckResult | null>(null);
 
   useEffect(() => {
@@ -100,7 +105,7 @@ export function SenseCheckScreen({ navigation }: Props) {
   });
 
   const checkMutation = useMutation({
-    mutationFn: (sourceUrl: string) => senseCheck({ sourceUrl }),
+    mutationFn: (body: SenseCheckBody) => senseCheck(body),
     onSuccess: (result) => {
       setCurrent(result);
       qc.invalidateQueries({ queryKey: ['senseCheckHistory'] });
@@ -109,13 +114,33 @@ export function SenseCheckScreen({ navigation }: Props) {
     onError: (err: unknown) => {
       const code = httpStatus(err);
       if (code === 500 || code === 422) {
-        showToast({ message: '无法解析该链接，换一个试试', kind: 'error' });
+        showToast({ message: '无法解析，换一张图或链接试试', kind: 'error' });
       }
       // Other errors handled by the axios interceptor.
     },
   });
 
-  const canCheck = url.trim().length > 0 && !checkMutation.isPending;
+  const onUpload = async () => {
+    setUploading(true);
+    try {
+      const picked = await pickAndUploadImage('sense');
+      if (picked) {
+        setImageUri(picked.uri);
+        setImageUrl(picked.url);
+      }
+    } catch (e) {
+      showToast({ message: uploadErrorMessage(e), kind: 'error' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const runCheck = () => {
+    if (imageUrl) checkMutation.mutate({ imageUrl });
+    else if (url.trim()) checkMutation.mutate({ sourceUrl: url.trim() });
+  };
+
+  const canCheck = (!!imageUrl || url.trim().length > 0) && !checkMutation.isPending && !uploading;
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -129,10 +154,56 @@ export function SenseCheckScreen({ navigation }: Props) {
       >
         {/* Input */}
         <View style={{ backgroundColor: T.card, borderRadius: radius.xl, padding: 16, gap: 12, ...shadow.soft }}>
-          <Text style={{ ...type.footnote, color: T.ink3 }}>粘贴商品链接</Text>
+          {imageUri ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Image
+                source={{ uri: imageUri }}
+                style={{ width: 56, height: 56, borderRadius: radius.sm }}
+                resizeMode="cover"
+              />
+              <Text style={{ ...type.footnote, color: T.ink2, flex: 1 }}>已选商品图</Text>
+              <Pressable
+                onPress={() => {
+                  setImageUri(null);
+                  setImageUrl(null);
+                }}
+                hitSlop={8}
+              >
+                <SystemIcon name="x" size={16} color={T.ink3} />
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              onPress={onUpload}
+              disabled={uploading}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                paddingVertical: 14,
+                borderRadius: radius.md,
+                borderWidth: 1.5,
+                borderColor: colors.separator,
+                borderStyle: 'dashed',
+              }}
+            >
+              {uploading ? (
+                <ActivityIndicator color={T.accent} />
+              ) : (
+                <>
+                  <SystemIcon name="camera" size={18} color={T.accent} strokeWidth={1.8} />
+                  <Text style={{ ...type.callout, color: T.ink2 }}>上传商品图（相册）</Text>
+                </>
+              )}
+            </Pressable>
+          )}
+
+          <Text style={{ ...type.footnote, color: T.ink3 }}>或粘贴商品链接</Text>
           <TextInput
             value={url}
             onChangeText={setUrl}
+            editable={!imageUrl}
             placeholder="https://..."
             placeholderTextColor={colors.quaternaryLabel}
             autoCapitalize="none"
@@ -145,10 +216,11 @@ export function SenseCheckScreen({ navigation }: Props) {
               paddingVertical: 12,
               ...type.body,
               color: T.ink,
+              opacity: imageUrl ? 0.4 : 1,
             }}
           />
           <Pressable
-            onPress={() => canCheck && checkMutation.mutate(url.trim())}
+            onPress={runCheck}
             disabled={!canCheck}
             style={{
               minHeight: 50,

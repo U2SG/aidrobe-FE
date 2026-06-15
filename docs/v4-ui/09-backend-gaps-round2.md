@@ -6,7 +6,7 @@
 > ① `PackingItem.packed` ✅ 后端加字段，前端打包勾选改为服务端持久化（乐观更新 + PATCH 写回）；
 > ② Ask 接入 LLM（`LLM_PROVIDER` 已配，503 仅在 `=none` 时降级）✅，对话 UI 直接可用；
 > ③ OOTD 生成链路已接入 ✅。
-> 当前 V4 UI **无遗留后端缺口**；仅剩前端 TODO：sense-check/灵感的图片上传路径（链接已支持）。
+> 当前 V4 UI **无遗留后端缺口**。前端 TODO（sense-check/灵感的图片上传）也已收尾：抽 `pickAndUploadImage`（相册→压缩→presign→image_url），sense-check 与「添加灵感」均支持上传图片。
 
 ## 第 1 轮结果核对（对照后端真实代码）
 
