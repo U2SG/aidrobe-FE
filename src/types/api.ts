@@ -981,6 +981,11 @@ export interface InspirationListQuery {
   offset?: number;
 }
 
+// Current user's style tags (read side; PATCH /style/tags is the write side).
+export interface ServerStyleTagsResponse {
+  tags: string[];
+}
+
 // --- OOTD poster (V4) ------------------------------------------------------
 
 export type OotdPosterTemplate = 'minimal' | 'studio' | 'street';
@@ -1172,6 +1177,7 @@ export interface WardrobeReport {
   endDate: string;
   isEmpty: boolean;
   totalWears: number;
+  prevTotalWears: number;
   topItems: ReportTopItem[];
   topCombos: ReportOutfitCombo[];
   colorPalette: Record<string, number>;
@@ -1189,6 +1195,7 @@ export interface ServerWardrobeReportResponse {
   end_date: string;
   is_empty: boolean;
   total_wears: number;
+  prev_total_wears: number;
   top_items: ServerReportTopItem[];
   top_combos: ServerReportOutfitCombo[];
   color_palette: Record<string, number>;

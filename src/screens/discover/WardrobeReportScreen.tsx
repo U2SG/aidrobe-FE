@@ -95,6 +95,16 @@ export function WardrobeReportScreen({ navigation, route }: Props) {
                 次穿着
               </Text>
             </View>
+            {report.prevTotalWears > 0 ? (
+              <Text style={{ ...type.footnote, color: T.accent, marginTop: 6 }}>
+                {(() => {
+                  const d = Math.round(
+                    ((report.totalWears - report.prevTotalWears) / report.prevTotalWears) * 100,
+                  );
+                  return d > 0 ? `较上期多 ${d}%` : d < 0 ? `较上期少 ${-d}%` : '与上期持平';
+                })()}
+              </Text>
+            ) : null}
             <Text style={{ ...type.footnote, color: colors.inverse, opacity: 0.7, marginTop: 4 }}>
               推荐采纳率 {Math.round(report.recommendationAdoptionRate * 100)}%
             </Text>

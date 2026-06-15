@@ -10,6 +10,7 @@ import type {
   ServerInspirationListResponse,
   ServerInspirationResponse,
   ServerPdfStyleSourceResponse,
+  ServerStyleTagsResponse,
 } from '@/types/api';
 
 // V4 M18/M19 — style inspiration board + async PDF/magazine ingest.
@@ -67,6 +68,12 @@ export async function listInspirations(query: InspirationListQuery = {}): Promis
 
 export function deleteInspiration(id: string) {
   return apiDelete<null>(`/v1/style/inspirations/${id}`);
+}
+
+// Reads the user's current global style tags.
+export async function getStyleTags(): Promise<string[]> {
+  const data = await apiGet<ServerStyleTagsResponse>('/v1/style/tags');
+  return data.tags;
 }
 
 // Upserts the user's global style tags.

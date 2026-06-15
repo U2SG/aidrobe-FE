@@ -86,6 +86,7 @@ export async function getWardrobeReport(period: string): Promise<WardrobeReport>
     endDate: data.end_date,
     isEmpty: data.is_empty,
     totalWears: data.total_wears,
+    prevTotalWears: data.prev_total_wears,
     topItems: data.top_items.map((t) => ({
       itemId: t.item_id,
       title: t.title,

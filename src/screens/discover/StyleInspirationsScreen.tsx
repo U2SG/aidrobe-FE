@@ -1,9 +1,9 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
-import { Alert, FlatList, Image, Pressable, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, FlatList, Image, Pressable, Text, TextInput, View } from 'react-native';
 
-import { deleteInspiration, listInspirations } from '@/api/style';
+import { deleteInspiration, getStyleTags, listInspirations, updateStyleTags } from '@/api/style';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
@@ -31,6 +31,84 @@ const SOURCE_LABEL: Record<string, string> = {
   pdf_magazine: 'PDF',
   link: 'LINK',
 };
+
+// "你的风格" — current global style tags, read via GET /style/tags and edited
+// via PATCH (remove on tap, add via the inline input).
+function StyleTagsBar() {
+  const qc = useQueryClient();
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState('');
+
+  const tagsQuery = useQuery({ queryKey: ['styleTags'], queryFn: getStyleTags, retry: 1 });
+  const tags = tagsQuery.data ?? [];
+
+  const mutation = useMutation({
+    mutationFn: (next: string[]) => updateStyleTags(next),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['styleTags'] }),
+  });
+
+  if (tagsQuery.isLoading || tagsQuery.isError) return null;
+
+  const remove = (t: string) => mutation.mutate(tags.filter((x) => x !== t));
+  const add = () => {
+    const v = draft.trim();
+    if (v && !tags.includes(v) && tags.length < 20) mutation.mutate([...tags, v]);
+    setDraft('');
+    setAdding(false);
+  };
+
+  const chip = {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accentSoft,
+  };
+
+  return (
+    <View style={{ paddingHorizontal: spacing.screen, paddingBottom: 12 }}>
+      <Text style={{ ...type.footnote, color: T.ink3, marginBottom: 8 }}>你的风格</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+        {tags.map((t) => (
+          <Pressable key={t} onPress={() => remove(t)} style={chip}>
+            <Text style={{ ...type.caption, color: T.ink }}>{t}</Text>
+            <Text style={{ ...type.caption, color: T.ink3 }}>×</Text>
+          </Pressable>
+        ))}
+        {adding ? (
+          <TextInput
+            value={draft}
+            onChangeText={setDraft}
+            onSubmitEditing={add}
+            onBlur={add}
+            autoFocus
+            placeholder="标签"
+            placeholderTextColor={colors.quaternaryLabel}
+            maxLength={50}
+            style={{
+              minWidth: 80,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: radius.pill,
+              backgroundColor: colors.elevated,
+              ...type.caption,
+              color: T.ink,
+            }}
+          />
+        ) : tags.length < 20 ? (
+          <Pressable
+            onPress={() => setAdding(true)}
+            style={{ ...chip, backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.separator }}
+          >
+            <Text style={{ ...type.caption, color: T.ink3 }}>＋ 添加</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
 
 function InspoCard({ item, onDelete }: { item: Inspiration; onDelete: () => void }) {
   const learned = item.learnStatus === 'learned';
@@ -124,6 +202,8 @@ export function StyleInspirationsScreen({ navigation }: Props) {
         onBack={() => navigation.goBack()}
         right={<HeaderIconButton icon="plus" dark onPress={() => navigation.navigate('AddInspiration')} />}
       />
+
+      <StyleTagsBar />
 
       {query.isLoading ? (
         <LoadingBlock label="加载中…" />
