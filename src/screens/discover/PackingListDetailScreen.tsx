@@ -1,14 +1,15 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { getPackingList } from '@/api/packingList';
-import { getWardrobeItem } from '@/api/wardrobe';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
+import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { Tag } from '@/components/ui/Tag';
+import { useWardrobeItemNames } from '@/hooks/useWardrobeItemNames';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { PackingEntry } from '@/types/api';
 import type { DiscoverStackParamList } from '@/types/navigation';
@@ -45,25 +46,7 @@ export function PackingListDetailScreen({ navigation, route }: Props) {
   const query = useQuery({ queryKey: ['packingList', id], queryFn: () => getPackingList(id), retry: 1 });
   const list = query.data;
 
-  const itemIds = useMemo(
-    () => [...new Set((list?.items ?? []).map((it) => it.itemId))],
-    [list],
-  );
-  const itemQueries = useQueries({
-    queries: itemIds.map((iid) => ({
-      queryKey: ['wardrobeItem', iid],
-      queryFn: () => getWardrobeItem(iid),
-      staleTime: 5 * 60 * 1000,
-    })),
-  });
-  const nameById = useMemo(() => {
-    const m = new Map<string, string>();
-    itemQueries.forEach((q, i) => {
-      const iid = itemIds[i];
-      if (iid && q.data) m.set(iid, q.data.name);
-    });
-    return m;
-  }, [itemQueries, itemIds]);
+  const nameById = useWardrobeItemNames((list?.items ?? []).map((it) => it.itemId));
 
   // Group entries (with their original index) by day.
   const byDay = useMemo(() => {
@@ -88,35 +71,7 @@ export function PackingListDetailScreen({ navigation, route }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
-      {/* Header */}
-      <View
-        style={{
-          paddingTop: 52,
-          paddingHorizontal: 16,
-          paddingBottom: 8,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-        }}
-      >
-        <Pressable
-          onPress={() => navigation.goBack()}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: T.card,
-            alignItems: 'center',
-            justifyContent: 'center',
-            ...shadow.soft,
-          }}
-        >
-          <SystemIcon name="chevronLeft" size={18} color={T.ink} />
-        </Pressable>
-        <Text style={{ ...type.title2, color: T.ink }} numberOfLines={1}>
-          {list?.destination || '打包清单'}
-        </Text>
-      </View>
+      <ScreenHeader title={list?.destination || '打包清单'} onBack={() => navigation.goBack()} />
 
       {query.isLoading ? (
         <LoadingBlock label="加载中…" />

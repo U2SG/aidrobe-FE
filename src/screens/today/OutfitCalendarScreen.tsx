@@ -7,6 +7,7 @@ import { getOutfitCalendar, markPlanWorn } from '@/api/outfitPlan';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { PrimaryButton } from '@/components/forms/PrimaryButton';
+import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useTrack } from '@/hooks/useTrack';
 import { useToastStore } from '@/store/toast';
@@ -14,6 +15,7 @@ import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { CalendarCell, CalendarDay } from '@/types/api';
 import type { TodayStackParamList } from '@/types/navigation';
 import { buildMonthGrid, formatAgendaDate, monthRange, toISODate, todayISO } from '@/utils/date';
+import { httpStatus } from '@/utils/http';
 
 type Props = NativeStackScreenProps<TodayStackParamList, 'OutfitCalendar'>;
 
@@ -30,10 +32,6 @@ const T = {
 };
 
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
-
-function statusCode(err: unknown): number | undefined {
-  return (err as { response?: { status?: number } })?.response?.status;
-}
 
 // --- Month grid ------------------------------------------------------------
 
@@ -247,11 +245,10 @@ export function OutfitCalendarScreen({ navigation }: Props) {
   const qc = useQueryClient();
   const showToast = useToastStore((s) => s.show);
 
-  const initial = useMemo(() => {
+  const [cursor, setCursor] = useState(() => {
     const d = new Date();
     return { year: d.getFullYear(), month: d.getMonth() };
-  }, []);
-  const [cursor, setCursor] = useState(initial);
+  });
   const [selected, setSelected] = useState(today);
 
   const { start, end } = useMemo(() => monthRange(cursor.year, cursor.month), [cursor]);
@@ -303,33 +300,7 @@ export function OutfitCalendarScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
-      {/* Header */}
-      <View
-        style={{
-          paddingTop: 52,
-          paddingHorizontal: 16,
-          paddingBottom: 8,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-        }}
-      >
-        <Pressable
-          onPress={() => navigation.goBack()}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: T.card,
-            alignItems: 'center',
-            justifyContent: 'center',
-            ...shadow.soft,
-          }}
-        >
-          <SystemIcon name="chevronLeft" size={18} color={T.ink} />
-        </Pressable>
-        <Text style={{ ...type.title2, color: T.ink }}>穿搭日历</Text>
-      </View>
+      <ScreenHeader title="穿搭日历" onBack={() => navigation.goBack()} />
 
       <ScrollView
         style={{ flex: 1 }}
@@ -382,7 +353,7 @@ export function OutfitCalendarScreen({ navigation }: Props) {
         {calendarQuery.isLoading ? (
           <LoadingBlock label="加载中…" />
         ) : calendarQuery.isError ? (
-          statusCode(calendarQuery.error) === 503 ? (
+          httpStatus(calendarQuery.error) === 503 ? (
             <View style={{ paddingVertical: 40, alignItems: 'center', paddingHorizontal: 16 }}>
               <Text style={{ ...type.headline, color: T.ink, textAlign: 'center' }}>
                 穿搭日历尚未开放

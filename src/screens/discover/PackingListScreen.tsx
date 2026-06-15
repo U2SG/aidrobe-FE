@@ -7,12 +7,13 @@ import { listPackingLists } from '@/api/packingList';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
-import { SystemIcon } from '@/components/ui/SystemIcon';
+import { HeaderIconButton, ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Tag } from '@/components/ui/Tag';
 import { useTrack } from '@/hooks/useTrack';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { PackingList } from '@/types/api';
 import type { DiscoverStackParamList } from '@/types/navigation';
+import { httpStatus } from '@/utils/http';
 
 type Props = NativeStackScreenProps<DiscoverStackParamList, 'PackingList'>;
 
@@ -31,10 +32,6 @@ const STATUS_LABEL: Record<string, string> = {
   active: '进行中',
   archived: '已归档',
 };
-
-function statusCode(err: unknown): number | undefined {
-  return (err as { response?: { status?: number } })?.response?.status;
-}
 
 function ListCard({ list, onPress }: { list: PackingList; onPress: () => void }) {
   return (
@@ -72,60 +69,19 @@ export function PackingListScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
-      {/* Header */}
-      <View
-        style={{
-          paddingTop: 52,
-          paddingHorizontal: 16,
-          paddingBottom: 8,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Pressable
-            onPress={() => navigation.goBack()}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: T.card,
-              alignItems: 'center',
-              justifyContent: 'center',
-              ...shadow.soft,
-            }}
-          >
-            <SystemIcon name="chevronLeft" size={18} color={T.ink} />
-          </Pressable>
-          <Text style={{ ...type.title2, color: T.ink }}>打包清单</Text>
-        </View>
-        <Pressable
-          onPress={() => navigation.navigate('CreatePackingList')}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: T.ink,
-            alignItems: 'center',
-            justifyContent: 'center',
-            ...shadow.soft,
-          }}
-        >
-          <Text style={{ fontSize: 22, color: colors.inverse, marginTop: -2 }}>＋</Text>
-        </Pressable>
-      </View>
+      <ScreenHeader
+        title="打包清单"
+        onBack={() => navigation.goBack()}
+        right={
+          <HeaderIconButton icon="plus" dark onPress={() => navigation.navigate('CreatePackingList')} />
+        }
+      />
 
       {query.isLoading ? (
         <LoadingBlock label="加载中…" />
       ) : query.isError ? (
-        statusCode(query.error) === 503 ? (
-          <View style={{ paddingVertical: 48, alignItems: 'center', paddingHorizontal: 24 }}>
-            <Text style={{ ...type.headline, color: T.ink, textAlign: 'center' }}>打包清单尚未开放</Text>
-            <Text style={{ ...type.callout, color: T.ink3, textAlign: 'center', marginTop: 8 }}>
-              该功能正在准备中，稍后回来试试。
-            </Text>
-          </View>
+        httpStatus(query.error) === 503 ? (
+          <EmptyState title="打包清单尚未开放" description="该功能正在准备中，稍后回来试试。" />
         ) : (
           <ErrorState onRetry={() => query.refetch()} />
         )

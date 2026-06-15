@@ -1,14 +1,16 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useMutation, useQueries, useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { askAidrobe, getAskHistory } from '@/api/ask';
-import { getWardrobeItem } from '@/api/wardrobe';
+import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useTrack } from '@/hooks/useTrack';
+import { useWardrobeItemNames } from '@/hooks/useWardrobeItemNames';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { DiscoverStackParamList } from '@/types/navigation';
+import { httpStatus } from '@/utils/http';
 
 type Props = NativeStackScreenProps<DiscoverStackParamList, 'AskAidrobe'>;
 
@@ -31,28 +33,18 @@ const T = {
   accent: colors.accent,
 };
 
-function statusCode(err: unknown): number | undefined {
-  return (err as { response?: { status?: number } })?.response?.status;
-}
-
 function ItemRefsRow({ ids }: { ids: string[] }) {
-  const queries = useQueries({
-    queries: ids.map((iid) => ({
-      queryKey: ['wardrobeItem', iid],
-      queryFn: () => getWardrobeItem(iid),
-      staleTime: 5 * 60 * 1000,
-    })),
-  });
+  const nameById = useWardrobeItemNames(ids);
   if (ids.length === 0) return null;
   return (
     <View style={{ marginTop: 10 }}>
       <Text style={{ ...type.caption, color: T.ink3, marginBottom: 6 }}>衣橱里的相关单品</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-        {ids.map((iid, i) => (
+        {ids.map((iid) => (
           <View key={iid} style={{ width: 60 }}>
             <View style={{ width: 60, height: 60, borderRadius: radius.sm, backgroundColor: T.cardSoft }} />
             <Text style={{ ...type.caption, color: T.ink2, marginTop: 4 }} numberOfLines={1}>
-              {queries[i]?.data?.name ?? '单品'}
+              {nameById.get(iid) ?? '单品'}
             </Text>
           </View>
         ))}
@@ -109,7 +101,7 @@ export function AskAidrobeScreen({ navigation }: Props) {
         [...historyQuery.data].reverse().map((h) => ({
           id: h.askSessionId,
           question: h.question,
-          answer: h.answer ?? null,
+          answer: h.answer,
           itemRefs: h.itemRefs,
           pending: false,
         })),
@@ -137,7 +129,7 @@ export function AskAidrobeScreen({ navigation }: Props) {
       track('ask_sent', {});
     },
     onError: (err, vars) => {
-      const code = statusCode(err);
+      const code = httpStatus(err);
       setTurns((t) =>
         t.map((x) =>
           x.id === vars.tempId
@@ -160,37 +152,11 @@ export function AskAidrobeScreen({ navigation }: Props) {
     askMutation.mutate({ tempId: `local-${Date.now()}`, question: q });
   };
 
-  const isEmpty = useMemo(() => turns.length === 0, [turns]);
+  const isEmpty = turns.length === 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
-      {/* Header */}
-      <View
-        style={{
-          paddingTop: 52,
-          paddingHorizontal: 16,
-          paddingBottom: 8,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-        }}
-      >
-        <Pressable
-          onPress={() => navigation.goBack()}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: T.card,
-            alignItems: 'center',
-            justifyContent: 'center',
-            ...shadow.soft,
-          }}
-        >
-          <SystemIcon name="chevronLeft" size={18} color={T.ink} />
-        </Pressable>
-        <Text style={{ ...type.title2, color: T.ink }}>问 Aidrobe</Text>
-      </View>
+      <ScreenHeader title="问 Aidrobe" onBack={() => navigation.goBack()} />
 
       <ScrollView
         ref={scrollRef}

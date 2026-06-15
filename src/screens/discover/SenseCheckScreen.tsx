@@ -1,17 +1,18 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { getSenseCheckHistory, senseCheck } from '@/api/shopping';
-import { getWardrobeItem } from '@/api/wardrobe';
-import { SystemIcon } from '@/components/ui/SystemIcon';
+import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Tag } from '@/components/ui/Tag';
 import { useTrack } from '@/hooks/useTrack';
+import { useWardrobeItemNames } from '@/hooks/useWardrobeItemNames';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { SenseCheckResult } from '@/types/api';
 import type { DiscoverStackParamList } from '@/types/navigation';
+import { httpStatus } from '@/utils/http';
 
 type Props = NativeStackScreenProps<DiscoverStackParamList, 'SenseCheck'>;
 
@@ -31,28 +32,9 @@ const VERDICT: Record<string, { label: string; color: string; bg: string }> = {
   skip: { label: '别买了', color: colors.danger, bg: colors.dangerBg },
 };
 
-function statusCode(err: unknown): number | undefined {
-  return (err as { response?: { status?: number } })?.response?.status;
-}
-
 function ResultCard({ result }: { result: SenseCheckResult }) {
   const v = VERDICT[result.verdict] ?? { label: result.verdict, color: T.ink, bg: T.cardSoft };
-  const ids = useMemo(() => result.similarItems.map((s) => s.itemId), [result]);
-  const itemQueries = useQueries({
-    queries: ids.map((iid) => ({
-      queryKey: ['wardrobeItem', iid],
-      queryFn: () => getWardrobeItem(iid),
-      staleTime: 5 * 60 * 1000,
-    })),
-  });
-  const nameById = useMemo(() => {
-    const m = new Map<string, string>();
-    itemQueries.forEach((q, i) => {
-      const iid = ids[i];
-      if (iid && q.data) m.set(iid, q.data.name);
-    });
-    return m;
-  }, [itemQueries, ids]);
+  const nameById = useWardrobeItemNames(result.similarItems.map((s) => s.itemId));
 
   return (
     <View style={{ backgroundColor: T.card, borderRadius: radius.xl, padding: 16, gap: 14, ...shadow.soft }}>
@@ -125,7 +107,7 @@ export function SenseCheckScreen({ navigation }: Props) {
       track('sense_check_run', { verdict: result.verdict });
     },
     onError: (err: unknown) => {
-      const code = statusCode(err);
+      const code = httpStatus(err);
       if (code === 500 || code === 422) {
         showToast({ message: '无法解析该链接，换一个试试', kind: 'error' });
       }
@@ -137,33 +119,7 @@ export function SenseCheckScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
-      {/* Header */}
-      <View
-        style={{
-          paddingTop: 52,
-          paddingHorizontal: 16,
-          paddingBottom: 8,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-        }}
-      >
-        <Pressable
-          onPress={() => navigation.goBack()}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: T.card,
-            alignItems: 'center',
-            justifyContent: 'center',
-            ...shadow.soft,
-          }}
-        >
-          <SystemIcon name="chevronLeft" size={18} color={T.ink} />
-        </Pressable>
-        <Text style={{ ...type.title2, color: T.ink }}>该不该买</Text>
-      </View>
+      <ScreenHeader title="该不该买" onBack={() => navigation.goBack()} />
 
       <ScrollView
         style={{ flex: 1 }}

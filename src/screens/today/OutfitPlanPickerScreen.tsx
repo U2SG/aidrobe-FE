@@ -14,6 +14,7 @@ import { useTrack } from '@/hooks/useTrack';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { TodayStackParamList } from '@/types/navigation';
+import { httpStatus } from '@/utils/http';
 import { formatMonthDay } from '@/utils/date';
 
 type Props = NativeStackScreenProps<TodayStackParamList, 'OutfitPlanPicker'>;
@@ -172,8 +173,8 @@ export function OutfitPlanPickerScreen({ navigation, route }: Props) {
       track('outfit_plan_created', { plannedDate });
       navigation.goBack();
     },
-    onError: (err: { response?: { status?: number } }) => {
-      if (err?.response?.status === 409) {
+    onError: (err: unknown) => {
+      if (httpStatus(err) === 409) {
         showToast({ message: '这套搭配已计划在该日期', kind: 'error' });
       }
       // Other errors handled by the axios interceptor.

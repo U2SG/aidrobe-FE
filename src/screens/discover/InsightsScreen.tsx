@@ -1,6 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
@@ -11,6 +11,7 @@ import {
 } from '@/api/insights';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
+import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useTrack } from '@/hooks/useTrack';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
@@ -60,39 +61,14 @@ export function InsightsScreen({ navigation }: Props) {
   const paletteQuery = useQuery({ queryKey: ['insights', 'palette'], queryFn: getColorPalette, retry: 1 });
   const trendQuery = useQuery({ queryKey: ['insights', 'styleTrend'], queryFn: getStyleTrend, retry: 1 });
 
-  const palette = paletteQuery.data?.palette ?? {};
-  const paletteEntries = Object.entries(palette).sort((a, b) => b[1] - a[1]);
-  const paletteTotal = paletteEntries.reduce((sum, [, n]) => sum + n, 0);
+  const { paletteEntries, paletteTotal } = useMemo(() => {
+    const entries = Object.entries(paletteQuery.data?.palette ?? {}).sort((a, b) => b[1] - a[1]);
+    return { paletteEntries: entries, paletteTotal: entries.reduce((sum, [, n]) => sum + n, 0) };
+  }, [paletteQuery.data]);
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
-      {/* Header */}
-      <View
-        style={{
-          paddingTop: 52,
-          paddingHorizontal: 16,
-          paddingBottom: 8,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-        }}
-      >
-        <Pressable
-          onPress={() => navigation.goBack()}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: T.card,
-            alignItems: 'center',
-            justifyContent: 'center',
-            ...shadow.soft,
-          }}
-        >
-          <SystemIcon name="chevronLeft" size={18} color={T.ink} />
-        </Pressable>
-        <Text style={{ ...type.title2, color: T.ink }}>衣橱洞察</Text>
-      </View>
+      <ScreenHeader title="衣橱洞察" onBack={() => navigation.goBack()} />
 
       {summaryQuery.isLoading ? (
         <LoadingBlock label="加载中…" />

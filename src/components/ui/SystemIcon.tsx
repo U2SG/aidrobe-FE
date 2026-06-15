@@ -32,7 +32,8 @@ type IconName =
   | 'compass'
   | 'suitcase'
   | 'bag'
-  | 'bookmark';
+  | 'bookmark'
+  | 'plus';
 
 interface Props {
   name: IconName;
@@ -222,6 +223,12 @@ export function SystemIcon({
         </>
       ) : null}
       {name === 'bookmark' ? <Path {...common} d="M7 4.5h10v15l-5-3.4-5 3.4v-15Z" /> : null}
+      {name === 'plus' ? (
+        <>
+          <Line {...common} x1="12" y1="5" x2="12" y2="19" />
+          <Line {...common} x1="5" y1="12" x2="19" y2="12" />
+        </>
+      ) : null}
       {name === 'recycle' ? (
         <>
           <Path {...common} d="m8.5 8.2 2.1-3.4a1.5 1.5 0 0 1 2.6 0l1.2 2" />
