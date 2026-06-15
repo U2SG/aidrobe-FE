@@ -22,6 +22,17 @@ export const ANALYTICS_EVENTS = {
   calendar_viewed: 'calendar_viewed',
   outfit_plan_created: 'outfit_plan_created',
   outfit_plan_worn_marked: 'outfit_plan_worn_marked',
+  discover_viewed: 'discover_viewed',
+  insights_viewed: 'insights_viewed',
+  wardrobe_report_viewed: 'wardrobe_report_viewed',
+  packing_list_viewed: 'packing_list_viewed',
+  packing_list_created: 'packing_list_created',
+  sense_check_viewed: 'sense_check_viewed',
+  sense_check_run: 'sense_check_run',
+  inspiration_viewed: 'inspiration_viewed',
+  inspiration_added: 'inspiration_added',
+  ask_viewed: 'ask_viewed',
+  ask_sent: 'ask_sent',
 } as const;
 
 export type AnalyticsEvent = keyof typeof ANALYTICS_EVENTS;

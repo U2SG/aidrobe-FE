@@ -28,7 +28,11 @@ type IconName =
   | 'download'
   | 'exclamation'
   | 'recycle'
-  | 'calendar';
+  | 'calendar'
+  | 'compass'
+  | 'suitcase'
+  | 'bag'
+  | 'bookmark';
 
 interface Props {
   name: IconName;
@@ -199,6 +203,25 @@ export function SystemIcon({
           <Line {...common} x1="16" y1="3.5" x2="16" y2="6.5" />
         </>
       ) : null}
+      {name === 'compass' ? (
+        <>
+          <Circle {...common} cx="12" cy="12" r="8.2" />
+          <Path {...common} d="m15 9-4.2 1.8L9 15l4.2-1.8L15 9Z" />
+        </>
+      ) : null}
+      {name === 'suitcase' ? (
+        <>
+          <Rect {...common} x="4" y="8" width="16" height="11.5" rx="2.5" />
+          <Path {...common} d="M9 8V6.5A1.5 1.5 0 0 1 10.5 5h3A1.5 1.5 0 0 1 15 6.5V8" />
+        </>
+      ) : null}
+      {name === 'bag' ? (
+        <>
+          <Path {...common} d="M6.5 8h11l-1 11.5h-9L6.5 8Z" />
+          <Path {...common} d="M9.2 8V6.8a2.8 2.8 0 0 1 5.6 0V8" />
+        </>
+      ) : null}
+      {name === 'bookmark' ? <Path {...common} d="M7 4.5h10v15l-5-3.4-5 3.4v-15Z" /> : null}
       {name === 'recycle' ? (
         <>
           <Path {...common} d="m8.5 8.2 2.1-3.4a1.5 1.5 0 0 1 2.6 0l1.2 2" />
