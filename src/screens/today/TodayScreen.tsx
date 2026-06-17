@@ -246,6 +246,11 @@ const WX_THEME: Record<WeatherTier, { top: string; bottom: string; ribbon: strin
   cloud: { top: '#F4F3EF', bottom: '#E7E6E0', ribbon: '#ECEBE5', tint: '#94938F' },
 };
 
+function windLabel(weather: WeatherContext): string | null {
+  if (!weather.windDir) return null;
+  return weather.windScale ? `${weather.windDir}${weather.windScale}级` : weather.windDir;
+}
+
 function climateAdvice(weather: WeatherContext) {
   if (weatherTier(weather) === 'rain') return '防水鞋面';
   if (weather.temperatureC >= 28) return '轻薄透气';
@@ -321,7 +326,9 @@ function WeatherRibbon({ weather, theme }: { weather: WeatherContext; theme: { r
       </View>
       <View style={{ alignItems: 'center', gap: 3 }}>
         <Text style={{ color: P.ink, fontSize: 12, fontWeight: '700' }}>{weatherLabel(weather.condition)}</Text>
-        <Text style={{ color: P.muted, fontSize: 10 }}>体感{Math.round(weather.feelsLikeC)}°</Text>
+        <Text style={{ color: P.muted, fontSize: 10 }}>
+          {weather.humidity != null ? `湿${weather.humidity}%` : `体感${Math.round(weather.feelsLikeC)}°`}
+        </Text>
       </View>
     </View>
   );
@@ -584,6 +591,9 @@ export function TodayScreen({ navigation }: Props) {
   const scene = sceneLabel(todayQuery.data?.context?.scene ?? null);
   const tier = weather ? weatherTier(weather) : null;
   const wxTheme = tier ? WX_THEME[tier] : null;
+  const candidateMeta = weather
+    ? [weather.locationName, windLabel(weather)].filter(Boolean).join(' · ') || scene
+    : scene;
   const preset = PRESETS[strategy];
   const apiOutfit = outfitsByKey.get(strategy);
   const visualPieces = resolveOutfitPieces(apiOutfit, preset, itemById);
@@ -749,8 +759,8 @@ export function TodayScreen({ navigation }: Props) {
         <View style={{ marginTop: 18 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <Text style={{ color: P.ink, fontSize: 13, fontWeight: '800' }}>候选</Text>
-            {scene ? (
-              <Text style={{ color: P.faint, fontSize: 10, fontWeight: '700', letterSpacing: 1 }}>{scene}</Text>
+            {candidateMeta ? (
+              <Text style={{ color: P.faint, fontSize: 10, fontWeight: '700', letterSpacing: 1 }}>{candidateMeta}</Text>
             ) : null}
           </View>
           <View style={{ flexDirection: 'row', gap: 10 }}>

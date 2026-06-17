@@ -50,6 +50,12 @@ function toContext(c?: ServerTodayContext | null): TodayContext | null {
           feelsLikeC: c.weather.feels_like_c,
           rainProbability: c.weather.rain_probability,
           condition: c.weather.condition,
+          humidity: c.weather.humidity ?? null,
+          windDir: c.weather.wind_dir ?? null,
+          windScale: c.weather.wind_scale ?? null,
+          windSpeed: c.weather.wind_speed ?? null,
+          icon: c.weather.icon ?? null,
+          locationName: c.weather.location_name ?? null,
         }
       : null,
     scene: c.scene ?? null,

@@ -259,6 +259,13 @@ export interface WeatherContext {
   feelsLikeC: number;
   rainProbability: number;
   condition: string;
+  // QWeather enrichments — optional; null on non-qweather providers / legacy snapshots.
+  humidity?: number | null;
+  windDir?: string | null;
+  windScale?: string | null;
+  windSpeed?: number | null;
+  icon?: string | null;
+  locationName?: string | null;
 }
 
 export interface ServerWeatherContext {
@@ -266,6 +273,12 @@ export interface ServerWeatherContext {
   feels_like_c: number;
   rain_probability: number;
   condition: string;
+  humidity?: number | null;
+  wind_dir?: string | null;
+  wind_scale?: string | null;
+  wind_speed?: number | null;
+  icon?: string | null;
+  location_name?: string | null;
 }
 
 export interface TodayContext {
