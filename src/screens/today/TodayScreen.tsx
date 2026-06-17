@@ -13,6 +13,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import Svg, { Defs, Ellipse, Line, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { getTodayRecommendation, refreshTodayRecommendation } from '@/api/recommendations';
 import { getUserSettings } from '@/api/settings';
@@ -85,15 +86,6 @@ type StrategyPreset = {
   reason: string;
 };
 
-const MOCK_WEATHER: WeatherContext & { humidity: number; wind: string; location: string } = {
-  temperatureC: 24,
-  feelsLikeC: 23,
-  rainProbability: 0.62,
-  condition: 'light rain',
-  humidity: 78,
-  wind: 'NE 8',
-  location: 'Shanghai',
-};
 
 const GARMENT_IMAGES: Partial<Record<GarmentKind, ImageSourcePropType>> = {
   shirt: topCreamShirt as ImageSourcePropType,
@@ -214,17 +206,6 @@ function useRemainingMinutes(departureTime: string | null): number {
   return Math.max(0, Math.min(90, diff));
 }
 
-function normalizeWeather(weather?: WeatherContext | null) {
-  if (!weather) return MOCK_WEATHER;
-  return {
-    ...MOCK_WEATHER,
-    ...weather,
-    humidity: MOCK_WEATHER.humidity,
-    wind: MOCK_WEATHER.wind,
-    location: MOCK_WEATHER.location,
-  };
-}
-
 function weatherLabel(condition: string) {
   const c = condition.toLowerCase();
   if (c.includes('rain')) return '轻雨';
@@ -233,35 +214,114 @@ function weatherLabel(condition: string) {
   return condition;
 }
 
-function climateAdvice(weather: ReturnType<typeof normalizeWeather>) {
-  if (weather.rainProbability >= 0.5) return '防水鞋面';
+function sceneLabel(scene: string | null) {
+  switch (scene) {
+    case 'commute':
+      return '通勤';
+    case 'formal':
+      return '正式';
+    case 'casual':
+      return '休闲';
+    default:
+      return scene;
+  }
+}
+
+// 3-tier weather mood, driven off the condition text (QWeather returns Chinese
+// like 晴/多云/小雨). rainProbability is a secondary signal — the backend's
+// /weather/now hardcodes it to 0 today, so text is the reliable source.
+type WeatherTier = 'rain' | 'sun' | 'cloud';
+
+function weatherTier(weather: WeatherContext): WeatherTier {
+  const c = weather.condition;
+  if (weather.rainProbability >= 0.5 || /rain|drizzle|shower|storm|雨|雪|snow|雷/i.test(c)) return 'rain';
+  if (/sun|clear|晴/i.test(c)) return 'sun';
+  return 'cloud';
+}
+
+// Restrained editorial palettes — keep lightness close so white panels still read.
+const WX_THEME: Record<WeatherTier, { top: string; bottom: string; ribbon: string; tint: string }> = {
+  rain: { top: '#EAEFF2', bottom: '#DBE3E8', ribbon: '#E2EAEF', tint: '#6F8EA2' },
+  sun: { top: '#FBF7EE', bottom: '#F2EBDA', ribbon: '#F5EEDC', tint: '#C2A06A' },
+  cloud: { top: '#F4F3EF', bottom: '#E7E6E0', ribbon: '#ECEBE5', tint: '#94938F' },
+};
+
+function climateAdvice(weather: WeatherContext) {
+  if (weatherTier(weather) === 'rain') return '防水鞋面';
   if (weather.temperatureC >= 28) return '轻薄透气';
   if (weather.temperatureC <= 12) return '叠穿保温';
   return '轻外套';
 }
 
-function WeatherRibbon({ weather }: { weather: ReturnType<typeof normalizeWeather> }) {
+// Full-screen weather mood layer (SVG → web-safe, unlike Skia). A soft vertical
+// wash plus one restrained per-tier motif: rain streaks / a warm sun glow / a
+// drifting cloud band. Sits behind all content at low opacity.
+function WeatherBackdrop({ tier, width, height }: { tier: WeatherTier; width: number; height: number }) {
+  const theme = WX_THEME[tier];
+  return (
+    <Svg width={width} height={height} style={{ position: 'absolute', top: 0, left: 0 }} pointerEvents="none">
+      <Defs>
+        <LinearGradient id="wxBg" x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor={theme.top} />
+          <Stop offset="1" stopColor={theme.bottom} />
+        </LinearGradient>
+        <RadialGradient id="wxSun" cx="0.82" cy="0.12" r="0.5">
+          <Stop offset="0" stopColor="#E9C886" stopOpacity="0.5" />
+          <Stop offset="1" stopColor="#E9C886" stopOpacity="0" />
+        </RadialGradient>
+      </Defs>
+      <Rect x="0" y="0" width={width} height={height} fill="url(#wxBg)" />
+      {tier === 'sun' ? <Rect x="0" y="0" width={width} height={height} fill="url(#wxSun)" /> : null}
+      {tier === 'rain'
+        ? Array.from({ length: 14 }).map((_, i) => {
+            const x = (width / 13) * i + 12;
+            return (
+              <Line
+                key={i}
+                x1={x}
+                y1={height * 0.06 + (i % 3) * 22}
+                x2={x - 26}
+                y2={height * 0.06 + (i % 3) * 22 + 64}
+                stroke={theme.tint}
+                strokeOpacity={0.1}
+                strokeWidth={1.5}
+                strokeLinecap="round"
+              />
+            );
+          })
+        : null}
+      {tier === 'cloud' ? (
+        <>
+          <Ellipse cx={width * 0.28} cy={height * 0.16} rx={150} ry={42} fill={theme.tint} fillOpacity={0.06} />
+          <Ellipse cx={width * 0.74} cy={height * 0.24} rx={120} ry={34} fill={theme.tint} fillOpacity={0.05} />
+        </>
+      ) : null}
+    </Svg>
+  );
+}
+
+function WeatherRibbon({ weather, theme }: { weather: WeatherContext; theme: { ribbon: string; tint: string } }) {
   const rain = Math.round(weather.rainProbability * 100);
   return (
     <View
       style={{
         width: 58,
         borderRadius: 29,
-        backgroundColor: P.blueSoft,
+        backgroundColor: theme.ribbon,
         alignItems: 'center',
         paddingVertical: 16,
         gap: 14,
       }}
     >
       <Text style={{ color: P.ink, fontSize: 20, fontWeight: '700' }}>{Math.round(weather.temperatureC)}°</Text>
-      <View style={{ width: 1, height: 92, backgroundColor: P.blue }} />
+      <View style={{ width: 1, height: 92, backgroundColor: theme.tint }} />
       <View style={{ alignItems: 'center', gap: 3 }}>
-        <Text style={{ color: P.blue, fontSize: 11, fontWeight: '700', letterSpacing: 0.8 }}>{rain}%</Text>
+        <Text style={{ color: theme.tint, fontSize: 11, fontWeight: '700', letterSpacing: 0.8 }}>{rain}%</Text>
         <Text style={{ color: P.muted, fontSize: 10 }}>rain</Text>
       </View>
       <View style={{ alignItems: 'center', gap: 3 }}>
         <Text style={{ color: P.ink, fontSize: 12, fontWeight: '700' }}>{weatherLabel(weather.condition)}</Text>
-        <Text style={{ color: P.muted, fontSize: 10 }}>{weather.humidity}%</Text>
+        <Text style={{ color: P.muted, fontSize: 10 }}>体感{Math.round(weather.feelsLikeC)}°</Text>
       </View>
     </View>
   );
@@ -459,7 +519,7 @@ function CompactCandidate({
 
 export function TodayScreen({ navigation }: Props) {
   const [strategy, setStrategy] = useState<StrategyKey>('safe');
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const track = useTrack();
   const qc = useQueryClient();
   const showToast = useToastStore((state) => state.show);
@@ -520,7 +580,10 @@ export function TodayScreen({ navigation }: Props) {
 
   const departureTime = settingsQuery.data?.departureTime ?? null;
   const remaining = useRemainingMinutes(departureTime);
-  const weather = normalizeWeather(todayQuery.data?.context?.weather);
+  const weather = todayQuery.data?.context?.weather ?? null;
+  const scene = sceneLabel(todayQuery.data?.context?.scene ?? null);
+  const tier = weather ? weatherTier(weather) : null;
+  const wxTheme = tier ? WX_THEME[tier] : null;
   const preset = PRESETS[strategy];
   const apiOutfit = outfitsByKey.get(strategy);
   const visualPieces = resolveOutfitPieces(apiOutfit, preset, itemById);
@@ -548,11 +611,13 @@ export function TodayScreen({ navigation }: Props) {
   };
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: P.bg }}
-      contentContainerStyle={{ alignItems: 'center', paddingBottom: 108 }}
-      showsVerticalScrollIndicator={false}
-    >
+    <View style={{ flex: 1, backgroundColor: wxTheme?.bottom ?? P.bg }}>
+      {tier ? <WeatherBackdrop tier={tier} width={width} height={height} /> : null}
+      <ScrollView
+        style={{ flex: 1, backgroundColor: 'transparent' }}
+        contentContainerStyle={{ alignItems: 'center', paddingBottom: 108 }}
+        showsVerticalScrollIndicator={false}
+      >
       <View style={{ width: maxWidth, paddingHorizontal: 18, paddingTop: 52 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text style={{ color: P.faint, fontSize: 11, fontWeight: '800', letterSpacing: 2.4 }}>AIDROBE</Text>
@@ -586,7 +651,7 @@ export function TodayScreen({ navigation }: Props) {
           }}
         >
           <View style={{ flexDirection: 'row', gap: 14, alignItems: 'stretch' }}>
-            <WeatherRibbon weather={weather} />
+            {weather && wxTheme ? <WeatherRibbon weather={weather} theme={wxTheme} /> : null}
 
             <View style={{ flex: 1 }}>
               <OutfitCanvas pieces={visualPieces} />
@@ -610,7 +675,9 @@ export function TodayScreen({ navigation }: Props) {
                   {title}
                 </Text>
                 <Text numberOfLines={2} style={{ color: P.muted, fontSize: 12, lineHeight: 17, marginTop: 4 }}>
-                  {climateAdvice(weather)} · {preset.signal} · {timeHint}
+                  {[weather ? climateAdvice(weather) : null, preset.signal, timeHint]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </Text>
               </View>
               <View
@@ -682,9 +749,9 @@ export function TodayScreen({ navigation }: Props) {
         <View style={{ marginTop: 18 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <Text style={{ color: P.ink, fontSize: 13, fontWeight: '800' }}>候选</Text>
-            <Text style={{ color: P.faint, fontSize: 10, fontWeight: '700', letterSpacing: 1 }}>
-              {weather.location} · {weather.wind}
-            </Text>
+            {scene ? (
+              <Text style={{ color: P.faint, fontSize: 10, fontWeight: '700', letterSpacing: 1 }}>{scene}</Text>
+            ) : null}
           </View>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             {STRATEGY_ORDER.map((key) => (
@@ -717,6 +784,7 @@ export function TodayScreen({ navigation }: Props) {
           </View>
         ) : null}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
