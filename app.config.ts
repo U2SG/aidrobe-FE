@@ -85,6 +85,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           'Allow Aidrobe to use the camera to photograph wardrobe items.',
       },
     ],
+    [
+      'expo-location',
+      {
+        locationWhenInUsePermission:
+          'Allow Aidrobe to use your location to fetch local weather for outfit recommendations.',
+      },
+    ],
   ] as ExpoConfig['plugins'],
   extra: {
     APP_ENV,

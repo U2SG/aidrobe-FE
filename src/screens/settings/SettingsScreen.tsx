@@ -1,9 +1,11 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Constants from 'expo-constants';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import * as Location from 'expo-location';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
-import { getUserSettings } from '@/api/settings';
+import { getUserSettings, updateUserSettings } from '@/api/settings';
 import { SecondaryButton } from '@/components/forms/SecondaryButton';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { SystemIcon } from '@/components/ui/SystemIcon';
@@ -19,10 +21,59 @@ export function SettingsScreen({ navigation }: Props) {
   const showToast = useToastStore((state) => state.show);
   const clearAuth = useAuthStore((state) => state.clear);
   const setCompleted = useOnboardingStore((state) => state.setCompleted);
+  const queryClient = useQueryClient();
   const settingsQuery = useQuery({
     queryKey: ['userSettings'],
     queryFn: getUserSettings,
   });
+
+  const [location, setLocation] = useState('');
+  const [locating, setLocating] = useState(false);
+  const savedLocation = settingsQuery.data?.location ?? '';
+  useEffect(() => {
+    setLocation(savedLocation);
+  }, [savedLocation]);
+
+  const locationMutation = useMutation({
+    mutationFn: (value: string) => updateUserSettings({ location: value }),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['userSettings'], data);
+    },
+    onError: () => {
+      showToast({ message: '保存失败，请稍后重试', kind: 'error' });
+    },
+  });
+
+  const locationDirty = location.trim() !== savedLocation;
+  const locationBusy = locating || locationMutation.isPending;
+
+  const saveManualLocation = () => {
+    locationMutation.mutate(location.trim(), {
+      onSuccess: () => showToast({ message: '所在城市已保存', kind: 'success' }),
+    });
+  };
+
+  const useCurrentLocation = async () => {
+    if (locationBusy) return;
+    setLocating(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        showToast({ message: '定位权限被拒，可手动输入城市', kind: 'error' });
+        return;
+      }
+      const { coords } = await Location.getCurrentPositionAsync({});
+      // 和风天气要求经度在前、纬度在后，各保留两位小数
+      const value = `${coords.longitude.toFixed(2)},${coords.latitude.toFixed(2)}`;
+      locationMutation.mutate(value, {
+        onSuccess: () => showToast({ message: '已根据当前位置更新', kind: 'success' }),
+      });
+    } catch {
+      showToast({ message: '定位失败，可手动输入城市', kind: 'error' });
+    } finally {
+      setLocating(false);
+    }
+  };
 
   const signOut = async () => {
     await clearAuth();
@@ -57,6 +108,76 @@ export function SettingsScreen({ navigation }: Props) {
             }
             onPress={() => navigation.navigate('DepartureTime')}
           />
+        </Section>
+
+        <Section title="所在城市">
+          <View style={{ padding: 16, gap: 12 }}>
+            <Text style={{ ...type.callout, color: colors.tertiaryLabel, lineHeight: 18 }}>
+              我们会据此获取天气，让今日推荐更贴合实际气温。推荐使用当前位置自动获取，也可手动填写城市。
+            </Text>
+            <Pressable
+              onPress={useCurrentLocation}
+              disabled={locationBusy}
+              android_ripple={locationBusy ? undefined : { color: colors.fill }}
+              style={{
+                minHeight: 44,
+                flexDirection: 'row',
+                gap: 8,
+                paddingHorizontal: 16,
+                borderRadius: radius.md,
+                backgroundColor: colors.label,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: locationBusy ? 0.42 : 1,
+              }}
+            >
+              {locating ? <ActivityIndicator size="small" color={colors.inverse} /> : null}
+              <Text style={{ ...type.callout, fontWeight: '600', color: colors.inverse }}>
+                {locating ? '正在定位…' : '使用当前位置'}
+              </Text>
+            </Pressable>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <TextInput
+                value={location}
+                onChangeText={setLocation}
+                placeholder="例如：杭州 / 上海浦东"
+                placeholderTextColor={colors.quaternaryLabel}
+                maxLength={120}
+                returnKeyType="done"
+                editable={!locationBusy}
+                onSubmitEditing={() => {
+                  if (locationDirty && !locationBusy) saveManualLocation();
+                }}
+                style={{
+                  flex: 1,
+                  minHeight: 44,
+                  backgroundColor: colors.groupedBackground,
+                  borderRadius: radius.md,
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  ...type.body,
+                  color: colors.label,
+                }}
+              />
+              <Pressable
+                onPress={saveManualLocation}
+                disabled={!locationDirty || locationBusy}
+                style={{
+                  height: 44,
+                  paddingHorizontal: 16,
+                  borderRadius: radius.md,
+                  backgroundColor: colors.fill,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: !locationDirty || locationBusy ? 0.42 : 1,
+                }}
+              >
+                <Text style={{ ...type.callout, fontWeight: '600', color: colors.label }}>
+                  保存
+                </Text>
+              </Pressable>
+            </View>
+          </View>
         </Section>
 
         <Section title="衣橱">
