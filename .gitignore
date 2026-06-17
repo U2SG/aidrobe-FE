@@ -2,6 +2,7 @@ node_modules/
 .expo/
 dist/
 web-build/
+.tmp/
 
 # 本地环境变量
 .env

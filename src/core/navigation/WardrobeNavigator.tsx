@@ -30,7 +30,11 @@ export function WardrobeNavigator() {
         component={ItemDetailScreen}
         options={{ title: '衣物详情', headerShown: false }}
       />
-      <Stack.Screen name="AddItem" component={AddItemScreen} options={{ title: '添加衣物' }} />
+      <Stack.Screen
+        name="AddItem"
+        component={AddItemScreen}
+        options={{ title: '添加衣物', headerShown: false }}
+      />
       <Stack.Screen
         name="ImportConfirm"
         component={ImportConfirmScreen}
@@ -39,7 +43,7 @@ export function WardrobeNavigator() {
       <Stack.Screen
         name="ImportFailure"
         component={ImportFailureScreen}
-        options={{ title: '导入失败', headerBackVisible: false }}
+        options={{ title: '导入失败', headerShown: false }}
       />
     </Stack.Navigator>
   );

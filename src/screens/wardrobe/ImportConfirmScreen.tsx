@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { confirmImportTask, getImportTask } from '@/api/importTasks';
-import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
+import { SiriOrb } from '@/components/ui/SiriOrb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useTrack } from '@/hooks/useTrack';
 import { useImportDraftStore } from '@/store/importDraft';
@@ -89,8 +89,9 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
   const data = query.data;
   if (!data || data.status !== 'waiting_confirm') {
     return (
-      <View style={{ flex: 1, backgroundColor: T.bg, alignItems: 'center', justifyContent: 'center' }}>
-        <LoadingBlock label="正在识别衣物" />
+      <View style={{ flex: 1, backgroundColor: T.bg, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+        <SiriOrb size={120} />
+        <Text style={{ fontSize: 15, color: T.ink2 }}>正在识别衣物</Text>
       </View>
     );
   }

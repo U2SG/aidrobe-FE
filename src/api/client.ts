@@ -99,7 +99,8 @@ function handleHttpError(error: AxiosError<ApiEnvelope<unknown>>) {
     return;
   }
   if (!status) {
-    showToast({ message: '网络异常，请检查连接', kind: 'error' });
+    const detail = APP_ENV === 'production' ? '' : `：${error.message} @ ${API_BASE_URL}`;
+    showToast({ message: `网络异常，请检查连接${detail}`, kind: 'error' });
   }
 }
 

@@ -2,11 +2,13 @@ import { useNavigation } from '@react-navigation/native';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import { API_BASE_URL, APP_ENV } from '@/api/client';
 import { updateUserSettings } from '@/api/settings';
 import { useTrack } from '@/hooks/useTrack';
 import { useOnboardingStore } from '@/store/onboarding';
 import { useToastStore } from '@/store/toast';
 import { colors, shadow } from '@/theme/design';
+import { httpStatus } from '@/utils/http';
 
 const T = {
   bg: colors.groupedBackground,
@@ -41,8 +43,12 @@ export function DepartureTimeScreen() {
       await updateUserSettings({ departureTime: time });
       track('departure_time_saved', { time });
       finish();
-    } catch {
-      showToast({ message: '保存失败，请稍后重试', kind: 'error' });
+    } catch (error) {
+      const detail =
+        APP_ENV === 'production'
+          ? ''
+          : `（${httpStatus(error) ?? (error as Error)?.message ?? 'unknown'} @ ${API_BASE_URL}）`;
+      showToast({ message: `保存失败，请稍后重试${detail}`, kind: 'error' });
     } finally {
       setSaving(false);
     }

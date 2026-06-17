@@ -67,6 +67,11 @@ export interface UpdateUserSettingsBody {
   location?: string | null;
 }
 
+// V4 item cutout lifecycle. `queued` → show original photo + "精修中" badge;
+// `ready` → cover_image_url is the product-shot cutout; `failed`/`skipped` →
+// stay on the original photo, no badge.
+export type CutoutStatus = 'skipped' | 'queued' | 'ready' | 'failed';
+
 export interface WardrobeItem {
   id: string;
   name: string;
@@ -74,6 +79,7 @@ export interface WardrobeItem {
   color: string;
   imageUrl: string | null;
   status: ItemStatus;
+  cutoutStatus: CutoutStatus;
   location?: string | null;
   // Extended (optional, server may omit)
   subCategory?: string | null;
@@ -102,6 +108,7 @@ export interface ServerWardrobeItem {
   status: ItemStatus;
   cover_image_url?: string | null;
   original_image_url?: string | null;
+  cutout_status?: CutoutStatus | string;
   location?: string | null;
   size_label?: string | null;
   size_region?: string | null;

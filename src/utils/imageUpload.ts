@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 
-import { createPresignedUpload, uploadToPresigned } from '@/api/uploads';
+import { createPresignedUpload, uploadFileUriToPresigned } from '@/api/uploads';
 import { compressImage, MAX_UPLOAD_BYTES } from '@/utils/image';
 
 export type PickedUpload = { uri: string; url: string };
@@ -8,8 +8,9 @@ export type PickedUpload = { uri: string; url: string };
 /**
  * Pick one image from the album, compress, and upload via presign.
  * Returns `{ uri (local preview), url (uploaded fileUrl) }`, or `null` if the
- * user cancelled. Throws `Error('permission' | 'too_large')` or a network error
- * — callers map these to a toast.
+ * user cancelled. Throws `Error('permission')` or a network/upload error —
+ * callers map these to a toast. Size is enforced server-side via the presign
+ * `maxContentLength`, so there's no client-side `too_large` reject anymore.
  */
 export async function pickAndUploadImage(filePrefix = 'upload'): Promise<PickedUpload | null> {
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -19,15 +20,13 @@ export async function pickAndUploadImage(filePrefix = 'upload'): Promise<PickedU
   if (result.canceled || !result.assets[0]) return null;
 
   const compressed = await compressImage(result.assets[0].uri);
-  const blob = await fetch(compressed.uri).then((r) => r.blob());
-  if (blob.size > MAX_UPLOAD_BYTES) throw new Error('too_large');
-
+  const fileName = `${filePrefix}-${Date.now()}.jpg`;
   const presign = await createPresignedUpload({
-    fileName: `${filePrefix}-${Date.now()}.jpg`,
+    fileName,
     contentType: 'image/jpeg',
-    maxContentLength: Math.max(blob.size, 1),
+    maxContentLength: MAX_UPLOAD_BYTES,
   });
-  await uploadToPresigned(presign, 'image/jpeg', blob);
+  await uploadFileUriToPresigned(presign, 'image/jpeg', compressed.uri, fileName);
   return { uri: compressed.uri, url: presign.fileUrl };
 }
 

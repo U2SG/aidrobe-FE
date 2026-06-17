@@ -1,21 +1,31 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  type DimensionValue,
+  View,
+} from 'react-native';
 
+import { API_BASE_URL, APP_ENV } from '@/api/client';
 import { createImportTask } from '@/api/importTasks';
-import { createPresignedUpload, uploadToPresigned } from '@/api/uploads';
+import { createPresignedUpload, uploadFileUriToPresigned } from '@/api/uploads';
+import { SiriOrb } from '@/components/ui/SiriOrb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useTrack } from '@/hooks/useTrack';
 import { useImportDraftStore } from '@/store/importDraft';
 import { useToastStore } from '@/store/toast';
-import { colors, radius, shadow } from '@/theme/design';
+import { shadow } from '@/theme/design';
 import type { ImportSourceType } from '@/types/api';
 import type { WardrobeStackParamList } from '@/types/navigation';
 import { compressImage, MAX_UPLOAD_BYTES } from '@/utils/image';
 
-// Coarse source tag from the pasted URL — the backend routes by domain itself,
-// so this is just metadata/analytics; default to web.
 function detectLinkSource(url: string): ImportSourceType {
   const u = url.toLowerCase();
   if (u.includes('taobao') || u.includes('tmall')) return 'taobao';
@@ -27,19 +37,18 @@ function detectLinkSource(url: string): ImportSourceType {
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'AddItem'>;
 
-const T = {
-  bg: colors.groupedBackground,
-  bgAlt: colors.background,
-  card: colors.elevated,
-  cardSoft: colors.secondaryElevated,
-  ink: colors.label,
-  ink2: colors.secondaryLabel,
-  ink3: colors.tertiaryLabel,
-  ink4: colors.quaternaryLabel,
-  divider: colors.separator,
-  accent: colors.accent,
-  shadowSm: shadow.soft,
-  shadowMd: shadow.elevated,
+const P = {
+  bg: '#F4F1EA',
+  surface: '#FFFCF5',
+  surfaceSoft: '#E9E6DA',
+  ink: '#151411',
+  muted: '#777168',
+  faint: '#A9A298',
+  line: '#D9D4C8',
+  rail: '#3E4B45',
+  sage: '#C8D3C1',
+  steel: '#7F8D8A',
+  black: '#15120F',
 };
 
 export function AddItemScreen({ navigation }: Props) {
@@ -50,6 +59,10 @@ export function AddItemScreen({ navigation }: Props) {
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [submittingLink, setSubmittingLink] = useState(false);
+  const [processingLabel, setProcessingLabel] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  const busy = submittingLink || processingLabel !== null;
 
   useEffect(() => {
     track('add_item_started');
@@ -77,291 +90,566 @@ export function AddItemScreen({ navigation }: Props) {
   };
 
   const handlePicked = async (uri: string, sourceType: 'camera' | 'album') => {
+    setUploadProgress(0);
+    setProcessingLabel('整理照片');
     try {
+      console.log('[import] compress:start', { sourceType });
       const compressed = await compressImage(uri);
-      const blob = await fetch(compressed.uri).then((r) => r.blob());
-      if (blob.size > MAX_UPLOAD_BYTES) {
-        navigation.replace('ImportFailure', { reason: 'too_large' });
-        return;
-      }
+      console.log('[import] compress:done', { uri: compressed.uri });
+
+      setProcessingLabel('打开衣橱通道');
+      const fileName = `wardrobe-${Date.now()}.jpg`;
+      console.log('[import] presign:start', { fileName });
       const presign = await createPresignedUpload({
-        fileName: `wardrobe-${Date.now()}.jpg`,
+        fileName,
         contentType: 'image/jpeg',
-        maxContentLength: Math.max(blob.size, 1),
+        maxContentLength: MAX_UPLOAD_BYTES,
       });
-      await uploadToPresigned(presign, 'image/jpeg', blob);
+      console.log('[import] presign:done', {
+        uploadHost: safeHost(presign.uploadUrl),
+        fileHost: safeHost(presign.fileUrl),
+        fields: Object.keys(presign.fields ?? {}),
+      });
+
+      setProcessingLabel('上传衣物');
+      console.log('[import] upload:start');
+      await uploadFileUriToPresigned(
+        presign,
+        'image/jpeg',
+        compressed.uri,
+        fileName,
+        setUploadProgress,
+      );
+      console.log('[import] upload:done');
+
+      setProcessingLabel('生成衣物卡片');
+      console.log('[import] task:start');
       const task = await createImportTask({
         inputType: 'image',
         sourceType,
         imageUrl: presign.fileUrl,
       });
+      console.log('[import] task:done', { taskId: task.id });
       setDraft({ taskId: task.id, localImageUri: compressed.uri, recognized: task.recognized });
       track('import_task_created', { taskId: task.id, sourceType });
       navigation.replace('ImportConfirm', { taskId: task.id });
-    } catch {
+    } catch (error) {
+      console.error('[import] failed', error);
+      if (APP_ENV !== 'production') {
+        showToast({
+          message: `上传失败：${(error as Error)?.message ?? 'unknown'} @ ${API_BASE_URL}`,
+          kind: 'error',
+        });
+      }
       navigation.replace('ImportFailure', { reason: 'upload_failed' });
+    } finally {
+      setProcessingLabel(null);
     }
   };
 
   const pickFromCamera = async () => {
+    if (busy) return;
     const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) { showToast({ message: '需要相机权限', kind: 'error' }); return; }
+    if (!perm.granted) {
+      showToast({ message: '需要相机权限', kind: 'error' });
+      return;
+    }
     const result = await ImagePicker.launchCameraAsync({ quality: 1, mediaTypes: ['images'] });
     if (!result.canceled && result.assets[0]) void handlePicked(result.assets[0].uri, 'camera');
   };
 
   const pickFromLibrary = async () => {
+    if (busy) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) { showToast({ message: '需要相册权限', kind: 'error' }); return; }
+    if (!perm.granted) {
+      showToast({ message: '需要相册权限', kind: 'error' });
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 1, mediaTypes: ['images'] });
     if (!result.canceled && result.assets[0]) void handlePicked(result.assets[0].uri, 'album');
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: T.bg }}>
-      {/* Header */}
-      <View style={{ paddingHorizontal: 24, paddingTop: 52, paddingBottom: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <View>
-          <Text style={{ fontSize: 30, fontWeight: '600', color: T.ink }}>添加衣物</Text>
-          <Text style={{ marginTop: 8, fontSize: 13, color: T.ink3 }}>选择最方便的方式加入衣橱</Text>
-        </View>
-        <View style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center', marginTop: 2 }}>
-          <SystemIcon name="bell" size={22} color={T.ink2} />
-        </View>
+    <View style={styles.screen}>
+      <View style={styles.header}>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
+          hitSlop={10}
+        >
+          <SystemIcon name="chevronLeft" size={24} color={P.ink} strokeWidth={2.2} />
+        </Pressable>
+        <Text style={styles.headerTitle}>收进衣橱</Text>
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 100, gap: 12 }}
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Primary: camera */}
         <Pressable
           onPress={pickFromCamera}
-          style={({ pressed }) => ({
-            backgroundColor: T.ink,
-            borderRadius: radius.xl,
-            padding: 20,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 14,
-            opacity: pressed ? 0.88 : 1,
-            ...T.shadowMd,
-          })}
+          disabled={busy}
+          style={({ pressed }) => [styles.captureStage, pressed && styles.capturePressed]}
         >
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 22, fontWeight: '600', color: '#fff', marginBottom: 4 }}>
-              拍照添加
-            </Text>
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 18 }}>
-              对着衣服一拍，AI 自动识别品类、颜色、版型
-            </Text>
+          <View style={styles.stageRail} />
+          <View style={[styles.hangerHook, styles.hangerLeft]} />
+          <View style={[styles.hangerHook, styles.hangerRight]} />
+          <View style={styles.scanHaloOuter}>
+            <View style={styles.scanHaloMid}>
+              <View style={styles.scanHaloInner}>
+                <SystemIcon name="camera" size={35} color={P.ink} strokeWidth={1.55} />
+              </View>
+            </View>
           </View>
-          <View
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: radius.lg,
-              backgroundColor: 'rgba(255,255,255,0.08)',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <SystemIcon name="camera" size={36} color="#fff" strokeWidth={1.6} />
+          <View style={styles.scanLine} />
+          <GarmentSpecimen variant="coat" />
+          <GarmentSpecimen variant="shirt" />
+          <View style={styles.stageFooter}>
+            <Text style={styles.stageTitle}>拍一件衣服</Text>
+            <Text style={styles.stageSub}>对准单品，留一点边界</Text>
           </View>
-          <SystemIcon name="chevronRight" size={22} color="rgba(255,255,255,0.55)" />
         </Pressable>
 
-        <Text
-          style={{
-            fontSize: 11,
-            color: T.ink3,
-            marginTop: 6,
-            marginLeft: 4,
-            letterSpacing: 0.5,
-            fontFamily: 'monospace',
-            textTransform: 'uppercase',
-          }}
-        >
-          已有内容 · 一键导入
-        </Text>
-
-        {/* Album import */}
-        <AddEntry
-          title="从相册导入"
-          sub="批量选择，适合已有照片"
-          icon="photo"
-          onPress={pickFromLibrary}
-        />
-
-        {/* Link import */}
-        <AddEntry
-          title="粘贴商品链接"
-          sub="淘宝 · 京东 · 小红书 · 得物 · 自动识别 SKU 与版型"
-          icon="link"
-          onPress={() => setLinkModalOpen(true)}
-        />
-
-        {/* Share from app */}
-        <AddEntry
-          title="从其他 App 分享"
-          sub="得物、小红书、淘宝、微信 · 直接分享到 Aidrobe"
-          icon="share"
-          onPress={() => setLinkModalOpen(true)}
-        />
-
-        {/* Tips */}
-        <View style={{ backgroundColor: T.cardSoft, borderRadius: radius.lg, padding: 14, marginTop: 8 }}>
-          <Text style={{ fontSize: 12, color: T.ink3, marginBottom: 10, letterSpacing: 0.4 }}>
-            小提示
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 14 }}>
-            {[
-              { icon: 'camera', title: '单件拍摄更准', sub: '避免遮挡' },
-              { icon: 'photo', title: '尽量纯色背景', sub: '减少干扰' },
-              { icon: 'sparkle', title: '光线充足', sub: '识别更精准' },
-            ].map((tip) => (
-              <View key={tip.title} style={{ flex: 1, gap: 4 }}>
-                <View
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: radius.pill,
-                    backgroundColor: T.bg,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <SystemIcon name={tip.icon as 'camera' | 'photo' | 'sparkle'} size={15} color={T.ink2} />
-                </View>
-                <Text style={{ fontSize: 11, fontWeight: '600', color: T.ink2 }}>{tip.title}</Text>
-                <Text style={{ fontSize: 10, color: T.ink3 }}>{tip.sub}</Text>
-              </View>
-            ))}
-          </View>
+        <View style={styles.importDock}>
+          <DockAction icon="photo" label="相册" onPress={pickFromLibrary} disabled={busy} />
+          <DockAction icon="link" label="链接" onPress={() => setLinkModalOpen(true)} disabled={busy} />
+          <DockAction icon="share" label="分享" onPress={() => setLinkModalOpen(true)} disabled={busy} />
         </View>
       </ScrollView>
 
-      {/* Paste-link import: enter a product URL; the backend resolves the
-          image (taobao/xhs/douyin adapters + og:image fallback) then runs
-          recognition, reusing the ImportConfirm screen. */}
-      <Modal
+      <LinkImportModal
         visible={linkModalOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setLinkModalOpen(false)}
-      >
-        <Pressable
-          onPress={() => !submittingLink && setLinkModalOpen(false)}
-          style={{ flex: 1, backgroundColor: 'rgba(26,23,20,0.45)', justifyContent: 'center', padding: 24 }}
-        >
-          <Pressable
-            onPress={() => {}}
-            style={{ backgroundColor: T.card, borderRadius: radius.xl, padding: 22, gap: 14, ...T.shadowMd }}
-          >
-            <View>
-              <Text style={{ fontSize: 20, fontWeight: '600', color: T.ink }}>粘贴商品链接</Text>
-              <Text style={{ marginTop: 6, fontSize: 12, color: T.ink3, lineHeight: 18 }}>
-                淘宝 · 天猫 · 小红书 · 抖音 · 京东，自动抓取商品图并识别
-              </Text>
-            </View>
-            <TextInput
-              value={linkUrl}
-              onChangeText={setLinkUrl}
-              placeholder="https://..."
-              placeholderTextColor={T.ink4}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-              editable={!submittingLink}
-              onSubmitEditing={submitLink}
-              style={{
-                borderWidth: 1,
-                borderColor: T.divider,
-                borderRadius: radius.md,
-                paddingHorizontal: 14,
-                paddingVertical: 12,
-                fontSize: 14,
-                color: T.ink,
-                backgroundColor: T.bgAlt,
-              }}
-            />
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <Pressable
-                onPress={() => !submittingLink && setLinkModalOpen(false)}
-                style={{ flex: 1, borderRadius: radius.md, paddingVertical: 13, alignItems: 'center', backgroundColor: T.cardSoft }}
-              >
-                <Text style={{ fontSize: 15, fontWeight: '600', color: T.ink2 }}>取消</Text>
-              </Pressable>
-              <Pressable
-                onPress={submitLink}
-                disabled={submittingLink}
-                style={{ flex: 2, borderRadius: radius.md, paddingVertical: 13, alignItems: 'center', backgroundColor: T.ink, opacity: submittingLink ? 0.7 : 1 }}
-              >
-                {submittingLink ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>抓取并识别</Text>
-                )}
-              </Pressable>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+        value={linkUrl}
+        submitting={submittingLink}
+        onChange={setLinkUrl}
+        onSubmit={submitLink}
+        onClose={() => !submittingLink && setLinkModalOpen(false)}
+      />
+      <ProcessingOverlay label={processingLabel} progress={uploadProgress} />
     </View>
   );
 }
 
-function AddEntry({
-  title,
-  sub,
+function safeHost(url: string) {
+  try {
+    return new URL(url).host;
+  } catch {
+    return 'invalid-url';
+  }
+}
+
+function DockAction({
   icon,
+  label,
   onPress,
+  disabled,
 }: {
-  title: string;
-  sub: string;
   icon: 'photo' | 'link' | 'share';
+  label: string;
   onPress: () => void;
+  disabled: boolean;
 }) {
-  const T = {
-    card: colors.elevated,
-    ink: colors.label,
-    ink3: colors.tertiaryLabel,
-    shadowSm: shadow.soft,
-  };
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => ({
-        backgroundColor: T.card,
-        borderRadius: radius.xl,
-        padding: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 14,
-        opacity: pressed ? 0.88 : 1,
-        ...T.shadowSm,
-      })}
+      disabled={disabled}
+      style={({ pressed }) => [styles.dockAction, pressed && styles.pressed, disabled && styles.disabled]}
     >
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 18, fontWeight: '600', color: T.ink, marginBottom: 4 }}>
-          {title}
-        </Text>
-        <Text style={{ fontSize: 12, color: T.ink3, lineHeight: 17 }}>{sub}</Text>
+      <View style={styles.dockIcon}>
+        <SystemIcon name={icon} size={21} color={P.ink} strokeWidth={1.9} />
       </View>
-      <View
-        style={{
-          width: 34,
-          height: 34,
-          borderRadius: radius.md,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: colors.background,
-        }}
-      >
-        <SystemIcon name={icon} size={20} color={T.ink} />
-      </View>
-      <SystemIcon name="chevronRight" size={18} color={T.ink3} />
+      <Text style={styles.dockLabel}>{label}</Text>
     </Pressable>
   );
 }
+
+function GarmentSpecimen({ variant }: { variant: 'coat' | 'shirt' }) {
+  const isCoat = variant === 'coat';
+  return (
+    <View style={[styles.garment, isCoat ? styles.garmentCoat : styles.garmentShirt]}>
+      <View style={styles.garmentNeck} />
+      <View style={[styles.garmentSleeve, styles.leftSleeve]} />
+      <View style={[styles.garmentSleeve, styles.rightSleeve]} />
+      <View style={styles.garmentBody}>
+        <View style={styles.garmentPlacket} />
+      </View>
+    </View>
+  );
+}
+
+function LinkImportModal({
+  visible,
+  value,
+  submitting,
+  onChange,
+  onSubmit,
+  onClose,
+}: {
+  visible: boolean;
+  value: string;
+  submitting: boolean;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable onPress={onClose} style={styles.modalBackdrop}>
+        <Pressable onPress={() => {}} style={styles.linkSheet}>
+          <View style={styles.modalHandle} />
+          <Text style={styles.modalTitle}>贴一条商品链接</Text>
+          <TextInput
+            value={value}
+            onChangeText={onChange}
+            placeholder="https://..."
+            placeholderTextColor={P.faint}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            editable={!submitting}
+            onSubmitEditing={onSubmit}
+            style={styles.linkInput}
+          />
+          <Pressable
+            onPress={onSubmit}
+            disabled={submitting}
+            style={({ pressed }) => [styles.modalSubmit, pressed && styles.pressed, submitting && styles.disabled]}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.modalSubmitText}>抓取衣物</Text>
+            )}
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function ProcessingOverlay({ label, progress }: { label: string | null; progress: number }) {
+  if (!label) return null;
+  const width: DimensionValue = progress > 0 ? `${Math.min(Math.max(progress, 8), 100)}%` : '34%';
+  return (
+    <Modal visible transparent animationType="fade">
+      <View style={styles.processingBackdrop}>
+        <View style={styles.processingCard}>
+          <SiriOrb size={96} />
+          <Text style={styles.processingTitle}>{label}</Text>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width }]} />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: P.bg,
+  },
+  header: {
+    paddingTop: 46,
+    paddingHorizontal: 22,
+    paddingBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: P.ink,
+    letterSpacing: 0,
+  },
+  headerSpacer: {
+    width: 46,
+  },
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: 18,
+    paddingTop: 8,
+    paddingBottom: 124,
+  },
+  captureStage: {
+    minHeight: 520,
+    borderRadius: 34,
+    backgroundColor: P.surface,
+    overflow: 'hidden',
+    padding: 22,
+    justifyContent: 'flex-end',
+    ...shadow.elevated,
+  },
+  capturePressed: {
+    transform: [{ scale: 0.992 }],
+    opacity: 0.96,
+  },
+  stageRail: {
+    position: 'absolute',
+    top: 44,
+    left: 58,
+    right: 58,
+    height: 2,
+    backgroundColor: P.ink,
+    opacity: 0.72,
+  },
+  hangerHook: {
+    position: 'absolute',
+    top: 44,
+    width: 1,
+    height: 64,
+    backgroundColor: P.ink,
+    opacity: 0.24,
+  },
+  hangerLeft: {
+    left: 116,
+  },
+  hangerRight: {
+    right: 116,
+  },
+  scanHaloOuter: {
+    position: 'absolute',
+    top: 124,
+    alignSelf: 'center',
+    width: 214,
+    height: 214,
+    borderRadius: 107,
+    borderWidth: 1,
+    borderColor: 'rgba(62,75,69,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scanHaloMid: {
+    width: 158,
+    height: 158,
+    borderRadius: 79,
+    borderWidth: 1,
+    borderColor: 'rgba(62,75,69,0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(200,211,193,0.22)',
+  },
+  scanHaloInner: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    backgroundColor: P.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scanLine: {
+    position: 'absolute',
+    top: 244,
+    left: 44,
+    right: 44,
+    height: 1,
+    backgroundColor: P.rail,
+    opacity: 0.32,
+  },
+  garment: {
+    position: 'absolute',
+    width: 92,
+    height: 150,
+  },
+  garmentCoat: {
+    left: 38,
+    top: 138,
+    transform: [{ rotate: '-7deg' }],
+  },
+  garmentShirt: {
+    right: 34,
+    top: 310,
+    transform: [{ rotate: '6deg' }],
+  },
+  garmentNeck: {
+    position: 'absolute',
+    top: 4,
+    left: 34,
+    width: 24,
+    height: 18,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: P.line,
+    backgroundColor: P.surface,
+    zIndex: 2,
+  },
+  garmentSleeve: {
+    position: 'absolute',
+    top: 30,
+    width: 24,
+    height: 76,
+    borderRadius: 14,
+    backgroundColor: P.surfaceSoft,
+  },
+  leftSleeve: {
+    left: 2,
+    transform: [{ rotate: '15deg' }],
+  },
+  rightSleeve: {
+    right: 2,
+    transform: [{ rotate: '-15deg' }],
+  },
+  garmentBody: {
+    position: 'absolute',
+    left: 24,
+    top: 24,
+    width: 44,
+    height: 118,
+    borderRadius: 18,
+    backgroundColor: '#D8CEC0',
+    borderWidth: 1,
+    borderColor: 'rgba(21,20,17,0.06)',
+  },
+  garmentPlacket: {
+    position: 'absolute',
+    left: 21,
+    top: 14,
+    bottom: 14,
+    width: 1,
+    backgroundColor: 'rgba(21,20,17,0.2)',
+  },
+  stageFooter: {
+    gap: 8,
+    borderRadius: 26,
+    backgroundColor: P.black,
+    paddingHorizontal: 24,
+    paddingVertical: 18,
+  },
+  stageTitle: {
+    fontSize: 25,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  stageSub: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.58)',
+  },
+  importDock: {
+    marginTop: 16,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  dockAction: {
+    flex: 1,
+    minHeight: 96,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,252,245,0.82)',
+    borderWidth: 1,
+    borderColor: 'rgba(21,20,17,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 9,
+  },
+  dockIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: P.bg,
+  },
+  dockLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: P.ink,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(21,18,15,0.42)',
+    justifyContent: 'flex-end',
+    padding: 14,
+  },
+  linkSheet: {
+    borderRadius: 30,
+    backgroundColor: P.surface,
+    padding: 20,
+    paddingBottom: 24,
+    gap: 16,
+    ...shadow.elevated,
+  },
+  modalHandle: {
+    alignSelf: 'center',
+    width: 38,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: P.line,
+    marginBottom: 2,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: P.ink,
+  },
+  linkInput: {
+    minHeight: 54,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    fontSize: 15,
+    color: P.ink,
+    backgroundColor: P.bg,
+  },
+  modalSubmit: {
+    minHeight: 54,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: P.black,
+  },
+  modalSubmitText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  processingBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(21,18,15,0.32)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 28,
+  },
+  processingCard: {
+    width: '100%',
+    borderRadius: 28,
+    backgroundColor: P.surface,
+    padding: 24,
+    alignItems: 'center',
+    gap: 14,
+    ...shadow.elevated,
+  },
+  processingTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: P.ink,
+  },
+  progressTrack: {
+    width: '100%',
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: P.surfaceSoft,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+    backgroundColor: P.rail,
+  },
+  pressed: {
+    opacity: 0.82,
+  },
+  disabled: {
+    opacity: 0.55,
+  },
+});

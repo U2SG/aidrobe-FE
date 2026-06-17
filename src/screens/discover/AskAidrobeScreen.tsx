@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 
 
 import { askAidrobe, getAskHistory } from '@/api/ask';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
+import { SiriOrb } from '@/components/ui/SiriOrb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useTrack } from '@/hooks/useTrack';
 import { useWardrobeItemNames } from '@/hooks/useWardrobeItemNames';
@@ -168,7 +169,7 @@ export function AskAidrobeScreen({ navigation }: Props) {
       >
         {isEmpty ? (
           <View style={{ paddingVertical: 48, alignItems: 'center' }}>
-            <SystemIcon name="sparkle" size={28} color={T.accent} strokeWidth={1.8} />
+            <SiriOrb size={140} variant="vivid" />
             <Text style={{ ...type.headline, color: T.ink, marginTop: 12, textAlign: 'center' }}>
               问问你的衣橱
             </Text>

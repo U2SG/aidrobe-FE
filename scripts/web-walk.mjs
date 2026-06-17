@@ -35,7 +35,7 @@ await page.waitForTimeout(3000);
 await shot('01-welcome');
 
 // Drive onboarding: keep clicking the primary advance button until main tabs appear.
-// Note: 允许访问 only requests OS permissions and does NOT navigate; 暂时跳过 is the real "continue".
+// If browser permissions are unavailable in web smoke runs, 暂时跳过 remains the fallback.
 const advanceLabels = ['开始使用', '下一步', '完成', '进入', '开始体验', '完成设置'];
 let reached = false;
 for (let i = 0; i < 10; i++) {

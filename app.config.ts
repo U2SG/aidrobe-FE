@@ -1,4 +1,5 @@
 import { ConfigContext, ExpoConfig } from 'expo/config';
+import { AndroidConfig, ConfigPlugin, withAndroidManifest } from '@expo/config-plugins';
 
 const APP_ENV = (process.env.APP_ENV ?? 'development') as
   | 'development'
@@ -16,10 +17,32 @@ const API_BASE_URL =
 const DEV_USER_ID =
   process.env.DEV_USER_ID ?? '00000000-0000-4000-8000-000000000001';
 
+const androidConfig: NonNullable<ExpoConfig['android']> & {
+  usesCleartextTraffic?: boolean;
+} = {
+  package: 'app.aidrobe.android',
+  versionCode: 3,
+  usesCleartextTraffic: APP_ENV !== 'production',
+};
+
+const withAndroidCleartextTraffic: ConfigPlugin = (config) =>
+  withAndroidManifest(config, (pluginConfig) => {
+    const application = AndroidConfig.Manifest.getMainApplicationOrThrow(
+      pluginConfig.modResults,
+    );
+    if (APP_ENV === 'production') {
+      delete application.$['android:usesCleartextTraffic'];
+    } else {
+      application.$['android:usesCleartextTraffic'] = 'true';
+    }
+    return pluginConfig;
+  });
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Aidrobe',
   slug: 'aidrobe',
+  owner: 'gt1o',
   scheme: 'aidrobe',
   version: '0.1.0',
   platforms: ['ios', 'android', 'web'],
@@ -40,11 +63,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       ITSAppUsesNonExemptEncryption: false,
     },
   },
-  android: {
-    package: 'app.aidrobe.android',
-    versionCode: 1,
-  },
+  android: androidConfig,
   plugins: [
+    withAndroidCleartextTraffic,
     'expo-dev-client',
     'expo-secure-store',
     'expo-status-bar',
@@ -64,10 +85,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           'Allow Aidrobe to use the camera to photograph wardrobe items.',
       },
     ],
-  ],
+  ] as ExpoConfig['plugins'],
   extra: {
     APP_ENV,
     API_BASE_URL,
     DEV_USER_ID,
+    eas: {
+      projectId: '8c50e01b-2844-473e-adec-3668fc2c2e9c',
+    },
   },
 });

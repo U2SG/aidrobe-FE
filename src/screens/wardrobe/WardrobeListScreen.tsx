@@ -1,10 +1,11 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { FlatList, Image, Pressable, RefreshControl, Text, View } from 'react-native';
 
 import { getInsightsSummary, getTopItems } from '@/api/insights';
 import { listWardrobeItems } from '@/api/wardrobe';
+import { CutoutBadge } from '@/components/ui/CutoutBadge';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
@@ -79,6 +80,9 @@ function ItemCard({
           ) : (
             <GarmentSvg kind={'shirt'} size={90} />
           )}
+          {item.cutoutStatus === 'queued' && (
+            <CutoutBadge style={{ position: 'absolute', top: 8, left: 8 }} />
+          )}
         </View>
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 }}>
@@ -101,10 +105,23 @@ function ItemCard({
 
 export function WardrobeListScreen({ navigation }: Props) {
   const [category, setCategory] = useState<ItemCategory | 'all'>('all');
+  // Poll while any item is still being cut out; give up after ~90s (the worker's
+  // reconcile job will flip stragglers to 'failed' and the original photo stays).
+  const pollStartRef = useRef<number | null>(null);
   const query = useQuery({
     queryKey: ['wardrobeItems', category],
     queryFn: () => listWardrobeItems({ category, limit: 50 }),
     retry: 1,
+    refetchInterval: (q) => {
+      const queued = (q.state.data?.items ?? []).some((it) => it.cutoutStatus === 'queued');
+      if (!queued) {
+        pollStartRef.current = null;
+        return false;
+      }
+      if (pollStartRef.current == null) pollStartRef.current = Date.now();
+      if (Date.now() - pollStartRef.current > 90_000) return false;
+      return 4000;
+    },
   });
 
   const insightsQuery = useQuery({

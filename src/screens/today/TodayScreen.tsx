@@ -1,22 +1,34 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Pressable, ScrollView, Text, View } from 'react-native';
+import {
+  Animated,
+  Image,
+  type ImageSourcePropType,
+  Pressable,
+  ScrollView,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { getTodayRecommendation, refreshTodayRecommendation } from '@/api/recommendations';
 import { getUserSettings } from '@/api/settings';
-import { useToastStore } from '@/store/toast';
-import { CountdownRing } from '@/components/ui/CountdownRing';
+import { getWardrobeItem } from '@/api/wardrobe';
+import bagCreamTote from '@/assets/wardrobe/bag-cream-tote.png';
+import bottomIndigoJeans from '@/assets/wardrobe/bottom-indigo-jeans.png';
+import bottomIvoryTrousers from '@/assets/wardrobe/bottom-ivory-trousers.png';
+import shoesWhiteCanvas from '@/assets/wardrobe/shoes-white-canvas.png';
+import topCreamShirt from '@/assets/wardrobe/top-cream-shirt.png';
+import topOatKnit from '@/assets/wardrobe/top-oat-knit.png';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
 import { SystemIcon } from '@/components/ui/SystemIcon';
-import { Tag } from '@/components/ui/Tag';
-import { useGenUIStream } from '@/hooks/useGenUIStream';
-import { GenUIRenderer } from '@/lib/genui/renderer';
 import { useTrack } from '@/hooks/useTrack';
+import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow } from '@/theme/design';
-import type { OutfitSummary, OutfitVariant } from '@/types/api';
+import type { ItemCategory, OutfitSummary, OutfitVariant, WardrobeItem, WeatherContext } from '@/types/api';
 import type { MainTabsParamList, TodayStackParamList } from '@/types/navigation';
 
 type Props = CompositeScreenProps<
@@ -24,93 +36,128 @@ type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabsParamList>
 >;
 
-const T = {
-  bg: colors.groupedBackground,
-  bgAlt: colors.background,
-  card: colors.elevated,
-  cardSoft: colors.secondaryElevated,
-  cardInner: colors.background,
-  ink: colors.label,
-  ink2: colors.secondaryLabel,
-  ink3: colors.tertiaryLabel,
-  ink4: colors.quaternaryLabel,
-  divider: colors.separator,
-  accent: colors.accent,
-  ok: colors.success,
-  warn: colors.warning,
-  red: colors.danger,
-  shadowSm: shadow.soft,
-  shadowMd: shadow.elevated,
+const P = {
+  bg: '#F8F8F4',
+  panel: '#FFFFFF',
+  ink: '#111316',
+  muted: '#70757D',
+  faint: '#AAB0B7',
+  line: '#E6E8E5',
+  wash: '#EEF3F1',
+  blue: '#7D9AAE',
+  blueSoft: '#E6EEF4',
+  sage: '#8EA58F',
+  sageSoft: '#E9F0EA',
+  clay: '#C8B8A1',
 };
 
 type StrategyKey = 'safe' | 'fast' | 'stylish';
+type GarmentKind =
+  | 'shirt'
+  | 'blazer'
+  | 'trousers'
+  | 'sweater'
+  | 'jeans'
+  | 'dress'
+  | 'skirt'
+  | 'tee'
+  | 'loafer'
+  | 'sneaker'
+  | 'bag';
+type GarmentPiece = {
+  kind: GarmentKind;
+  x: number;
+  y: number;
+  scale: number;
+  rotate?: string;
+  itemId?: string;
+  imageUrl?: string | null;
+  name?: string | null;
+};
 
-type GarmentKind = 'shirt' | 'blazer' | 'trousers' | 'sweater' | 'jeans' | 'skirt' | 'loafer' | 'sneaker' | 'bag';
-type GarmentPiece = { kind: GarmentKind; x: number; y: number; scale: number };
-
-// Client-side visual + presentation presets.
-// Backend currently does not return: pieces layout, prepMinutes, timeLabel, sub, icon, tags.
-// title/reason/items come from API; we fall back to the preset defaults if API not yet ready.
 type StrategyPreset = {
   title: string;
-  sub: string;
+  label: string;
+  signal: string;
   icon: 'shield' | 'clock' | 'sparkle';
   pieces: GarmentPiece[];
   prepMinutes: number;
-  timeLabel: string;
-  tags: string[];
   reason: string;
+};
+
+const MOCK_WEATHER: WeatherContext & { humidity: number; wind: string; location: string } = {
+  temperatureC: 24,
+  feelsLikeC: 23,
+  rainProbability: 0.62,
+  condition: 'light rain',
+  humidity: 78,
+  wind: 'NE 8',
+  location: 'Shanghai',
+};
+
+const GARMENT_IMAGES: Partial<Record<GarmentKind, ImageSourcePropType>> = {
+  shirt: topCreamShirt as ImageSourcePropType,
+  trousers: bottomIvoryTrousers as ImageSourcePropType,
+  sweater: topOatKnit as ImageSourcePropType,
+  jeans: bottomIndigoJeans as ImageSourcePropType,
+  sneaker: shoesWhiteCanvas as ImageSourcePropType,
+  bag: bagCreamTote as ImageSourcePropType,
 };
 
 const PRESETS: Record<StrategyKey, StrategyPreset> = {
   safe: {
-    title: '最稳妥',
-    sub: '适合大多数通勤场合',
+    title: '雨天通勤',
+    label: '稳',
+    signal: '防潮外层',
     icon: 'shield',
     pieces: [
-      { kind: 'shirt', x: 30, y: 40, scale: 1.1 },
-      { kind: 'blazer', x: 175, y: 30, scale: 1.15 },
-      { kind: 'trousers', x: 90, y: 175, scale: 1.05 },
-      { kind: 'loafer', x: 195, y: 240, scale: 0.85 },
+      { kind: 'shirt', x: 8, y: 14, scale: 1.12, rotate: '-7deg' },
+      { kind: 'trousers', x: 128, y: 128, scale: 1.24, rotate: '2deg' },
+      { kind: 'bag', x: 8, y: 284, scale: 0.72, rotate: '7deg' },
+      { kind: 'sneaker', x: 208, y: 292, scale: 0.78, rotate: '-5deg' },
     ],
     prepMinutes: 8,
-    timeLabel: 'STANDARD',
-    tags: ['主衣柜可取', '无需熨烫', '黑白经典'],
-    reason: '延续你常喜欢的黑白通勤风格，整体干净利落。',
+    reason: '深色外层压住雨天湿冷感，鞋面更好打理。',
   },
   fast: {
-    title: '最省时',
-    sub: '5 分钟搞定出门',
+    title: '五分钟出门',
+    label: '快',
+    signal: '少翻找',
     icon: 'clock',
     pieces: [
-      { kind: 'sweater', x: 60, y: 50, scale: 1.1 },
-      { kind: 'jeans', x: 100, y: 175, scale: 1.05 },
-      { kind: 'sneaker', x: 175, y: 260, scale: 0.85 },
+      { kind: 'sweater', x: 28, y: 18, scale: 1.22, rotate: '-4deg' },
+      { kind: 'jeans', x: 132, y: 154, scale: 1.26, rotate: '3deg' },
+      { kind: 'sneaker', x: 206, y: 300, scale: 0.82, rotate: '-6deg' },
     ],
     prepMinutes: 5,
-    timeLabel: 'RUSHED',
-    tags: ['主衣柜可取', '近期常穿', '免熨烫'],
-    reason: '都是你最近一周穿过的单品，无需翻找。',
+    reason: '只拿高频单品，减少搭配决策。',
   },
   stylish: {
-    title: '更有风格',
-    sub: '简约高级感',
+    title: '银蓝冷调',
+    label: '型',
+    signal: '轮廓更清晰',
     icon: 'sparkle',
     pieces: [
-      { kind: 'shirt', x: 30, y: 50, scale: 1.0 },
-      { kind: 'blazer', x: 175, y: 30, scale: 1.2 },
-      { kind: 'skirt', x: 95, y: 180, scale: 1.05 },
-      { kind: 'loafer', x: 195, y: 250, scale: 0.85 },
-      { kind: 'bag', x: 30, y: 230, scale: 0.7 },
+      { kind: 'shirt', x: 2, y: 22, scale: 1.08, rotate: '-8deg' },
+      { kind: 'trousers', x: 132, y: 126, scale: 1.22, rotate: '2deg' },
+      { kind: 'bag', x: 10, y: 282, scale: 0.74, rotate: '7deg' },
+      { kind: 'sneaker', x: 210, y: 292, scale: 0.78, rotate: '-5deg' },
     ],
     prepMinutes: 12,
-    timeLabel: 'RELAXED',
-    tags: ['含咖色半裙', '需取玄关包', '低饱和配色'],
-    reason: '在你偏好的低饱和米咖色里加一点比例变化。',
+    reason: '保留低饱和底色，用外套线条做记忆点。',
   },
 };
 
 const STRATEGY_ORDER: StrategyKey[] = ['safe', 'fast', 'stylish'];
+const CANVAS_W = 320;
+const CANVAS_H = 420;
+const EXTRA_PIECE_LAYOUT: Pick<GarmentPiece, 'x' | 'y' | 'scale' | 'rotate'>[] = [
+  { x: 8, y: 14, scale: 1.12, rotate: '-7deg' },
+  { x: 128, y: 128, scale: 1.24, rotate: '2deg' },
+  { x: 8, y: 284, scale: 0.72, rotate: '7deg' },
+  { x: 208, y: 292, scale: 0.78, rotate: '-5deg' },
+  { x: 184, y: 18, scale: 0.86, rotate: '5deg' },
+];
 
 function asStrategyKey(variant: OutfitVariant): StrategyKey {
   const v = String(variant);
@@ -118,207 +165,305 @@ function asStrategyKey(variant: OutfitVariant): StrategyKey {
   return 'safe';
 }
 
+function categoryToGarment(cat?: ItemCategory | string | null): GarmentKind {
+  switch (cat) {
+    case 'top':
+      return 'shirt';
+    case 'bottom':
+      return 'trousers';
+    case 'outerwear':
+      return 'blazer';
+    case 'dress':
+      return 'dress';
+    case 'shoes':
+      return 'sneaker';
+    case 'accessory':
+      return 'bag';
+    default:
+      return 'shirt';
+  }
+}
+
+function resolveOutfitPieces(
+  outfit: OutfitSummary | undefined,
+  preset: StrategyPreset,
+  itemById: Map<string, WardrobeItem>,
+): GarmentPiece[] {
+  if (!outfit?.items.length) return preset.pieces;
+
+  return outfit.items.map((brief, index) => {
+    const item = itemById.get(brief.id);
+    const layout = preset.pieces[index] ?? EXTRA_PIECE_LAYOUT[index % EXTRA_PIECE_LAYOUT.length]!;
+    return {
+      ...layout,
+      itemId: brief.id,
+      kind: categoryToGarment(item?.category ?? brief.category),
+      imageUrl: item?.imageUrl ?? brief.thumbUrl ?? null,
+      name: item?.name ?? brief.name ?? null,
+    };
+  });
+}
+
 function useRemainingMinutes(departureTime: string | null): number {
   const now = new Date();
   if (!departureTime) return 38;
-  const parts = departureTime.split(':');
-  const h = Number(parts[0] ?? 8);
-  const m = Number(parts[1] ?? 30);
+  const [rawH, rawM] = departureTime.split(':');
   const dep = new Date(now);
-  dep.setHours(h, m, 0, 0);
+  dep.setHours(Number(rawH ?? 8), Number(rawM ?? 30), 0, 0);
   const diff = Math.round((dep.getTime() - now.getTime()) / 60000);
   return Math.max(0, Math.min(90, diff));
 }
 
-function StrategyIconInline({ icon, active }: { icon: 'shield' | 'clock' | 'sparkle'; active?: boolean }) {
-  const c = active ? T.ink : T.ink3;
-  return <SystemIcon name={icon} size={18} color={c} strokeWidth={1.9} />;
+function normalizeWeather(weather?: WeatherContext | null) {
+  if (!weather) return MOCK_WEATHER;
+  return {
+    ...MOCK_WEATHER,
+    ...weather,
+    humidity: MOCK_WEATHER.humidity,
+    wind: MOCK_WEATHER.wind,
+    location: MOCK_WEATHER.location,
+  };
 }
 
-function StrategyTabs({
+function weatherLabel(condition: string) {
+  const c = condition.toLowerCase();
+  if (c.includes('rain')) return '轻雨';
+  if (c.includes('cloud')) return '多云';
+  if (c.includes('sun') || c.includes('clear')) return '晴';
+  return condition;
+}
+
+function climateAdvice(weather: ReturnType<typeof normalizeWeather>) {
+  if (weather.rainProbability >= 0.5) return '防水鞋面';
+  if (weather.temperatureC >= 28) return '轻薄透气';
+  if (weather.temperatureC <= 12) return '叠穿保温';
+  return '轻外套';
+}
+
+function WeatherRibbon({ weather }: { weather: ReturnType<typeof normalizeWeather> }) {
+  const rain = Math.round(weather.rainProbability * 100);
+  return (
+    <View
+      style={{
+        width: 58,
+        borderRadius: 29,
+        backgroundColor: P.blueSoft,
+        alignItems: 'center',
+        paddingVertical: 16,
+        gap: 14,
+      }}
+    >
+      <Text style={{ color: P.ink, fontSize: 20, fontWeight: '700' }}>{Math.round(weather.temperatureC)}°</Text>
+      <View style={{ width: 1, height: 92, backgroundColor: P.blue }} />
+      <View style={{ alignItems: 'center', gap: 3 }}>
+        <Text style={{ color: P.blue, fontSize: 11, fontWeight: '700', letterSpacing: 0.8 }}>{rain}%</Text>
+        <Text style={{ color: P.muted, fontSize: 10 }}>rain</Text>
+      </View>
+      <View style={{ alignItems: 'center', gap: 3 }}>
+        <Text style={{ color: P.ink, fontSize: 12, fontWeight: '700' }}>{weatherLabel(weather.condition)}</Text>
+        <Text style={{ color: P.muted, fontSize: 10 }}>{weather.humidity}%</Text>
+      </View>
+    </View>
+  );
+}
+
+function StrategyRail({
   active,
   onChange,
 }: {
   active: StrategyKey;
-  onChange: (k: StrategyKey) => void;
+  onChange: (key: StrategyKey) => void;
 }) {
-  const tabs: { id: StrategyKey; label: string }[] = [
-    { id: 'safe', label: '最稳妥' },
-    { id: 'fast', label: '最省时' },
-    { id: 'stylish', label: '更有风格' },
-  ];
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        backgroundColor: T.cardSoft,
-        borderRadius: radius.pill,
-        padding: 4,
-        marginHorizontal: 20,
-      }}
-    >
-      {tabs.map((t) => (
-        <Pressable
-          key={t.id}
-          onPress={() => onChange(t.id)}
-          style={{
-            flex: 1,
-            paddingVertical: 10,
-            borderRadius: radius.pill,
-            backgroundColor: active === t.id ? '#fff' : 'transparent',
-            alignItems: 'center',
-            ...(active === t.id ? T.shadowSm : {}),
-          }}
-        >
-          <Text style={{ fontSize: 13, fontWeight: active === t.id ? '600' : '500', color: active === t.id ? T.ink : T.ink3 }}>
-            {t.label}
-          </Text>
-        </Pressable>
-      ))}
+    <View style={{ flexDirection: 'row', gap: 8 }}>
+      {STRATEGY_ORDER.map((key) => {
+        const preset = PRESETS[key];
+        const selected = key === active;
+        return (
+          <Pressable
+            key={key}
+            onPress={() => onChange(key)}
+            accessibilityRole="button"
+            accessibilityLabel={preset.title}
+            style={{
+              height: 40,
+              minWidth: 58,
+              paddingHorizontal: 13,
+              borderRadius: 20,
+              backgroundColor: selected ? P.ink : P.panel,
+              borderWidth: 1,
+              borderColor: selected ? P.ink : P.line,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ color: selected ? '#fff' : P.muted, fontSize: 13, fontWeight: '700' }}>{preset.label}</Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
-
-function TimeBudgetBar({ prepMinutes, remaining }: { prepMinutes: number; remaining: number }) {
-  const fits = prepMinutes <= remaining;
-  const ratio = Math.min(1, prepMinutes / Math.max(remaining, 1));
-  const slack = Math.max(0, remaining - prepMinutes);
-  const color = !fits ? T.red : ratio > 0.6 ? T.warn : T.ok;
-  return (
-    <View style={{ marginTop: 6 }}>
-      <View style={{ height: 6, backgroundColor: T.divider, borderRadius: 3, overflow: 'hidden' }}>
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            bottom: 0,
-            width: `${ratio * 100}%`,
-            backgroundColor: color,
-            borderRadius: 3,
-          }}
-        />
-      </View>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-        <Text style={{ fontSize: 9, color, fontFamily: 'monospace' }}>准备 {prepMinutes}′</Text>
-        <Text style={{ fontSize: 9, color: T.ink3, fontFamily: 'monospace' }}>
-          {fits ? `余 ${slack}′` : `超 ${prepMinutes - remaining}′`}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-// PRESETS 的 pieces 坐标按 280×320 的设计画布摆放；实际画布更窄时整体等比缩放。
-const CANVAS_DESIGN_W = 280;
-const CANVAS_DESIGN_H = 320;
 
 function AnimatedPiece({
   piece,
   delay,
-  piecesKey,
   factor,
+  piecesKey,
 }: {
   piece: GarmentPiece;
   delay: number;
-  piecesKey: string;
   factor: number;
+  piecesKey: string;
 }) {
   const anim = useRef(new Animated.Value(0)).current;
+  const image = piece.imageUrl ? { uri: piece.imageUrl } : GARMENT_IMAGES[piece.kind];
+  const size = 132 * factor;
+
   useEffect(() => {
     anim.setValue(0);
-    Animated.timing(anim, { toValue: 1, duration: 600, delay, useNativeDriver: false }).start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [piecesKey]);
+    Animated.timing(anim, { toValue: 1, duration: 520, delay, useNativeDriver: false }).start();
+  }, [anim, delay, piecesKey]);
+
   return (
     <Animated.View
       style={{
         position: 'absolute',
         left: piece.x * factor,
         top: piece.y * factor,
-        transform: [
-          { scale: piece.scale },
-          { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) },
-        ],
         opacity: anim,
+        transform: [
+          { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) },
+          { rotate: piece.rotate ?? '0deg' },
+          { scale: piece.scale },
+        ],
       }}
     >
-      <GarmentSvg kind={piece.kind} size={90 * factor} />
+      {image ? (
+        <Image
+          source={image}
+          resizeMode="contain"
+          style={{
+            width: size,
+            height: size,
+            borderRadius: 30 * factor,
+          }}
+        />
+      ) : (
+        <GarmentSvg kind={piece.kind} size={112 * factor} />
+      )}
     </Animated.View>
   );
 }
 
 function OutfitCanvas({ pieces }: { pieces: GarmentPiece[] }) {
-  const piecesKey = pieces.map((p) => p.kind).join('-');
-  const [canvasWidth, setCanvasWidth] = useState(0);
-  const factor = Math.min(1, canvasWidth / CANVAS_DESIGN_W);
+  const [width, setWidth] = useState(0);
+  const factor = Math.min(1.18, Math.max(0.82, width / CANVAS_W));
+  const piecesKey = pieces.map((piece) => `${piece.itemId ?? piece.kind}:${piece.imageUrl ?? ''}`).join('-');
+
   return (
     <View
-      onLayout={(e) => setCanvasWidth(e.nativeEvent.layout.width)}
-      style={{ flex: 1, minHeight: CANVAS_DESIGN_H * (factor || 1), position: 'relative' }}
+      onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+      style={{
+        flex: 1,
+        minHeight: CANVAS_H * factor,
+        position: 'relative',
+      }}
     >
-      {canvasWidth > 0 &&
-        pieces.map((p, i) => (
-          <AnimatedPiece
-            key={`${p.kind}-${i}`}
-            piece={p}
-            delay={i * 80 + 80}
-            piecesKey={piecesKey}
-            factor={factor}
-          />
-        ))}
+      <View
+        style={{
+          position: 'absolute',
+          left: 20,
+          right: 14,
+          top: 26,
+          bottom: 28,
+          borderRadius: 42,
+          backgroundColor: P.wash,
+          opacity: 0.72,
+        }}
+      />
+      {width > 0
+        ? pieces.map((piece, index) => (
+            <AnimatedPiece
+              key={`${piece.itemId ?? piece.kind}-${index}`}
+              piece={piece}
+              delay={index * 70}
+              factor={factor}
+              piecesKey={piecesKey}
+            />
+          ))
+        : null}
     </View>
   );
 }
 
-function MiniOutfitCard({
-  title,
-  sub,
+function CompactCandidate({
+  preset,
   pieces,
-  location,
-  time,
+  selected,
   onPress,
 }: {
-  title: string;
-  sub: string;
+  preset: StrategyPreset;
   pieces: GarmentPiece[];
-  location: string;
-  time: string;
-  onPress?: () => void;
+  selected: boolean;
+  onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={{ flex: 1 }}>
-      <View style={{ backgroundColor: T.card, borderRadius: radius.lg, padding: 14, ...T.shadowSm }}>
-        <View style={{ height: 110, backgroundColor: T.cardInner, borderRadius: radius.md, overflow: 'hidden', position: 'relative' }}>
-          {pieces.map((p, i) => (
-            <View key={i} style={{ position: 'absolute', left: p.x, top: p.y, transform: [{ scale: p.scale }] }}>
-              <GarmentSvg kind={p.kind} size={54} />
-            </View>
-          ))}
-        </View>
-        <View style={{ marginTop: 8 }}>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: T.ink }} numberOfLines={1}>
-            {title}
-          </Text>
-          <Text style={{ fontSize: 11, color: T.ink3, lineHeight: 16, marginTop: 2 }} numberOfLines={2}>
-            {sub}
-          </Text>
-        </View>
-        <View style={{ marginTop: 8, gap: 5 }}>
-          <Tag style={{ alignSelf: 'flex-start' }}>{location}</Tag>
-          <Tag style={{ alignSelf: 'flex-start' }}>{time}</Tag>
-        </View>
+    <Pressable
+      onPress={onPress}
+      style={{
+        flex: 1,
+        borderRadius: 22,
+        backgroundColor: selected ? P.sageSoft : P.panel,
+        borderWidth: 1,
+        borderColor: selected ? P.sage : P.line,
+        padding: 10,
+        minHeight: 112,
+      }}
+    >
+      <View style={{ height: 58, position: 'relative' }}>
+        {pieces.slice(0, 3).map((piece, index) => {
+          const image = piece.imageUrl ? { uri: piece.imageUrl } : GARMENT_IMAGES[piece.kind];
+          return (
+          <View
+            key={`${piece.itemId ?? piece.kind}-${index}`}
+            style={{
+              position: 'absolute',
+              left: index * 28,
+              top: index * 7,
+              transform: [{ rotate: piece.rotate ?? '0deg' }, { scale: 0.72 }],
+            }}
+          >
+            {image ? (
+              <Image
+                source={image}
+                resizeMode="contain"
+                style={{ width: 50, height: 50, borderRadius: 12 }}
+              />
+            ) : (
+              <GarmentSvg kind={piece.kind} size={46} />
+            )}
+          </View>
+          );
+        })}
       </View>
+      <Text numberOfLines={1} style={{ color: P.ink, fontSize: 13, fontWeight: '700', marginTop: 4 }}>
+        {preset.title}
+      </Text>
+      <Text numberOfLines={1} style={{ color: P.muted, fontSize: 10, marginTop: 2 }}>
+        {preset.prepMinutes} 分钟 · {preset.signal}
+      </Text>
     </Pressable>
   );
 }
 
 export function TodayScreen({ navigation }: Props) {
   const [strategy, setStrategy] = useState<StrategyKey>('safe');
+  const { width } = useWindowDimensions();
   const track = useTrack();
   const qc = useQueryClient();
-  const showToast = useToastStore((s) => s.show);
-  const { nodes: streamNodes, status: streamStatus, startMock, reset: resetStream } = useGenUIStream();
+  const showToast = useToastStore((state) => state.show);
+  const maxWidth = Math.min(width, 520);
 
   const settingsQuery = useQuery({
     queryKey: ['userSettings'],
@@ -333,45 +478,61 @@ export function TodayScreen({ navigation }: Props) {
     retry: 1,
   });
 
-  // V3+ D3 — user-initiated refresh writes a new revision and invalidates the
-  // server cache. Local TanStack Query cache must be replaced so the new
-  // revision is rendered immediately. 429 = daily limit hit; 503 = flag off.
+  const recommendedItemIds = useMemo(
+    () => Array.from(new Set((todayQuery.data?.outfits ?? []).flatMap((outfit) => outfit.items.map((item) => item.id)))),
+    [todayQuery.data],
+  );
+
+  const itemQueries = useQueries({
+    queries: recommendedItemIds.map((id) => ({
+      queryKey: ['wardrobeItem', id],
+      queryFn: () => getWardrobeItem(id),
+      staleTime: 60 * 1000,
+    })),
+  });
+
   const refreshMutation = useMutation({
     mutationFn: () => refreshTodayRecommendation('commute'),
     onSuccess: (data) => {
       qc.setQueryData(['todayRecommendation'], data);
-      showToast({ message: '已为你换一套', kind: 'success' });
+      showToast({ message: '已换一套', kind: 'success' });
     },
     onError: (err: { response?: { status?: number } }) => {
       if (err?.response?.status === 429) {
-        showToast({ message: '今日刷新次数已用完，明天再来', kind: 'error' });
+        showToast({ message: '今天的刷新次数用完了', kind: 'error' });
       }
-      // Other errors (503, network, …) handled by the axios interceptor.
     },
   });
 
-  useEffect(() => {
-    resetStream();
-  }, [strategy, resetStream]);
-
-  const departureTime = settingsQuery.data?.departureTime ?? null;
-  const remaining = useRemainingMinutes(departureTime);
-
-  // Group server outfits by strategy key
   const outfitsByKey = useMemo(() => {
     const map = new Map<StrategyKey, OutfitSummary>();
-    for (const o of todayQuery.data?.outfits ?? []) {
-      const k = asStrategyKey(o.variant);
-      if (!map.has(k)) map.set(k, o);
+    for (const outfit of todayQuery.data?.outfits ?? []) {
+      const key = asStrategyKey(outfit.variant);
+      if (!map.has(key)) map.set(key, outfit);
     }
     return map;
   }, [todayQuery.data]);
 
+  const itemById = new Map<string, WardrobeItem>();
+  for (const query of itemQueries) {
+    if (query.data) itemById.set(query.data.id, query.data);
+  }
+
+  const departureTime = settingsQuery.data?.departureTime ?? null;
+  const remaining = useRemainingMinutes(departureTime);
+  const weather = normalizeWeather(todayQuery.data?.context?.weather);
   const preset = PRESETS[strategy];
   const apiOutfit = outfitsByKey.get(strategy);
-  const title = apiOutfit?.title ?? preset.title;
-  const reason = apiOutfit?.reason ?? preset.reason;
+  const visualPieces = resolveOutfitPieces(apiOutfit, preset, itemById);
+  const title = apiOutfit?.title || preset.title;
   const outfitId = apiOutfit?.id ?? 'local-showcase';
+  const timeHint = remaining > 0 ? `余 ${remaining} 分钟` : '现在出门';
+
+  const riseAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    riseAnim.setValue(0);
+    Animated.timing(riseAnim, { toValue: 1, duration: 420, delay: 40, useNativeDriver: false }).start();
+  }, [riseAnim, strategy]);
 
   useEffect(() => {
     track('today_viewed', { strategy });
@@ -383,230 +544,178 @@ export function TodayScreen({ navigation }: Props) {
   };
 
   const handleRefresh = () => {
-    resetStream();
-    startMock(strategy);
     refreshMutation.mutate();
   };
 
-  const isStreaming = streamStatus === 'streaming' || streamStatus === 'done';
-
-  const riseAnim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    riseAnim.setValue(0);
-    Animated.timing(riseAnim, { toValue: 1, duration: 480, delay: 80, useNativeDriver: false }).start();
-  }, [strategy, riseAnim]);
-
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: T.bg }}
-      contentContainerStyle={{ paddingBottom: 100 }}
+      style={{ flex: 1, backgroundColor: P.bg }}
+      contentContainerStyle={{ alignItems: 'center', paddingBottom: 108 }}
       showsVerticalScrollIndicator={false}
     >
-      <View
-        style={{
-          paddingHorizontal: 24,
-          paddingTop: 52,
-          paddingBottom: 12,
-          flexDirection: 'row',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-        }}
-      >
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 30, fontWeight: '600', color: T.ink, letterSpacing: -0.4 }}>早上好</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
-            <Text style={{ fontSize: 14, color: T.ink2 }}>距出门还有</Text>
-            <Text style={{ fontSize: 22, fontWeight: '600', color: T.accent, letterSpacing: -0.4 }}>{remaining}</Text>
-            <Text style={{ fontSize: 14, color: T.ink2 }}>分钟</Text>
+      <View style={{ width: maxWidth, paddingHorizontal: 18, paddingTop: 52 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={{ color: P.faint, fontSize: 11, fontWeight: '800', letterSpacing: 2.4 }}>AIDROBE</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <StrategyRail active={strategy} onChange={setStrategy} />
+            <Pressable
+              onPress={() => navigation.navigate('OutfitCalendar')}
+              accessibilityRole="button"
+              accessibilityLabel="打开穿搭日历"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: P.panel,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1,
+                borderColor: P.line,
+              }}
+            >
+              <SystemIcon name="calendar" size={17} color={P.ink} />
+            </Pressable>
           </View>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Pressable
-            onPress={() => navigation.navigate('OutfitCalendar')}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: T.card,
-              alignItems: 'center',
-              justifyContent: 'center',
-              ...T.shadowSm,
-            }}
-          >
-            <SystemIcon name="calendar" size={18} color={T.ink} />
-          </Pressable>
-          <CountdownRing minutes={remaining} />
-        </View>
-      </View>
 
-      {todayQuery.data?.guidanceText ? (
-        <View style={{ paddingHorizontal: 24, paddingBottom: 4 }}>
-          <Text style={{ fontSize: 12, color: T.ink3, lineHeight: 18 }}>{todayQuery.data.guidanceText}</Text>
-        </View>
-      ) : null}
-
-      <View
-        style={{
-          paddingHorizontal: 24,
-          paddingTop: 12,
-          paddingBottom: 14,
-          flexDirection: 'row',
-          alignItems: 'baseline',
-          justifyContent: 'space-between',
-        }}
-      >
-        <Text style={{ fontSize: 22, fontWeight: '600', color: T.ink }}>今日穿搭</Text>
-        <Text style={{ fontSize: 11, color: T.ink3 }}>
-          {(() => {
-            const ctx = todayQuery.data?.context;
-            const w = ctx?.weather;
-            const scene = ctx?.scene ?? '通勤';
-            if (w) return `${w.condition} ${Math.round(w.temperatureC)}° · ${scene}`;
-            return scene;
-          })()}
-        </Text>
-      </View>
-
-      <StrategyTabs active={strategy} onChange={setStrategy} />
-
-      <Animated.View
-        style={{
-          marginHorizontal: 16,
-          marginTop: 14,
-          backgroundColor: T.card,
-          borderRadius: radius.xl,
-          padding: 18,
-          paddingBottom: 14,
-          ...T.shadowMd,
-          opacity: riseAnim,
-          transform: [{ translateY: riseAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
-        }}
-      >
-        {isStreaming ? (
-          <View style={{ minHeight: 180, paddingVertical: 4 }}>
-            <GenUIRenderer nodes={streamNodes} isStreaming={streamStatus === 'streaming'} />
-          </View>
-        ) : (
-          <>
-            <View style={{ flexDirection: 'row' }}>
-              <View style={{ width: 80, paddingTop: 6, gap: 14 }}>
-                <View>
-                  <View
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: radius.md,
-                      backgroundColor: T.cardSoft,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <StrategyIconInline icon={preset.icon} active />
-                  </View>
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: T.ink, marginTop: 4 }} numberOfLines={1}>
-                    {title}
-                  </Text>
-                  <Text style={{ fontSize: 10, color: T.ink3, lineHeight: 15, marginTop: 2 }} numberOfLines={2}>
-                    {preset.sub}
-                  </Text>
-                </View>
-
-                <View style={{ padding: 9, backgroundColor: T.cardSoft, borderRadius: radius.md }}>
-                  <Text
-                    style={{ fontSize: 9, color: T.accent, letterSpacing: 0.6, fontWeight: '600', fontFamily: 'monospace' }}
-                  >
-                    {preset.timeLabel}
-                  </Text>
-                  <TimeBudgetBar prepMinutes={preset.prepMinutes} remaining={remaining} />
-                </View>
-
-                {preset.tags.map((tag) => (
-                  <Text key={tag} style={{ fontSize: 10, color: T.ink3, lineHeight: 15 }}>
-                    · {tag}
-                  </Text>
-                ))}
-              </View>
-
-              <OutfitCanvas key={strategy} pieces={preset.pieces} />
-            </View>
-
-            <View style={{ marginTop: 4, marginBottom: 12, padding: 12, backgroundColor: T.bgAlt, borderRadius: radius.md }}>
-              <Text style={{ fontSize: 12, color: T.ink2, lineHeight: 19 }}>
-                &ldquo;{reason}&rdquo;
-              </Text>
-            </View>
-          </>
-        )}
-
-        <Pressable
-          onPress={handleWear}
-          style={({ pressed }) => ({
-            height: 50,
-            backgroundColor: T.ink,
-            borderRadius: radius.md,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: pressed ? 0.88 : 1,
-          })}
-        >
-          <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>今天穿这套</Text>
-        </Pressable>
-
-        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 18, marginTop: 10 }}>
-          <Pressable onPress={() => navigation.navigate('OutfitDetail', { outfitId })}>
-            <Text style={{ fontSize: 12, color: T.ink3 }}>查看详情</Text>
-          </Pressable>
-          <Text style={{ color: T.divider }}>|</Text>
-          <Pressable>
-            <Text style={{ fontSize: 12, color: T.ink3 }}>不喜欢</Text>
-          </Pressable>
-          <Text style={{ color: T.divider }}>|</Text>
-          <Pressable
-            onPress={handleRefresh}
-            disabled={refreshMutation.isPending || streamStatus === 'streaming'}
-          >
-            <Text style={{ fontSize: 12, color: (refreshMutation.isPending || streamStatus === 'streaming') ? T.ink4 : T.ink3 }}>
-              {(refreshMutation.isPending || streamStatus === 'streaming') ? '生成中…' : '换一套'}
-            </Text>
-          </Pressable>
-        </View>
-      </Animated.View>
-
-      <View style={{ padding: 16 }}>
-        <View
+        <Animated.View
           style={{
-            flexDirection: 'row',
-            alignItems: 'baseline',
-            justifyContent: 'space-between',
-            paddingHorizontal: 8,
-            paddingBottom: 8,
+            marginTop: 18,
+            opacity: riseAnim,
+            transform: [{ translateY: riseAnim.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }],
           }}
         >
-          <Text style={{ fontSize: 14, fontWeight: '600', color: T.ink }}>更多方案</Text>
-          <Text style={{ fontSize: 11, color: T.ink3 }}>基于真实衣橱</Text>
-        </View>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          {STRATEGY_ORDER.filter((k) => k !== strategy).map((k) => {
-            const o = outfitsByKey.get(k);
-            const p = PRESETS[k];
-            return (
-              <MiniOutfitCard
-                key={k}
-                title={o?.title ?? p.title}
-                sub={o?.reason ?? p.reason}
-                pieces={p.pieces.slice(0, 3).map((piece, i) => ({
-                  ...piece,
-                  x: i * 46 + 4,
-                  y: i * 22 + 8,
-                  scale: 0.6,
-                }))}
-                location="主衣柜可取"
-                time={`约 ${p.prepMinutes} 分钟`}
-                onPress={() => o && navigation.navigate('OutfitDetail', { outfitId: o.id })}
+          <View style={{ flexDirection: 'row', gap: 14, alignItems: 'stretch' }}>
+            <WeatherRibbon weather={weather} />
+
+            <View style={{ flex: 1 }}>
+              <OutfitCanvas pieces={visualPieces} />
+            </View>
+          </View>
+
+          <View
+            style={{
+              marginTop: -10,
+              borderRadius: 30,
+              backgroundColor: P.panel,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: P.line,
+              ...shadow.soft,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
+              <View style={{ flex: 1 }}>
+                <Text numberOfLines={1} style={{ color: P.ink, fontSize: 20, fontWeight: '800', letterSpacing: -0.2 }}>
+                  {title}
+                </Text>
+                <Text numberOfLines={2} style={{ color: P.muted, fontSize: 12, lineHeight: 17, marginTop: 4 }}>
+                  {climateAdvice(weather)} · {preset.signal} · {timeHint}
+                </Text>
+              </View>
+              <View
+                style={{
+                  minWidth: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: P.sageSoft,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <SystemIcon name={preset.icon} size={18} color={P.sage} strokeWidth={2.1} />
+                <Text style={{ color: P.sage, fontSize: 9, fontWeight: '800', marginTop: 1 }}>{preset.prepMinutes}m</Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+              <Pressable
+                onPress={handleWear}
+                style={({ pressed }) => ({
+                  flex: 1,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: P.ink,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pressed ? 0.86 : 1,
+                })}
+              >
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }}>穿这套</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleRefresh}
+                disabled={refreshMutation.isPending}
+                accessibilityRole="button"
+                accessibilityLabel="换一套"
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: P.blueSoft,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: refreshMutation.isPending ? 0.5 : 1,
+                }}
+              >
+                <SystemIcon name="refresh" size={18} color={P.blue} strokeWidth={2.1} />
+              </Pressable>
+              <Pressable
+                onPress={() => navigation.navigate('OutfitDetail', { outfitId })}
+                accessibilityRole="button"
+                accessibilityLabel="查看详情"
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: P.wash,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <SystemIcon name="chevronRight" size={18} color={P.ink} strokeWidth={2.1} />
+              </Pressable>
+            </View>
+          </View>
+        </Animated.View>
+
+        <View style={{ marginTop: 18 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <Text style={{ color: P.ink, fontSize: 13, fontWeight: '800' }}>候选</Text>
+            <Text style={{ color: P.faint, fontSize: 10, fontWeight: '700', letterSpacing: 1 }}>
+              {weather.location} · {weather.wind}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {STRATEGY_ORDER.map((key) => (
+              <CompactCandidate
+                key={key}
+                preset={PRESETS[key]}
+                pieces={resolveOutfitPieces(outfitsByKey.get(key), PRESETS[key], itemById)}
+                selected={key === strategy}
+                onPress={() => setStrategy(key)}
               />
-            );
-          })}
+            ))}
+          </View>
         </View>
+
+        {todayQuery.data?.state === 'insufficient_items' ? (
+          <View
+            style={{
+              marginTop: 16,
+              borderRadius: radius.lg,
+              backgroundColor: colors.warningBg,
+              padding: 14,
+              borderWidth: 1,
+              borderColor: colors.warning,
+            }}
+          >
+            <Text style={{ color: colors.label, fontSize: 13, fontWeight: '700' }}>衣橱数据还不够</Text>
+            <Text style={{ color: colors.secondaryLabel, fontSize: 12, lineHeight: 18, marginTop: 4 }}>
+              先补几件上衣、下装和鞋，推荐会更准。
+            </Text>
+          </View>
+        ) : null}
       </View>
     </ScrollView>
   );

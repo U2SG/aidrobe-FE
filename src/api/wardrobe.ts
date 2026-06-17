@@ -1,5 +1,6 @@
 import { apiDelete, apiGet, apiPatch } from './client';
 import type {
+  CutoutStatus,
   ItemWearHistory,
   ListWardrobeItemsQuery,
   ListWardrobeItemsResponse,
@@ -11,6 +12,10 @@ import type {
   WardrobeItem,
 } from '@/types/api';
 
+function toCutoutStatus(value: string | null | undefined): CutoutStatus {
+  return value === 'queued' || value === 'ready' || value === 'failed' ? value : 'skipped';
+}
+
 export function toWardrobeItem(item: ServerWardrobeItem): WardrobeItem {
   return {
     id: item.item_id,
@@ -19,6 +24,7 @@ export function toWardrobeItem(item: ServerWardrobeItem): WardrobeItem {
     color: item.color_main,
     imageUrl: item.cover_image_url ?? item.original_image_url ?? null,
     status: item.status,
+    cutoutStatus: toCutoutStatus(item.cutout_status),
     location: item.location ?? null,
     subCategory: item.sub_category ?? null,
     colorSecondary: item.color_secondary ?? null,

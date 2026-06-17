@@ -12,6 +12,11 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, 'Permission'>;
 
 type PermissionStatus = 'undetermined' | 'granted' | 'denied';
 
+function toPermissionStatus(permission: { granted: boolean; canAskAgain: boolean }): PermissionStatus {
+  if (permission.granted) return 'granted';
+  return permission.canAskAgain ? 'undetermined' : 'denied';
+}
+
 function statusLabel(status: PermissionStatus) {
   switch (status) {
     case 'granted':
@@ -32,12 +37,13 @@ function statusStyle(status: PermissionStatus) {
 export function PermissionScreen({ navigation }: Props) {
   const [camera, setCamera] = useState<PermissionStatus>('undetermined');
   const [library, setLibrary] = useState<PermissionStatus>('undetermined');
+  const [requesting, setRequesting] = useState(false);
 
   const refresh = useCallback(async () => {
     const cam = await ImagePicker.getCameraPermissionsAsync();
     const lib = await ImagePicker.getMediaLibraryPermissionsAsync();
-    setCamera(cam.granted ? 'granted' : cam.canAskAgain ? 'undetermined' : 'denied');
-    setLibrary(lib.granted ? 'granted' : lib.canAskAgain ? 'undetermined' : 'denied');
+    setCamera(toPermissionStatus(cam));
+    setLibrary(toPermissionStatus(lib));
   }, []);
 
   useEffect(() => {
@@ -45,9 +51,19 @@ export function PermissionScreen({ navigation }: Props) {
   }, [refresh]);
 
   const requestAll = async () => {
-    await ImagePicker.requestCameraPermissionsAsync();
-    await ImagePicker.requestMediaLibraryPermissionsAsync();
-    await refresh();
+    if (requesting) return;
+    setRequesting(true);
+    try {
+      const cam = await ImagePicker.requestCameraPermissionsAsync();
+      const lib = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      setCamera(toPermissionStatus(cam));
+      setLibrary(toPermissionStatus(lib));
+      if (cam.granted || lib.granted) {
+        navigation.navigate('DepartureTime');
+      }
+    } finally {
+      setRequesting(false);
+    }
   };
 
   return (
@@ -76,8 +92,12 @@ export function PermissionScreen({ navigation }: Props) {
         </View>
 
         <View className="gap-3">
-          <PrimaryButton label="允许访问" onPress={requestAll} />
-          <SecondaryButton label="暂时跳过" onPress={() => navigation.navigate('DepartureTime')} />
+          <PrimaryButton label="允许访问" onPress={requestAll} loading={requesting} />
+          <SecondaryButton
+            label="暂时跳过"
+            onPress={() => navigation.navigate('DepartureTime')}
+            disabled={requesting}
+          />
         </View>
       </View>
     </ScreenContainer>

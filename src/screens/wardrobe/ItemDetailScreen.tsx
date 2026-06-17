@@ -1,6 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 
 import {
@@ -11,6 +11,7 @@ import {
 } from '@/api/wardrobe';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
+import { CutoutBadge } from '@/components/ui/CutoutBadge';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { SystemIcon } from '@/components/ui/SystemIcon';
@@ -71,10 +72,21 @@ export function ItemDetailScreen({ navigation, route }: Props) {
     [itemId],
   );
   const qc = useQueryClient();
+  // Poll while the cutout is in flight; give up after ~90s (reconcile handles stragglers).
+  const pollStartRef = useRef<number | null>(null);
   const query = useQuery({
     queryKey: ['wardrobeItem', itemId],
     queryFn: () => getWardrobeItem(itemId),
     enabled: !showcaseItem,
+    refetchInterval: (q) => {
+      if (q.state.data?.cutoutStatus !== 'queued') {
+        pollStartRef.current = null;
+        return false;
+      }
+      if (pollStartRef.current == null) pollStartRef.current = Date.now();
+      if (Date.now() - pollStartRef.current > 90_000) return false;
+      return 4000;
+    },
   });
 
   const wearHistoryQuery = useQuery({
@@ -169,6 +181,9 @@ export function ItemDetailScreen({ navigation, route }: Props) {
             <Image source={showcaseItem.image} style={{ width: '100%', height: '100%', borderRadius: 20 }} resizeMode="contain" />
           ) : (
             <GarmentSvg kind="shirt" size={180} />
+          )}
+          {backendItem?.cutoutStatus === 'queued' && (
+            <CutoutBadge style={{ position: 'absolute', top: 12, left: 12 }} />
           )}
         </View>
 
