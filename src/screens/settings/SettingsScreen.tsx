@@ -10,10 +10,12 @@ import { SecondaryButton } from '@/components/forms/SecondaryButton';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useAuthStore } from '@/store/auth';
+import { useLocationPrefStore, type LocationMode } from '@/store/locationPref';
 import { useOnboardingStore } from '@/store/onboarding';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, type } from '@/theme/design';
 import type { SettingsStackParamList } from '@/types/navigation';
+import { coordsValue, isCoords, reverseGeocodeLabel } from '@/utils/location';
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'Settings'>;
 
@@ -27,33 +29,49 @@ export function SettingsScreen({ navigation }: Props) {
     queryFn: getUserSettings,
   });
 
-  const [location, setLocation] = useState('');
-  const [locating, setLocating] = useState(false);
+  const prefMode = useLocationPrefStore((s) => s.mode);
+  const gpsLabel = useLocationPrefStore((s) => s.label);
+  const setPrefMode = useLocationPrefStore((s) => s.setMode);
+  const setGpsLabel = useLocationPrefStore((s) => s.setLabel);
+
   const savedLocation = settingsQuery.data?.location ?? '';
+  // Infer the mode for users who set a location before this toggle existed:
+  // a "lng,lat" string means they used GPS.
+  const mode: LocationMode = prefMode ?? (isCoords(savedLocation) ? 'gps' : 'manual');
+
+  const [manualText, setManualText] = useState('');
+  const [locating, setLocating] = useState(false);
   useEffect(() => {
-    setLocation(savedLocation);
+    // Never seed the input with raw coords — only a real city name.
+    setManualText(isCoords(savedLocation) ? '' : savedLocation);
   }, [savedLocation]);
 
   const locationMutation = useMutation({
     mutationFn: (value: string) => updateUserSettings({ location: value }),
     onSuccess: (data) => {
       queryClient.setQueryData(['userSettings'], data);
+      // Let the home screen re-pull so weather follows the new location.
+      queryClient.invalidateQueries({ queryKey: ['todayRecommendation'] });
     },
     onError: () => {
       showToast({ message: '保存失败，请稍后重试', kind: 'error' });
     },
   });
 
-  const locationDirty = location.trim() !== savedLocation;
+  const manualDirty = manualText.trim() !== (isCoords(savedLocation) ? '' : savedLocation);
   const locationBusy = locating || locationMutation.isPending;
 
   const saveManualLocation = () => {
-    locationMutation.mutate(location.trim(), {
+    const value = manualText.trim();
+    if (!value || locationBusy) return;
+    setPrefMode('manual');
+    setGpsLabel(null);
+    locationMutation.mutate(value, {
       onSuccess: () => showToast({ message: '所在城市已保存', kind: 'success' }),
     });
   };
 
-  const useCurrentLocation = async () => {
+  const locateNow = async () => {
     if (locationBusy) return;
     setLocating(true);
     try {
@@ -63,8 +81,10 @@ export function SettingsScreen({ navigation }: Props) {
         return;
       }
       const { coords } = await Location.getCurrentPositionAsync({});
-      // 和风天气要求经度在前、纬度在后，各保留两位小数
-      const value = `${coords.longitude.toFixed(2)},${coords.latitude.toFixed(2)}`;
+      const value = coordsValue(coords.longitude, coords.latitude);
+      const label = await reverseGeocodeLabel(coords.longitude, coords.latitude);
+      setPrefMode('gps');
+      setGpsLabel(label);
       locationMutation.mutate(value, {
         onSuccess: () => showToast({ message: '已根据当前位置更新', kind: 'success' }),
       });
@@ -73,6 +93,18 @@ export function SettingsScreen({ navigation }: Props) {
     } finally {
       setLocating(false);
     }
+  };
+
+  const selectGps = () => {
+    if (locationBusy) return;
+    setPrefMode('gps');
+    // First time switching in (or no coords yet) → fetch right away.
+    if (mode !== 'gps' || !isCoords(savedLocation)) void locateNow();
+  };
+
+  const selectManual = () => {
+    if (locationBusy) return;
+    setPrefMode('manual');
   };
 
   const signOut = async () => {
@@ -113,70 +145,88 @@ export function SettingsScreen({ navigation }: Props) {
         <Section title="所在城市">
           <View style={{ padding: 16, gap: 12 }}>
             <Text style={{ ...type.callout, color: colors.tertiaryLabel, lineHeight: 18 }}>
-              我们会据此获取天气，让今日推荐更贴合实际气温。推荐使用当前位置自动获取，也可手动填写城市。
+              我们会据此获取天气，让今日推荐更贴合实际气温。选「使用当前位置」后每次打开自动更新，也可改为手动填写城市。
             </Text>
-            <Pressable
-              onPress={useCurrentLocation}
-              disabled={locationBusy}
-              android_ripple={locationBusy ? undefined : { color: colors.fill }}
+
+            <View
               style={{
-                minHeight: 44,
                 flexDirection: 'row',
-                gap: 8,
-                paddingHorizontal: 16,
+                backgroundColor: colors.groupedBackground,
                 borderRadius: radius.md,
-                backgroundColor: colors.label,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: locationBusy ? 0.42 : 1,
+                padding: 4,
               }}
             >
-              {locating ? <ActivityIndicator size="small" color={colors.inverse} /> : null}
-              <Text style={{ ...type.callout, fontWeight: '600', color: colors.inverse }}>
-                {locating ? '正在定位…' : '使用当前位置'}
-              </Text>
-            </Pressable>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <TextInput
-                value={location}
-                onChangeText={setLocation}
-                placeholder="例如：杭州 / 上海浦东"
-                placeholderTextColor={colors.quaternaryLabel}
-                maxLength={120}
-                returnKeyType="done"
-                editable={!locationBusy}
-                onSubmitEditing={() => {
-                  if (locationDirty && !locationBusy) saveManualLocation();
-                }}
-                style={{
-                  flex: 1,
-                  minHeight: 44,
-                  backgroundColor: colors.groupedBackground,
-                  borderRadius: radius.md,
-                  paddingHorizontal: 14,
-                  paddingVertical: 10,
-                  ...type.body,
-                  color: colors.label,
-                }}
-              />
+              <ModeTab label="使用当前位置" active={mode === 'gps'} disabled={locationBusy} onPress={selectGps} />
+              <ModeTab label="手动输入" active={mode === 'manual'} disabled={locationBusy} onPress={selectManual} />
+            </View>
+
+            {mode === 'gps' ? (
               <Pressable
-                onPress={saveManualLocation}
-                disabled={!locationDirty || locationBusy}
+                onPress={locateNow}
+                disabled={locationBusy}
+                android_ripple={locationBusy ? undefined : { color: colors.fill }}
                 style={{
-                  height: 44,
-                  paddingHorizontal: 16,
-                  borderRadius: radius.md,
-                  backgroundColor: colors.fill,
+                  minHeight: 48,
+                  flexDirection: 'row',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: !locationDirty || locationBusy ? 0.42 : 1,
+                  gap: 10,
+                  paddingHorizontal: 14,
+                  borderRadius: radius.md,
+                  backgroundColor: colors.groupedBackground,
+                  opacity: locationBusy ? 0.6 : 1,
                 }}
               >
-                <Text style={{ ...type.callout, fontWeight: '600', color: colors.label }}>
-                  保存
+                {locating ? (
+                  <ActivityIndicator size="small" color={colors.tertiaryLabel} />
+                ) : (
+                  <SystemIcon name="refresh" size={16} color={colors.secondaryLabel} />
+                )}
+                <Text style={{ ...type.body, color: colors.label, flex: 1 }} numberOfLines={1}>
+                  {locating ? '正在定位…' : (gpsLabel ?? '点此获取当前位置')}
+                </Text>
+                <Text style={{ ...type.caption, color: colors.tertiaryLabel }}>
+                  {locating ? '' : '重新定位'}
                 </Text>
               </Pressable>
-            </View>
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <TextInput
+                  value={manualText}
+                  onChangeText={setManualText}
+                  placeholder="例如：杭州 / 上海浦东"
+                  placeholderTextColor={colors.quaternaryLabel}
+                  maxLength={120}
+                  returnKeyType="done"
+                  editable={!locationBusy}
+                  onSubmitEditing={saveManualLocation}
+                  style={{
+                    flex: 1,
+                    minHeight: 44,
+                    backgroundColor: colors.groupedBackground,
+                    borderRadius: radius.md,
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                    ...type.body,
+                    color: colors.label,
+                  }}
+                />
+                <Pressable
+                  onPress={saveManualLocation}
+                  disabled={!manualDirty || locationBusy}
+                  style={{
+                    height: 44,
+                    paddingHorizontal: 16,
+                    borderRadius: radius.md,
+                    backgroundColor: colors.fill,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: !manualDirty || locationBusy ? 0.42 : 1,
+                  }}
+                >
+                  <Text style={{ ...type.callout, fontWeight: '600', color: colors.label }}>保存</Text>
+                </Pressable>
+              </View>
+            )}
           </View>
         </Section>
 
@@ -212,6 +262,44 @@ export function SettingsScreen({ navigation }: Props) {
         </View>
       </ScrollView>
     </ScreenContainer>
+  );
+}
+
+function ModeTab({
+  label,
+  active,
+  disabled,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  disabled: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
+      style={{
+        flex: 1,
+        minHeight: 36,
+        borderRadius: radius.sm,
+        backgroundColor: active ? colors.elevated : 'transparent',
+        alignItems: 'center',
+        justifyContent: 'center',
+        ...(active ? shadow.soft : {}),
+      }}
+    >
+      <Text
+        style={{
+          ...type.callout,
+          fontWeight: active ? '600' : '500',
+          color: active ? colors.label : colors.tertiaryLabel,
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 

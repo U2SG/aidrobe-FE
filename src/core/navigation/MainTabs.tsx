@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import { SystemIcon } from '@/components/ui/SystemIcon';
+import { useLocationSync } from '@/hooks/useLocationSync';
 import { colors, type } from '@/theme/design';
 import type { MainTabsParamList } from '@/types/navigation';
 import { DiscoverNavigator } from './DiscoverNavigator';
@@ -28,6 +29,7 @@ function TabIcon({
 }
 
 export function MainTabs() {
+  useLocationSync();
   return (
     <Tabs.Navigator
       screenOptions={{
