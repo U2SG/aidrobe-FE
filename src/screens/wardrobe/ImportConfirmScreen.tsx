@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { confirmImportTask, getImportTask } from '@/api/importTasks';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
@@ -9,6 +9,7 @@ import { SiriOrb } from '@/components/ui/SiriOrb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useTrack } from '@/hooks/useTrack';
 import { useImportDraftStore } from '@/store/importDraft';
+import { useToastStore } from '@/store/toast';
 import { colors, shadow } from '@/theme/design';
 import type { ConfirmImportTaskBody, ItemCategory } from '@/types/api';
 import type { WardrobeStackParamList } from '@/types/navigation';
@@ -66,6 +67,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
   const qc = useQueryClient();
   const resetDraft = useImportDraftStore((state) => state.reset);
   const localImageUri = useImportDraftStore((state) => state.localImageUri);
+  const showToast = useToastStore((state) => state.show);
   const track = useTrack();
 
   const query = useQuery({
@@ -81,6 +83,10 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
   const [form, setForm] = useState<ConfirmImportTaskBody>({ name: '', category: 'top', color: '' });
   const [selectedFit, setSelectedFit] = useState('regular');
   const [saving, setSaving] = useState(false);
+  // Synchronous gate: `saving` state only disables the button after a re-render,
+  // so two taps in the same frame can both fire confirmImportTask -> duplicate
+  // item. The ref blocks the second call immediately, before React re-renders.
+  const savingRef = useRef(false);
 
   useEffect(() => { track('import_confirm_viewed', { taskId }); }, [taskId, track]);
 
@@ -111,6 +117,8 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
   }
 
   const save = async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     try {
       await confirmImportTask(taskId, form);
@@ -119,7 +127,10 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
       qc.invalidateQueries({ queryKey: ['todayRecommendation'] });
       resetDraft();
       goNextOrExit();
+    } catch {
+      showToast({ message: '保存失败，请重试', kind: 'error' });
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
@@ -127,6 +138,12 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
   // In batch mode the cached draft uri only matches one task, so prefer the
   // task's own (server) image; single mode keeps the instant local preview.
   const imageUri = inQueue ? data.imageUrl ?? null : localImageUri ?? data.imageUrl ?? null;
+
+  // Real confidence from the recognizer (0-1). Fall back to hiding the badge
+  // rather than showing a hardcoded number.
+  const score = data.recognized?.confidenceScore;
+  const confidencePct =
+    typeof score === 'number' ? Math.round(Math.max(0, Math.min(1, score)) * 100) : null;
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -143,12 +160,15 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <Text style={{ fontSize: 26, fontWeight: '600', color: T.ink, lineHeight: 32, marginBottom: 6 }}>
           确认一下识别结果
         </Text>
         <Text style={{ fontSize: 12, color: T.ink3, marginBottom: 18 }}>
-          有 92% 把握，但你最了解自己的衣服。
+          {confidencePct !== null
+            ? `有 ${confidencePct}% 把握，但你最了解自己的衣服。`
+            : '识别仅供参考，你最了解自己的衣服。'}
         </Text>
 
         {/* Image */}
@@ -170,25 +190,27 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
           ) : (
             <GarmentSvg kind="shirt" size={150} />
           )}
-          <View
-            style={{
-              position: 'absolute',
-              top: 12,
-              left: 12,
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-              backgroundColor: 'rgba(26,23,20,0.8)',
-              borderRadius: 999,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 5,
-            }}
-          >
-            <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#9ED9A1' }} />
-            <Text style={{ fontSize: 10, color: '#fff', fontFamily: 'monospace', letterSpacing: 0.5 }}>
-              AI · 92% 置信度
-            </Text>
-          </View>
+          {confidencePct !== null && (
+            <View
+              style={{
+                position: 'absolute',
+                top: 12,
+                left: 12,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                backgroundColor: 'rgba(26,23,20,0.8)',
+                borderRadius: 999,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 5,
+              }}
+            >
+              <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#9ED9A1' }} />
+              <Text style={{ fontSize: 10, color: '#fff', fontFamily: 'monospace', letterSpacing: 0.5 }}>
+                {`AI · ${confidencePct}% 置信度`}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Name field */}
@@ -293,7 +315,14 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
             opacity: saving || pressed ? 0.75 : 1,
           })}
         >
-          <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>保存到衣橱</Text>
+          {saving ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <ActivityIndicator size="small" color="#fff" />
+              <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>保存中…</Text>
+            </View>
+          ) : (
+            <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>保存到衣橱</Text>
+          )}
         </Pressable>
       </View>
     </View>
