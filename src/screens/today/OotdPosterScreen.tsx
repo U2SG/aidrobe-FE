@@ -2,7 +2,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, Share, Text, View } from 'react-native';
 
 import { createOotdPoster } from '@/api/ootdPosters';
 import { getOutfitVisualAsset } from '@/api/outfitVisual';
@@ -124,6 +124,19 @@ export function OotdPosterScreen({ navigation, route }: Props) {
   }, [assetQuery.data, phase]);
 
   const canGenerate = !!imageUrl && consent && !uploading && !createMutation.isPending;
+
+  // Zero-dep sharing: hand the poster URL to the native share sheet (where the
+  // user can AirDrop / send / save). Saving straight to the camera roll would
+  // need expo-media-library, deferred.
+  const handleShare = async () => {
+    if (!posterUrl) return;
+    try {
+      await Share.share({ message: `我的今日穿搭 · Aidrobe\n${posterUrl}`, url: posterUrl });
+      track('ootd_poster_shared', {});
+    } catch {
+      // user dismissed the share sheet — no-op
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -292,24 +305,8 @@ export function OotdPosterScreen({ navigation, route }: Props) {
               ) : null}
             </View>
           </ScrollView>
-          <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: spacing.screen, paddingTop: 12, paddingBottom: 28 }}>
-            <Pressable
-              onPress={() => showToast({ message: '保存即将上线', kind: 'info' })}
-              style={{
-                width: 54,
-                height: 54,
-                borderRadius: radius.md,
-                backgroundColor: T.card,
-                alignItems: 'center',
-                justifyContent: 'center',
-                ...shadow.soft,
-              }}
-            >
-              <SystemIcon name="download" size={20} color={T.ink2} />
-            </Pressable>
-            <View style={{ flex: 1 }}>
-              <PrimaryButton label="分享" onPress={() => showToast({ message: '分享即将上线', kind: 'info' })} />
-            </View>
+          <View style={{ paddingHorizontal: spacing.screen, paddingTop: 12, paddingBottom: 28 }}>
+            <PrimaryButton label="分享" onPress={handleShare} />
           </View>
         </View>
       ) : null}
