@@ -465,15 +465,49 @@ function OutfitCanvas({ pieces }: { pieces: GarmentPiece[] }) {
   );
 }
 
+function EmptyCanvas() {
+  return (
+    <View
+      style={{
+        flex: 1,
+        minHeight: CANVAS_H * 0.82,
+        position: 'relative',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <View
+        style={{
+          position: 'absolute',
+          left: 20,
+          right: 14,
+          top: 26,
+          bottom: 28,
+          borderRadius: 42,
+          backgroundColor: P.wash,
+          opacity: 0.5,
+        }}
+      />
+      <SystemIcon name="sparkle" size={22} color={P.faint} strokeWidth={1.8} />
+      <Text style={{ color: P.muted, fontSize: 13, fontWeight: '700', marginTop: 10 }}>
+        这套暂时搭不出来
+      </Text>
+      <Text style={{ color: P.faint, fontSize: 11, marginTop: 4 }}>补几件单品就能解锁更多搭配</Text>
+    </View>
+  );
+}
+
 function CompactCandidate({
   preset,
   pieces,
   selected,
+  empty,
   onPress,
 }: {
   preset: StrategyPreset;
   pieces: GarmentPiece[];
   selected: boolean;
+  empty?: boolean;
   onPress: () => void;
 }) {
   return (
@@ -487,10 +521,20 @@ function CompactCandidate({
         borderColor: selected ? P.sage : P.line,
         padding: 10,
         minHeight: 112,
+        opacity: empty ? 0.62 : 1,
       }}
     >
-      <View style={{ height: 58, position: 'relative' }}>
-        {pieces.slice(0, 3).map((piece, index) => {
+      <View
+        style={{
+          height: 58,
+          position: 'relative',
+          justifyContent: empty ? 'center' : undefined,
+        }}
+      >
+        {empty ? (
+          <Text style={{ color: P.faint, fontSize: 11, fontWeight: '700' }}>暂无</Text>
+        ) : (
+        pieces.slice(0, 3).map((piece, index) => {
           const image = piece.imageUrl ? { uri: piece.imageUrl } : GARMENT_IMAGES[piece.kind];
           return (
           <View
@@ -513,13 +557,14 @@ function CompactCandidate({
             )}
           </View>
           );
-        })}
+        })
+        )}
       </View>
       <Text numberOfLines={1} style={{ color: P.ink, fontSize: 13, fontWeight: '700', marginTop: 4 }}>
         {preset.title}
       </Text>
       <Text numberOfLines={1} style={{ color: P.muted, fontSize: 10, marginTop: 2 }}>
-        {preset.prepMinutes} 分钟 · {preset.signal}
+        {empty ? '补单品解锁' : `${preset.prepMinutes} 分钟 · ${preset.signal}`}
       </Text>
     </Pressable>
   );
@@ -613,8 +658,15 @@ export function TodayScreen({ navigation }: Props) {
     : scene;
   const preset = PRESETS[strategy];
   const apiOutfit = outfitsByKey.get(strategy);
+  // Three states, so a missing variant is never dressed up in mock images:
+  //  - no real outfits at all (new / empty wardrobe) → keep the showcase presets
+  //  - some real outfits but THIS variant is absent → honest empty placeholder
+  //  - real outfit present → render it
+  const hasAnyReal = outfitsByKey.size > 0;
+  const activeIsEmpty = hasAnyReal && !apiOutfit;
+  const guidanceText = todayQuery.data?.guidanceText ?? null;
   const visualPieces = resolveOutfitPieces(apiOutfit, preset, itemById);
-  const title = apiOutfit?.title || preset.title;
+  const title = activeIsEmpty ? '暂无该方案' : apiOutfit?.title || preset.title;
   const outfitId = apiOutfit?.id ?? 'local-showcase';
   const timeHint = remaining > 0 ? `余 ${remaining} 分钟` : '现在出门';
 
@@ -681,7 +733,7 @@ export function TodayScreen({ navigation }: Props) {
             {weather && wxTheme ? <WeatherRibbon weather={weather} theme={wxTheme} /> : null}
 
             <View style={{ flex: 1 }}>
-              <OutfitCanvas pieces={visualPieces} />
+              {activeIsEmpty ? <EmptyCanvas /> : <OutfitCanvas pieces={visualPieces} />}
             </View>
           </View>
 
@@ -702,40 +754,49 @@ export function TodayScreen({ navigation }: Props) {
                   {title}
                 </Text>
                 <Text numberOfLines={2} style={{ color: P.muted, fontSize: 12, lineHeight: 17, marginTop: 4 }}>
-                  {[weather ? climateAdvice(weather) : null, preset.signal, timeHint]
-                    .filter(Boolean)
-                    .join(' · ')}
+                  {activeIsEmpty
+                    ? '这套需要更多单品才能搭出来'
+                    : [weather ? climateAdvice(weather) : null, preset.signal, timeHint]
+                        .filter(Boolean)
+                        .join(' · ')}
                 </Text>
               </View>
-              <View
-                style={{
-                  minWidth: 48,
-                  height: 48,
-                  borderRadius: 24,
-                  backgroundColor: P.sageSoft,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <SystemIcon name={preset.icon} size={18} color={P.sage} strokeWidth={2.1} />
-                <Text style={{ color: P.sage, fontSize: 9, fontWeight: '800', marginTop: 1 }}>{preset.prepMinutes}m</Text>
-              </View>
+              {activeIsEmpty ? null : (
+                <View
+                  style={{
+                    minWidth: 48,
+                    height: 48,
+                    borderRadius: 24,
+                    backgroundColor: P.sageSoft,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <SystemIcon name={preset.icon} size={18} color={P.sage} strokeWidth={2.1} />
+                  <Text style={{ color: P.sage, fontSize: 9, fontWeight: '800', marginTop: 1 }}>
+                    {preset.prepMinutes}m
+                  </Text>
+                </View>
+              )}
             </View>
 
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
               <Pressable
-                onPress={handleWear}
+                onPress={activeIsEmpty ? undefined : handleWear}
+                disabled={activeIsEmpty}
                 style={({ pressed }) => ({
                   flex: 1,
                   height: 48,
                   borderRadius: 24,
-                  backgroundColor: P.ink,
+                  backgroundColor: activeIsEmpty ? P.line : P.ink,
                   alignItems: 'center',
                   justifyContent: 'center',
                   opacity: pressed ? 0.86 : 1,
                 })}
               >
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }}>穿这套</Text>
+                <Text style={{ color: activeIsEmpty ? P.faint : '#fff', fontSize: 14, fontWeight: '800' }}>
+                  穿这套
+                </Text>
               </Pressable>
               <Pressable
                 onPress={handleRefresh}
@@ -755,7 +816,8 @@ export function TodayScreen({ navigation }: Props) {
                 <SystemIcon name="refresh" size={18} color={P.blue} strokeWidth={2.1} />
               </Pressable>
               <Pressable
-                onPress={() => navigation.navigate('OutfitDetail', { outfitId })}
+                onPress={activeIsEmpty ? undefined : () => navigation.navigate('OutfitDetail', { outfitId })}
+                disabled={activeIsEmpty}
                 accessibilityRole="button"
                 accessibilityLabel="查看详情"
                 style={{
@@ -765,6 +827,7 @@ export function TodayScreen({ navigation }: Props) {
                   backgroundColor: P.wash,
                   alignItems: 'center',
                   justifyContent: 'center',
+                  opacity: activeIsEmpty ? 0.5 : 1,
                 }}
               >
                 <SystemIcon name="chevronRight" size={18} color={P.ink} strokeWidth={2.1} />
@@ -787,11 +850,27 @@ export function TodayScreen({ navigation }: Props) {
                 preset={PRESETS[key]}
                 pieces={resolveOutfitPieces(outfitsByKey.get(key), PRESETS[key], itemById)}
                 selected={key === strategy}
+                empty={hasAnyReal && !outfitsByKey.has(key)}
                 onPress={() => setStrategy(key)}
               />
             ))}
           </View>
         </View>
+
+        {guidanceText && todayQuery.data?.state !== 'insufficient_items' ? (
+          <View
+            style={{
+              marginTop: 16,
+              borderRadius: radius.lg,
+              backgroundColor: P.blueSoft,
+              padding: 14,
+              borderWidth: 1,
+              borderColor: P.line,
+            }}
+          >
+            <Text style={{ color: P.ink, fontSize: 13, fontWeight: '700' }}>{guidanceText}</Text>
+          </View>
+        ) : null}
 
         {todayQuery.data?.state === 'insufficient_items' ? (
           <View
