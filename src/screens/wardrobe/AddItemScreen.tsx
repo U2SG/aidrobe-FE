@@ -26,6 +26,16 @@ import type { ImportSourceType } from '@/types/api';
 import type { WardrobeStackParamList } from '@/types/navigation';
 import { compressImage, MAX_UPLOAD_BYTES } from '@/utils/image';
 
+// Pull the first http(s) URL out of pasted share text (e.g. XHS/Douyin blurbs
+// like "「外套」https://xhslink.com/abc 复制打开App"). The backend resolves the
+// short link + platform from a clean URL, so the client only needs to extract
+// it. Stop at whitespace and common CJK closing punctuation so trailing copy
+// doesn't get glued onto the URL.
+function extractFirstUrl(text: string): string | null {
+  const match = text.match(/https?:\/\/[^\s，。、；）】」』"']+/i);
+  return match ? match[0] : null;
+}
+
 function detectLinkSource(url: string): ImportSourceType {
   const u = url.toLowerCase();
   if (u.includes('taobao') || u.includes('tmall')) return 'taobao';
@@ -72,9 +82,9 @@ export function AddItemScreen({ navigation }: Props) {
   }, [track]);
 
   const submitLink = async () => {
-    const url = linkUrl.trim();
-    if (!/^https?:\/\/\S+/i.test(url)) {
-      showToast({ message: '请粘贴有效的商品链接', kind: 'error' });
+    const url = extractFirstUrl(linkUrl);
+    if (!url) {
+      showToast({ message: '没找到链接，请粘贴商品链接或含链接的分享文案', kind: 'error' });
       return;
     }
     setSubmittingLink(true);
@@ -343,11 +353,11 @@ function LinkImportModal({
       <Pressable onPress={onClose} style={styles.modalBackdrop}>
         <Pressable onPress={() => {}} style={styles.linkSheet}>
           <View style={styles.modalHandle} />
-          <Text style={styles.modalTitle}>贴一条商品链接</Text>
+          <Text style={styles.modalTitle}>贴链接或分享文案</Text>
           <TextInput
             value={value}
             onChangeText={onChange}
-            placeholder="https://..."
+            placeholder="粘贴商品链接，或整段分享文案"
             placeholderTextColor={P.faint}
             autoCapitalize="none"
             autoCorrect={false}
