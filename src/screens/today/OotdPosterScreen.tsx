@@ -305,24 +305,8 @@ export function OotdPosterScreen({ navigation, route }: Props) {
               ) : null}
             </View>
           </ScrollView>
-          <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: spacing.screen, paddingTop: 12, paddingBottom: 28 }}>
-            <Pressable
-              onPress={handleShare}
-              style={{
-                width: 54,
-                height: 54,
-                borderRadius: radius.md,
-                backgroundColor: T.card,
-                alignItems: 'center',
-                justifyContent: 'center',
-                ...shadow.soft,
-              }}
-            >
-              <SystemIcon name="share" size={20} color={T.ink2} />
-            </Pressable>
-            <View style={{ flex: 1 }}>
-              <PrimaryButton label="分享" onPress={handleShare} />
-            </View>
+          <View style={{ paddingHorizontal: spacing.screen, paddingTop: 12, paddingBottom: 28 }}>
+            <PrimaryButton label="分享" onPress={handleShare} />
           </View>
         </View>
       ) : null}
