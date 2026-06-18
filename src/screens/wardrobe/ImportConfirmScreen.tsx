@@ -48,7 +48,21 @@ const FIT_OPTIONS = [
 ] as const;
 
 export function ImportConfirmScreen({ navigation, route }: Props) {
-  const { taskId } = route.params;
+  const { taskId, queue, queueIndex } = route.params;
+  // Multi-image batch: confirm this task, then advance to the next one.
+  const queueLen = queue?.length ?? 0;
+  const inQueue = queueLen > 1;
+  const idx = queueIndex ?? 0;
+  const total = inQueue ? queueLen : 1;
+  const current = inQueue ? idx + 1 : 1;
+  const goNextOrExit = () => {
+    const nextId = queue && queue[idx + 1];
+    if (nextId) {
+      navigation.replace('ImportConfirm', { taskId: nextId, queue, queueIndex: idx + 1 });
+    } else {
+      navigation.popToTop();
+    }
+  };
   const qc = useQueryClient();
   const resetDraft = useImportDraftStore((state) => state.reset);
   const localImageUri = useImportDraftStore((state) => state.localImageUri);
@@ -104,13 +118,15 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
       qc.invalidateQueries({ queryKey: ['wardrobeItems'] });
       qc.invalidateQueries({ queryKey: ['todayRecommendation'] });
       resetDraft();
-      navigation.popToTop();
+      goNextOrExit();
     } finally {
       setSaving(false);
     }
   };
 
-  const imageUri = localImageUri ?? data.imageUrl ?? null;
+  // In batch mode the cached draft uri only matches one task, so prefer the
+  // task's own (server) image; single mode keeps the instant local preview.
+  const imageUri = inQueue ? data.imageUrl ?? null : localImageUri ?? data.imageUrl ?? null;
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -119,7 +135,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
         <Pressable onPress={() => navigation.popToTop()}>
           <SystemIcon name="x" size={22} color={T.ink2} />
         </Pressable>
-        <Text style={{ fontSize: 13, color: T.ink2 }}>识别 1 / 1</Text>
+        <Text style={{ fontSize: 13, color: T.ink2 }}>{`识别 ${current} / ${total}`}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -248,7 +264,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
         }}
       >
         <Pressable
-          onPress={() => navigation.popToTop()}
+          onPress={() => (inQueue ? goNextOrExit() : navigation.popToTop())}
           style={{
             flex: 1,
             height: 50,
@@ -260,7 +276,9 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
             justifyContent: 'center',
           }}
         >
-          <Text style={{ fontSize: 13, fontWeight: '500', color: T.ink2 }}>不是这件，重拍</Text>
+          <Text style={{ fontSize: 13, fontWeight: '500', color: T.ink2 }}>
+            {inQueue ? '跳过这件' : '不是这件，重拍'}
+          </Text>
         </Pressable>
         <Pressable
           onPress={save}

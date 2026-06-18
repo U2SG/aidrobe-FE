@@ -27,7 +27,9 @@ export type WardrobeStackParamList = {
   WardrobeList: undefined;
   ItemDetail: { itemId: string };
   AddItem: undefined;
-  ImportConfirm: { taskId: string };
+  // queue/queueIndex set for multi-image batch import: confirm one task, then
+  // advance to the next. Absent for a single import.
+  ImportConfirm: { taskId: string; queue?: string[]; queueIndex?: number };
   ImportFailure: {
     reason:
       | 'upload_failed'

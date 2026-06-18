@@ -37,6 +37,9 @@ function detectLinkSource(url: string): ImportSourceType {
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'AddItem'>;
 
+// Album multi-select cap. Backend stays one-task-per-image; we just fan out.
+const MAX_IMPORT_BATCH = 9;
+
 const P = {
   bg: '#F4F1EA',
   surface: '#FFFCF5',
@@ -89,48 +92,49 @@ export function AddItemScreen({ navigation }: Props) {
     }
   };
 
-  const handlePicked = async (uri: string, sourceType: 'camera' | 'album') => {
+  // Shared per-image pipeline: compress -> presign -> upload -> create task.
+  // `labelPrefix` lets the batch flow show "处理 k/N · <step>". No nav/draft here.
+  const runImportPipeline = async (
+    uri: string,
+    sourceType: 'camera' | 'album',
+    labelPrefix = '',
+  ) => {
     setUploadProgress(0);
-    setProcessingLabel('整理照片');
+    setProcessingLabel(`${labelPrefix}整理照片`);
+    console.log('[import] compress:start', { sourceType });
+    const compressed = await compressImage(uri);
+    console.log('[import] compress:done', { uri: compressed.uri });
+
+    setProcessingLabel(`${labelPrefix}打开衣橱通道`);
+    const fileName = `wardrobe-${Date.now()}.jpg`;
+    console.log('[import] presign:start', { fileName });
+    const presign = await createPresignedUpload({
+      fileName,
+      contentType: 'image/jpeg',
+      maxContentLength: MAX_UPLOAD_BYTES,
+    });
+    console.log('[import] presign:done', {
+      uploadHost: safeHost(presign.uploadUrl),
+      fileHost: safeHost(presign.fileUrl),
+      fields: Object.keys(presign.fields ?? {}),
+    });
+
+    setProcessingLabel(`${labelPrefix}上传衣物`);
+    console.log('[import] upload:start');
+    await uploadFileUriToPresigned(presign, 'image/jpeg', compressed.uri, fileName, setUploadProgress);
+    console.log('[import] upload:done');
+
+    setProcessingLabel(`${labelPrefix}生成衣物卡片`);
+    console.log('[import] task:start');
+    const task = await createImportTask({ inputType: 'image', sourceType, imageUrl: presign.fileUrl });
+    console.log('[import] task:done', { taskId: task.id });
+    return { task, localUri: compressed.uri };
+  };
+
+  const handlePicked = async (uri: string, sourceType: 'camera' | 'album') => {
     try {
-      console.log('[import] compress:start', { sourceType });
-      const compressed = await compressImage(uri);
-      console.log('[import] compress:done', { uri: compressed.uri });
-
-      setProcessingLabel('打开衣橱通道');
-      const fileName = `wardrobe-${Date.now()}.jpg`;
-      console.log('[import] presign:start', { fileName });
-      const presign = await createPresignedUpload({
-        fileName,
-        contentType: 'image/jpeg',
-        maxContentLength: MAX_UPLOAD_BYTES,
-      });
-      console.log('[import] presign:done', {
-        uploadHost: safeHost(presign.uploadUrl),
-        fileHost: safeHost(presign.fileUrl),
-        fields: Object.keys(presign.fields ?? {}),
-      });
-
-      setProcessingLabel('上传衣物');
-      console.log('[import] upload:start');
-      await uploadFileUriToPresigned(
-        presign,
-        'image/jpeg',
-        compressed.uri,
-        fileName,
-        setUploadProgress,
-      );
-      console.log('[import] upload:done');
-
-      setProcessingLabel('生成衣物卡片');
-      console.log('[import] task:start');
-      const task = await createImportTask({
-        inputType: 'image',
-        sourceType,
-        imageUrl: presign.fileUrl,
-      });
-      console.log('[import] task:done', { taskId: task.id });
-      setDraft({ taskId: task.id, localImageUri: compressed.uri, recognized: task.recognized });
+      const { task, localUri } = await runImportPipeline(uri, sourceType);
+      setDraft({ taskId: task.id, localImageUri: localUri, recognized: task.recognized });
       track('import_task_created', { taskId: task.id, sourceType });
       navigation.replace('ImportConfirm', { taskId: task.id });
     } catch (error) {
@@ -145,6 +149,34 @@ export function AddItemScreen({ navigation }: Props) {
     } finally {
       setProcessingLabel(null);
     }
+  };
+
+  // Multi-image: fan out one task per photo (one at a time so we don't hammer
+  // presign/upload), skipping individual failures, then hand the queue to
+  // ImportConfirm to confirm sequentially.
+  const handlePickedBatch = async (uris: string[]) => {
+    const taskIds: string[] = [];
+    let failed = 0;
+    for (const [i, uri] of uris.entries()) {
+      try {
+        const { task } = await runImportPipeline(uri, 'album', `处理 ${i + 1}/${uris.length} · `);
+        taskIds.push(task.id);
+        track('import_task_created', { taskId: task.id, sourceType: 'album' });
+      } catch (error) {
+        console.error('[import] batch item failed', error);
+        failed += 1;
+      }
+    }
+    setProcessingLabel(null);
+    const firstTask = taskIds[0];
+    if (!firstTask) {
+      navigation.replace('ImportFailure', { reason: 'upload_failed' });
+      return;
+    }
+    if (failed > 0) {
+      showToast({ message: `${failed} 张未能导入，已跳过`, kind: 'error' });
+    }
+    navigation.replace('ImportConfirm', { taskId: firstTask, queue: taskIds, queueIndex: 0 });
   };
 
   const pickFromCamera = async () => {
@@ -165,8 +197,20 @@ export function AddItemScreen({ navigation }: Props) {
       showToast({ message: '需要相册权限', kind: 'error' });
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({ quality: 1, mediaTypes: ['images'] });
-    if (!result.canceled && result.assets[0]) void handlePicked(result.assets[0].uri, 'album');
+    const result = await ImagePicker.launchImageLibraryAsync({
+      quality: 1,
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      selectionLimit: MAX_IMPORT_BATCH,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+    const uris = result.assets.map((a) => a.uri);
+    const [firstUri] = uris;
+    if (uris.length === 1 && firstUri) {
+      void handlePicked(firstUri, 'album');
+    } else {
+      void handlePickedBatch(uris);
+    }
   };
 
   return (
