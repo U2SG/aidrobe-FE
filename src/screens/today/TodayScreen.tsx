@@ -1,8 +1,9 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { useFocusEffect } from '@react-navigation/native';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Image,
@@ -544,6 +545,22 @@ export function TodayScreen({ navigation }: Props) {
     staleTime: 60 * 1000,
     retry: 1,
   });
+
+  // Pull fresh weather every time the user re-enters the home screen. The
+  // backend backfills live weather into GET /today (Redis-cached, no LLM, no
+  // refresh quota), so weather tracks the current location without being tied
+  // to daily-recommendation generation. Skip the initial focus (already fetched
+  // on mount) to avoid a redundant second request.
+  const firstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (firstFocus.current) {
+        firstFocus.current = false;
+        return;
+      }
+      void qc.invalidateQueries({ queryKey: ['todayRecommendation'] });
+    }, [qc]),
+  );
 
   const recommendedItemIds = useMemo(
     () => Array.from(new Set((todayQuery.data?.outfits ?? []).flatMap((outfit) => outfit.items.map((item) => item.id)))),

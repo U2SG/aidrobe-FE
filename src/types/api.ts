@@ -700,6 +700,8 @@ export interface AskContext {
 export interface AskBody {
   question: string;
   context?: AskContext;
+  // Scope the ask to one wardrobe item ("style an outfit around this").
+  focusedItemId?: string;
 }
 
 export interface AskResult {
