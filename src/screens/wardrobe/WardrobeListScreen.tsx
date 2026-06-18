@@ -6,12 +6,12 @@ import { FlatList, Image, Pressable, RefreshControl, Text, View } from 'react-na
 import { getInsightsSummary, getTopItems } from '@/api/insights';
 import { listWardrobeItems } from '@/api/wardrobe';
 import { CutoutBadge } from '@/components/ui/CutoutBadge';
-import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { SystemIcon } from '@/components/ui/SystemIcon';
+import { WardrobeShowcaseEmpty } from '@/components/wardrobe/WardrobeShowcaseEmpty';
 import { colors, radius, shadow } from '@/theme/design';
 import type { ItemCategory, WardrobeItem } from '@/types/api';
 import type { WardrobeStackParamList } from '@/types/navigation';
@@ -346,11 +346,9 @@ export function WardrobeListScreen({ navigation }: Props) {
           ) : query.isError ? (
             <ErrorState onRetry={() => query.refetch()} />
           ) : (
-            <EmptyState
-              title="衣橱还是空的"
-              description="拍一张衣物照片，开始组建你的私人衣橱。"
-              ctaLabel="添加衣物"
-              onCtaPress={() => navigation.navigate('AddItem')}
+            <WardrobeShowcaseEmpty
+              onAddItem={() => navigation.navigate('AddItem')}
+              onOpenItem={(id) => navigation.navigate('ItemDetail', { itemId: id })}
             />
           )
         }
