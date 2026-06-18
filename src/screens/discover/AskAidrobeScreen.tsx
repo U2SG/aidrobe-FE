@@ -82,8 +82,11 @@ function TurnView({ turn }: { turn: Turn }) {
   );
 }
 
-export function AskAidrobeScreen({ navigation }: Props) {
+export function AskAidrobeScreen({ navigation, route }: Props) {
   const track = useTrack();
+  const focusedItemId = route.params?.focusedItemId;
+  const focusedNames = useWardrobeItemNames(focusedItemId ? [focusedItemId] : []);
+  const focusedName = focusedItemId ? focusedNames.get(focusedItemId) : undefined;
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState('');
   const seededRef = useRef(false);
@@ -112,7 +115,7 @@ export function AskAidrobeScreen({ navigation }: Props) {
 
   const askMutation = useMutation({
     mutationFn: (vars: { tempId: string; question: string }) =>
-      askAidrobe({ question: vars.question, context: { scene: 'commute' } }),
+      askAidrobe({ question: vars.question, context: { scene: 'commute' }, focusedItemId }),
     onMutate: (vars) => {
       setTurns((t) => [
         ...t,
@@ -193,11 +196,31 @@ export function AskAidrobeScreen({ navigation }: Props) {
           borderTopColor: colors.separatorSoft,
         }}
       >
+        {focusedItemId ? (
+          <View
+            style={{
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: T.cardSoft,
+              borderRadius: radius.sm,
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              marginBottom: 10,
+            }}
+          >
+            <SystemIcon name="sparkle" size={12} color={T.accent} strokeWidth={1.9} />
+            <Text style={{ ...type.caption, color: T.ink2 }} numberOfLines={1}>
+              {`围绕「${focusedName ?? '这件单品'}」搭配`}
+            </Text>
+          </View>
+        ) : null}
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10 }}>
           <TextInput
             value={input}
             onChangeText={setInput}
-            placeholder="问问搭配…"
+            placeholder={focusedItemId ? '想怎么搭这件？' : '问问搭配…'}
             placeholderTextColor={colors.quaternaryLabel}
             multiline
             style={{

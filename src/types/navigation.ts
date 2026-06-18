@@ -54,7 +54,7 @@ export type DiscoverStackParamList = {
   SenseCheck: undefined;
   StyleInspirations: undefined;
   AddInspiration: undefined;
-  AskAidrobe: undefined;
+  AskAidrobe: { focusedItemId?: string } | undefined;
 };
 
 export type MainTabsParamList = {

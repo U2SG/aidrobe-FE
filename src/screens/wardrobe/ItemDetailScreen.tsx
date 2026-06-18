@@ -328,13 +328,27 @@ export function ItemDetailScreen({ navigation, route }: Props) {
             <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>返回衣橱</Text>
           </Pressable>
         ) : (
-          <Pressable
-            onPress={() => update.mutate(draft)}
-            disabled={update.isPending}
-            style={({ pressed }) => ({ height: 50, borderRadius: 14, backgroundColor: T.ink, alignItems: 'center', justifyContent: 'center', opacity: update.isPending || pressed ? 0.75 : 1 })}
-          >
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>保存修改</Text>
-          </Pressable>
+          <>
+            <Pressable
+              onPress={() =>
+                navigation.getParent()?.navigate('DiscoverTab', {
+                  screen: 'AskAidrobe',
+                  params: { focusedItemId: itemId },
+                } as never)
+              }
+              style={({ pressed }) => ({ height: 50, borderRadius: 14, backgroundColor: T.card, borderWidth: 1, borderColor: T.divider, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: pressed ? 0.75 : 1 })}
+            >
+              <SystemIcon name="sparkle" size={15} color={T.accent} strokeWidth={1.9} />
+              <Text style={{ fontSize: 15, fontWeight: '600', color: T.ink }}>用这件搭一套</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => update.mutate(draft)}
+              disabled={update.isPending}
+              style={({ pressed }) => ({ height: 50, borderRadius: 14, backgroundColor: T.ink, alignItems: 'center', justifyContent: 'center', opacity: update.isPending || pressed ? 0.75 : 1 })}
+            >
+              <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>保存修改</Text>
+            </Pressable>
+          </>
         )}
       </View>
     </View>

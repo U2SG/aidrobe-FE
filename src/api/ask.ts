@@ -18,6 +18,7 @@ export async function askAidrobe(body: AskBody): Promise<AskResult> {
           time_left_minutes: body.context.timeLeftMinutes,
         }
       : null,
+    focused_item_id: body.focusedItemId ?? null,
   });
   return {
     askSessionId: data.ask_session_id,
