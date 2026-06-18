@@ -702,6 +702,8 @@ export interface AskBody {
   context?: AskContext;
   // Scope the ask to one wardrobe item ("style an outfit around this").
   focusedItemId?: string;
+  // BCP-47 locale controlling the answer language (e.g. "en-US", "zh-CN").
+  locale?: string;
 }
 
 export interface AskResult {

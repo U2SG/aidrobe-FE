@@ -19,6 +19,7 @@ export async function askAidrobe(body: AskBody): Promise<AskResult> {
         }
       : null,
     focused_item_id: body.focusedItemId ?? null,
+    locale: body.locale ?? null,
   });
   return {
     askSessionId: data.ask_session_id,

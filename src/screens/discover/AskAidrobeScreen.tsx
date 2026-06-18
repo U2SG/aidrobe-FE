@@ -12,6 +12,7 @@ import { useWardrobeItemNames } from '@/hooks/useWardrobeItemNames';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { DiscoverStackParamList } from '@/types/navigation';
 import { httpStatus } from '@/utils/http';
+import { getDeviceLocale } from '@/utils/locale';
 
 type Props = NativeStackScreenProps<DiscoverStackParamList, 'AskAidrobe'>;
 
@@ -115,7 +116,12 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
 
   const askMutation = useMutation({
     mutationFn: (vars: { tempId: string; question: string }) =>
-      askAidrobe({ question: vars.question, context: { scene: 'commute' }, focusedItemId }),
+      askAidrobe({
+        question: vars.question,
+        context: { scene: 'commute' },
+        focusedItemId,
+        locale: getDeviceLocale(),
+      }),
     onMutate: (vars) => {
       setTurns((t) => [
         ...t,
