@@ -105,6 +105,15 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     retry: 1,
   });
 
+  // If the scope / focused item changes while the screen stays mounted (e.g.
+  // a global Ask tab, then opening Ask from an item-detail CTA), the history
+  // query refetches for the new key — re-arm the one-time seed guard and drop
+  // the previous scope's turns so they don't bleed into the new view.
+  useEffect(() => {
+    seededRef.current = false;
+    setTurns([]);
+  }, [scope, focusedItemId]);
+
   useEffect(() => {
     if (!seededRef.current && historyQuery.data) {
       seededRef.current = true;
