@@ -152,6 +152,8 @@ export const zhCN = {
   'today.refreshExhausted': '今天的刷新次数用完了',
   'today.swapAnother': '换一套',
   'today.viewDetail': '查看详情',
+  'today.shareThis': '分享这套',
+  'today.shareMessage': '我的今日穿搭「{title}」· Aidrobe',
   'today.noVariant': '暂无该方案',
   'today.needMoreItems': '这套需要更多单品才能搭出来',
   'today.notEnoughData': '衣橱数据还不够',
@@ -187,6 +189,10 @@ export const zhCN = {
   'today.advice.layer': '叠穿保温',
   'today.advice.lightJacket': '轻外套',
   'today.defaultLocation': '主衣柜',
+
+  // --- OOTD poster (AI, selfie-based) --------------------------------------
+  'ootd.fromOutfit': '来自这套搭配「{title}」',
+  'ootd.selfieBased': '海报基于你的自拍生成，背景由 AI 重绘，所选搭配仅作参考、不直接出现在图中。',
 } as const;
 
 export type I18nKey = keyof typeof zhCN;

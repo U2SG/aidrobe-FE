@@ -523,7 +523,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
         </View>
 
         <Pressable
-          onPress={() => navigation.navigate('OotdPoster', { outfitId })}
+          onPress={() => navigation.navigate('OotdPoster', { outfitId, outfitTitle: heroTitle })}
           style={{
             marginTop: 14,
             flexDirection: 'row',

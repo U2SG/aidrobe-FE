@@ -155,6 +155,8 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'today.refreshExhausted': "You're out of refreshes for today",
   'today.swapAnother': 'Swap',
   'today.viewDetail': 'View detail',
+  'today.shareThis': 'Share this look',
+  'today.shareMessage': 'My look today "{title}" · Aidrobe',
   'today.noVariant': 'No look yet',
   'today.needMoreItems': 'This look needs more items to assemble',
   'today.notEnoughData': 'Not enough wardrobe data yet',
@@ -190,4 +192,9 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'today.advice.layer': 'Layer up',
   'today.advice.lightJacket': 'Light jacket',
   'today.defaultLocation': 'Main closet',
+
+  // --- OOTD poster (AI, selfie-based) --------------------------------------
+  'ootd.fromOutfit': 'From the look "{title}"',
+  'ootd.selfieBased':
+    'The poster is generated from your selfie with an AI-repainted background; the chosen look is context only and does not appear in the image.',
 };

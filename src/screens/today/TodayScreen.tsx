@@ -7,9 +7,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Image,
-  type ImageSourcePropType,
   Pressable,
   ScrollView,
+  Share,
   Text,
   useWindowDimensions,
   View,
@@ -18,12 +18,14 @@ import {
 import { getTodayRecommendation, refreshTodayRecommendation } from '@/api/recommendations';
 import { getUserSettings } from '@/api/settings';
 import { getWardrobeItem } from '@/api/wardrobe';
-import bagCreamTote from '@/assets/wardrobe/bag-cream-tote.png';
-import bottomIndigoJeans from '@/assets/wardrobe/bottom-indigo-jeans.png';
-import bottomIvoryTrousers from '@/assets/wardrobe/bottom-ivory-trousers.png';
-import shoesWhiteCanvas from '@/assets/wardrobe/shoes-white-canvas.png';
-import topCreamShirt from '@/assets/wardrobe/top-cream-shirt.png';
-import topOatKnit from '@/assets/wardrobe/top-oat-knit.png';
+import { OutfitBoard } from '@/components/outfit/OutfitBoard';
+import WeatherBackdrop from '@/components/outfit/WeatherBackdrop';
+import {
+  CANVAS_H,
+  GARMENT_IMAGES,
+  type GarmentKind,
+  type GarmentPiece,
+} from '@/components/outfit/garments';
 import { AIOrb } from '@/components/ui/AIOrb';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
 import { SystemIcon } from '@/components/ui/SystemIcon';
@@ -35,7 +37,6 @@ import { colors, radius, shadow } from '@/theme/design';
 import { motion } from '@/theme/motion';
 import type { ItemCategory, OutfitSummary, OutfitVariant, WardrobeItem, WeatherContext } from '@/types/api';
 import type { MainTabsParamList, TodayStackParamList } from '@/types/navigation';
-import WeatherBackdrop from './WeatherBackdrop';
 
 type TFn = (key: I18nKey, params?: TParams) => string;
 
@@ -60,28 +61,6 @@ const P = {
 };
 
 type StrategyKey = 'safe' | 'fast' | 'stylish';
-type GarmentKind =
-  | 'shirt'
-  | 'blazer'
-  | 'trousers'
-  | 'sweater'
-  | 'jeans'
-  | 'dress'
-  | 'skirt'
-  | 'tee'
-  | 'loafer'
-  | 'sneaker'
-  | 'bag';
-type GarmentPiece = {
-  kind: GarmentKind;
-  x: number;
-  y: number;
-  scale: number;
-  rotate?: string;
-  itemId?: string;
-  imageUrl?: string | null;
-  name?: string | null;
-};
 
 type StrategyPreset = {
   // Display copy (title/signal) is sourced from i18n (today.preset.<key>.*);
@@ -92,15 +71,6 @@ type StrategyPreset = {
   reason: string;
 };
 
-
-const GARMENT_IMAGES: Partial<Record<GarmentKind, ImageSourcePropType>> = {
-  shirt: topCreamShirt as ImageSourcePropType,
-  trousers: bottomIvoryTrousers as ImageSourcePropType,
-  sweater: topOatKnit as ImageSourcePropType,
-  jeans: bottomIndigoJeans as ImageSourcePropType,
-  sneaker: shoesWhiteCanvas as ImageSourcePropType,
-  bag: bagCreamTote as ImageSourcePropType,
-};
 
 const PRESETS: Record<StrategyKey, StrategyPreset> = {
   safe: {
@@ -138,8 +108,6 @@ const PRESETS: Record<StrategyKey, StrategyPreset> = {
 };
 
 const STRATEGY_ORDER: StrategyKey[] = ['safe', 'fast', 'stylish'];
-const CANVAS_W = 320;
-const CANVAS_H = 420;
 const EXTRA_PIECE_LAYOUT: Pick<GarmentPiece, 'x' | 'y' | 'scale' | 'rotate'>[] = [
   { x: 8, y: 14, scale: 1.12, rotate: '-7deg' },
   { x: 128, y: 128, scale: 1.24, rotate: '2deg' },
@@ -332,98 +300,6 @@ function StrategyRail({
           </Pressable>
         );
       })}
-    </View>
-  );
-}
-
-function AnimatedPiece({
-  piece,
-  delay,
-  factor,
-  piecesKey,
-}: {
-  piece: GarmentPiece;
-  delay: number;
-  factor: number;
-  piecesKey: string;
-}) {
-  const anim = useRef(new Animated.Value(0)).current;
-  const image = piece.imageUrl ? { uri: piece.imageUrl } : GARMENT_IMAGES[piece.kind];
-  const size = 132 * factor;
-
-  useEffect(() => {
-    anim.setValue(0);
-    Animated.timing(anim, { toValue: 1, duration: 520, delay, useNativeDriver: false }).start();
-  }, [anim, delay, piecesKey]);
-
-  return (
-    <Animated.View
-      style={{
-        position: 'absolute',
-        left: piece.x * factor,
-        top: piece.y * factor,
-        opacity: anim,
-        transform: [
-          { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) },
-          { rotate: piece.rotate ?? '0deg' },
-          { scale: piece.scale },
-        ],
-      }}
-    >
-      {image ? (
-        <Image
-          source={image}
-          resizeMode="contain"
-          style={{
-            width: size,
-            height: size,
-            borderRadius: 30 * factor,
-          }}
-        />
-      ) : (
-        <GarmentSvg kind={piece.kind} size={112 * factor} />
-      )}
-    </Animated.View>
-  );
-}
-
-function OutfitCanvas({ pieces }: { pieces: GarmentPiece[] }) {
-  const [width, setWidth] = useState(0);
-  const factor = Math.min(1.18, Math.max(0.82, width / CANVAS_W));
-  const piecesKey = pieces.map((piece) => `${piece.itemId ?? piece.kind}:${piece.imageUrl ?? ''}`).join('-');
-
-  return (
-    <View
-      onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
-      style={{
-        flex: 1,
-        minHeight: CANVAS_H * factor,
-        position: 'relative',
-      }}
-    >
-      <View
-        style={{
-          position: 'absolute',
-          left: 20,
-          right: 14,
-          top: 26,
-          bottom: 28,
-          borderRadius: 42,
-          backgroundColor: P.wash,
-          opacity: 0.72,
-        }}
-      />
-      {width > 0
-        ? pieces.map((piece, index) => (
-            <AnimatedPiece
-              key={`${piece.itemId ?? piece.kind}-${index}`}
-              piece={piece}
-              delay={index * 70}
-              factor={factor}
-              piecesKey={piecesKey}
-            />
-          ))
-        : null}
     </View>
   );
 }
@@ -664,6 +540,24 @@ export function TodayScreen({ navigation }: Props) {
     refreshMutation.mutate();
   };
 
+  // Concept A — basic outfit share (a real board, no selfie). API_GAP[FE#15]:
+  // the backend has no share-asset/export endpoint (only GET
+  // /v1/outfit-visual-assets/{id}; no POST that renders a shareable board from
+  // an outfit_id), and rasterizing the React view would need a native
+  // image-export dep that's out of scope. Until that lands, hand a plain
+  // text+title to the native share sheet — no fake permanent artifact.
+  // Disabled for the local mock showcase and empty variants (nothing real).
+  const canShare = !activeIsEmpty && outfitId !== 'local-showcase';
+  const handleShare = async () => {
+    if (!canShare) return;
+    try {
+      await Share.share({ message: t('today.shareMessage', { title }) });
+      track('outfit_shared', { strategy, outfitId });
+    } catch {
+      // user dismissed the share sheet — no-op
+    }
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: wxTheme?.bottom ?? P.bg }}>
       {weather ? <WeatherBackdrop {...weather} width={width} height={height} /> : null}
@@ -708,7 +602,7 @@ export function TodayScreen({ navigation }: Props) {
             {weather && wxTheme ? <WeatherRibbon weather={weather} theme={wxTheme} t={t} /> : null}
 
             <View style={{ flex: 1 }}>
-              {activeIsEmpty ? <EmptyCanvas t={t} /> : <OutfitCanvas pieces={visualPieces} />}
+              {activeIsEmpty ? <EmptyCanvas t={t} /> : <OutfitBoard pieces={visualPieces} />}
             </View>
           </View>
 
@@ -799,6 +693,23 @@ export function TodayScreen({ navigation }: Props) {
                 ) : (
                   <SystemIcon name="refresh" size={18} color={P.blue} strokeWidth={2.1} />
                 )}
+              </Pressable>
+              <Pressable
+                onPress={canShare ? handleShare : undefined}
+                disabled={!canShare}
+                accessibilityRole="button"
+                accessibilityLabel={t('today.shareThis')}
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: P.sageSoft,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: canShare ? 1 : 0.5,
+                }}
+              >
+                <SystemIcon name="share" size={18} color={P.sage} strokeWidth={2.1} />
               </Pressable>
               <Pressable
                 onPress={activeIsEmpty ? undefined : () => navigation.navigate('OutfitDetail', { outfitId })}

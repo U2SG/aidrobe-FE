@@ -20,7 +20,11 @@ export type TodayStackParamList = {
   FeedbackSheet: { outfitId: string };
   OutfitCalendar: undefined;
   OutfitPlanPicker: { plannedDate: string };
-  OotdPoster: { outfitId?: string } | undefined;
+  // outfitId/outfitTitle identify the look the user came from. The poster API
+  // is selfie-based and does NOT consume the outfit itself (API_GAP[FE#15]);
+  // they're used for context wording + analytics so the param is not silently
+  // dropped.
+  OotdPoster: { outfitId?: string; outfitTitle?: string } | undefined;
 };
 
 export type WardrobeStackParamList = {
