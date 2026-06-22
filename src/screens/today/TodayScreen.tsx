@@ -14,7 +14,6 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import Svg, { Defs, Ellipse, Line, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { getTodayRecommendation, refreshTodayRecommendation } from '@/api/recommendations';
 import { getUserSettings } from '@/api/settings';
@@ -32,6 +31,7 @@ import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow } from '@/theme/design';
 import type { ItemCategory, OutfitSummary, OutfitVariant, WardrobeItem, WeatherContext } from '@/types/api';
 import type { MainTabsParamList, TodayStackParamList } from '@/types/navigation';
+import WeatherBackdrop from './WeatherBackdrop';
 
 type Props = CompositeScreenProps<
   NativeStackScreenProps<TodayStackParamList, 'Today'>,
@@ -257,53 +257,6 @@ function climateAdvice(weather: WeatherContext) {
   if (weather.temperatureC >= 28) return '轻薄透气';
   if (weather.temperatureC <= 12) return '叠穿保温';
   return '轻外套';
-}
-
-// Full-screen weather mood layer (SVG → web-safe, unlike Skia). A soft vertical
-// wash plus one restrained per-tier motif: rain streaks / a warm sun glow / a
-// drifting cloud band. Sits behind all content at low opacity.
-function WeatherBackdrop({ tier, width, height }: { tier: WeatherTier; width: number; height: number }) {
-  const theme = WX_THEME[tier];
-  return (
-    <Svg width={width} height={height} style={{ position: 'absolute', top: 0, left: 0 }} pointerEvents="none">
-      <Defs>
-        <LinearGradient id="wxBg" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={theme.top} />
-          <Stop offset="1" stopColor={theme.bottom} />
-        </LinearGradient>
-        <RadialGradient id="wxSun" cx="0.82" cy="0.12" r="0.5">
-          <Stop offset="0" stopColor="#E9C886" stopOpacity="0.5" />
-          <Stop offset="1" stopColor="#E9C886" stopOpacity="0" />
-        </RadialGradient>
-      </Defs>
-      <Rect x="0" y="0" width={width} height={height} fill="url(#wxBg)" />
-      {tier === 'sun' ? <Rect x="0" y="0" width={width} height={height} fill="url(#wxSun)" /> : null}
-      {tier === 'rain'
-        ? Array.from({ length: 14 }).map((_, i) => {
-            const x = (width / 13) * i + 12;
-            return (
-              <Line
-                key={i}
-                x1={x}
-                y1={height * 0.06 + (i % 3) * 22}
-                x2={x - 26}
-                y2={height * 0.06 + (i % 3) * 22 + 64}
-                stroke={theme.tint}
-                strokeOpacity={0.1}
-                strokeWidth={1.5}
-                strokeLinecap="round"
-              />
-            );
-          })
-        : null}
-      {tier === 'cloud' ? (
-        <>
-          <Ellipse cx={width * 0.28} cy={height * 0.16} rx={150} ry={42} fill={theme.tint} fillOpacity={0.06} />
-          <Ellipse cx={width * 0.74} cy={height * 0.24} rx={120} ry={34} fill={theme.tint} fillOpacity={0.05} />
-        </>
-      ) : null}
-    </Svg>
-  );
 }
 
 function WeatherRibbon({ weather, theme }: { weather: WeatherContext; theme: { ribbon: string; tint: string } }) {
@@ -691,7 +644,7 @@ export function TodayScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: wxTheme?.bottom ?? P.bg }}>
-      {tier ? <WeatherBackdrop tier={tier} width={width} height={height} /> : null}
+      {weather ? <WeatherBackdrop {...weather} width={width} height={height} /> : null}
       <ScrollView
         style={{ flex: 1, backgroundColor: 'transparent' }}
         contentContainerStyle={{ alignItems: 'center', paddingBottom: 108 }}

@@ -21,7 +21,7 @@ const androidConfig: NonNullable<ExpoConfig['android']> & {
   usesCleartextTraffic?: boolean;
 } = {
   package: 'app.aidrobe.android',
-  versionCode: 3,
+  versionCode: 6,
   usesCleartextTraffic: APP_ENV !== 'production',
 };
 
