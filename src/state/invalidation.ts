@@ -43,3 +43,14 @@ export function invalidateAfterUpdateLocation(qc: QueryClient): void {
 export function invalidateAfterWearOutfit(qc: QueryClient): void {
   invalidateKeys(qc, ['todayRecommendation', 'outfitHistory', 'wardrobeItems']);
 }
+
+/**
+ * change language (FE#19) → userSettings, todayRecommendation.
+ * UI strings + enum labels re-render from the local locale store immediately,
+ * and item display-names resolve client-side from cached localized_names — so
+ * wardrobeItems does NOT need invalidating. todayRecommendation is refreshed so
+ * any server-localized recommendation text follows the new locale.
+ */
+export function invalidateAfterChangeLanguage(qc: QueryClient): void {
+  invalidateKeys(qc, ['userSettings', 'todayRecommendation']);
+}

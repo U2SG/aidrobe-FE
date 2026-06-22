@@ -11,19 +11,26 @@ import { SecondaryButton } from '@/components/forms/SecondaryButton';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { Button } from '@/components/ui/Button';
 import { SystemIcon } from '@/components/ui/SystemIcon';
-import { invalidateAfterUpdateLocation } from '@/state/invalidation';
+import { useT } from '@/hooks/useT';
+import {
+  invalidateAfterChangeLanguage,
+  invalidateAfterUpdateLocation,
+} from '@/state/invalidation';
 import { phaseFromFlags } from '@/state/operationState';
 import { useAuthStore } from '@/store/auth';
+import { useLocalePrefStore } from '@/store/localePref';
 import { useLocationPrefStore, type LocationMode } from '@/store/locationPref';
 import { useOnboardingStore } from '@/store/onboarding';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, type } from '@/theme/design';
+import type { LocalePref } from '@/types/api';
 import type { SettingsStackParamList } from '@/types/navigation';
 import { coordsValue, isCoords, reverseGeocodeLabel } from '@/utils/location';
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'Settings'>;
 
 export function SettingsScreen({ navigation }: Props) {
+  const { t } = useT();
   const showToast = useToastStore((state) => state.show);
   const clearAuth = useAuthStore((state) => state.clear);
   const setCompleted = useOnboardingStore((state) => state.setCompleted);
@@ -32,6 +39,39 @@ export function SettingsScreen({ navigation }: Props) {
     queryKey: ['userSettings'],
     queryFn: getUserSettings,
   });
+
+  const langPref = useLocalePrefStore((s) => s.preference);
+  const setLangPref = useLocalePrefStore((s) => s.setPreference);
+  // Adopt the server's stored locale on fresh load (only when the local store is
+  // still at its default 'system' — never clobber an explicit local choice).
+  const serverLocale = settingsQuery.data?.locale ?? null;
+  useEffect(() => {
+    if (serverLocale && langPref === 'system' && serverLocale !== 'system') {
+      setLangPref(serverLocale);
+    }
+    // Run only when the server value arrives; deliberately not depending on
+    // langPref so a later manual switch back to 'system' isn't re-overwritten.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverLocale]);
+
+  const languageMutation = useMutation({
+    mutationFn: (locale: LocalePref) => updateUserSettings({ locale }),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['userSettings'], data);
+      invalidateAfterChangeLanguage(queryClient);
+    },
+    onError: () => {
+      // Non-blocking: the local store already applied the switch; surface the
+      // sync failure without reverting the user's choice.
+      showToast({ message: t('settings.language.saveFailed'), kind: 'error' });
+    },
+  });
+
+  const selectLanguage = (locale: LocalePref) => {
+    if (locale === langPref) return;
+    setLangPref(locale);
+    languageMutation.mutate(locale);
+  };
 
   const prefMode = useLocationPrefStore((s) => s.mode);
   const gpsLabel = useLocationPrefStore((s) => s.label);
@@ -65,7 +105,7 @@ export function SettingsScreen({ navigation }: Props) {
     onError: () => {
       // Inline OperationBanner now carries the error + retry; keep the toast as
       // a lightweight echo for users not looking at the banner.
-      showToast({ message: '保存失败，请稍后重试', kind: 'error' });
+      showToast({ message: t('settings.city.saveFailed'), kind: 'error' });
     },
   });
 
@@ -96,7 +136,7 @@ export function SettingsScreen({ navigation }: Props) {
     setGpsLabel(null);
     lastSubmittedRef.current = value;
     locationMutation.mutate(value, {
-      onSuccess: () => showToast({ message: '所在城市已保存', kind: 'success' }),
+      onSuccess: () => showToast({ message: t('settings.city.savedToast'), kind: 'success' }),
     });
   };
 
@@ -106,7 +146,7 @@ export function SettingsScreen({ navigation }: Props) {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        showToast({ message: '定位权限被拒，可手动输入城市', kind: 'error' });
+        showToast({ message: t('settings.city.permissionDenied'), kind: 'error' });
         return;
       }
       const { coords } = await Location.getCurrentPositionAsync({});
@@ -116,10 +156,10 @@ export function SettingsScreen({ navigation }: Props) {
       setGpsLabel(label);
       lastSubmittedRef.current = value;
       locationMutation.mutate(value, {
-        onSuccess: () => showToast({ message: '已根据当前位置更新', kind: 'success' }),
+        onSuccess: () => showToast({ message: t('settings.city.updatedToast'), kind: 'success' }),
       });
     } catch {
-      showToast({ message: '定位失败，可手动输入城市', kind: 'error' });
+      showToast({ message: t('settings.city.locateFailed'), kind: 'error' });
     } finally {
       setLocating(false);
     }
@@ -143,39 +183,64 @@ export function SettingsScreen({ navigation }: Props) {
   };
 
   const confirmClear = () => {
-    Alert.alert(
-      '清空衣橱',
-      '当前版本还没有批量清空接口。你可以在衣物详情里逐件删除，后续再放到数据管理页。',
-      [{ text: '知道了' }],
-    );
+    Alert.alert(t('settings.clearWardrobe.title'), t('settings.clearWardrobe.body'), [
+      { text: t('common.gotIt') },
+    ]);
   };
+
+  const LANGUAGE_OPTIONS: { key: LocalePref; label: string }[] = [
+    { key: 'zh-CN', label: t('settings.language.zh-CN') },
+    { key: 'en-US', label: t('settings.language.en-US') },
+    { key: 'system', label: t('settings.language.system') },
+  ];
 
   return (
     <ScreenContainer>
       <ScrollView contentContainerStyle={{ paddingVertical: 16, gap: 22 }}>
         <View style={{ paddingHorizontal: 2 }}>
-          <Text style={{ ...type.largeTitle, color: colors.label }}>设置</Text>
+          <Text style={{ ...type.largeTitle, color: colors.label }}>{t('settings.title')}</Text>
           <Text style={{ ...type.callout, color: colors.tertiaryLabel, marginTop: 6 }}>
-            Aidrobe 只保留 V1 Slim 必要设置：出门时间、数据说明和隐私信息。
+            {t('settings.subtitle')}
           </Text>
         </View>
 
-        <Section title="通用">
+        <Section title={t('settings.section.general')}>
           <Row
-            label="出门时间"
+            label={t('settings.departureTime')}
             detail={
               settingsQuery.data?.departureTime
                 ? settingsQuery.data.departureTime.slice(0, 5)
-                : '未设置'
+                : t('common.notSet')
             }
             onPress={() => navigation.navigate('DepartureTime')}
           />
+          <View style={{ padding: 16, gap: 10 }}>
+            <Text style={{ ...type.body, color: colors.label }}>{t('settings.language')}</Text>
+            <View
+              style={{
+                flexDirection: 'row',
+                backgroundColor: colors.groupedBackground,
+                borderRadius: radius.md,
+                padding: 4,
+              }}
+            >
+              {LANGUAGE_OPTIONS.map((opt) => (
+                <ModeTab
+                  key={opt.key}
+                  label={opt.label}
+                  active={langPref === opt.key}
+                  disabled={languageMutation.isPending}
+                  onPress={() => selectLanguage(opt.key)}
+                />
+              ))}
+            </View>
+          </View>
         </Section>
 
-        <Section title="所在城市">
+        <Section title={t('settings.section.city')}>
           <View style={{ padding: 16, gap: 12 }}>
             <Text style={{ ...type.callout, color: colors.tertiaryLabel, lineHeight: 18 }}>
-              我们会据此获取天气，让今日推荐更贴合实际气温。选「使用当前位置」后每次打开自动更新，也可改为手动填写城市。
+              {t('settings.city.hint')}
             </Text>
 
             <View
@@ -186,8 +251,8 @@ export function SettingsScreen({ navigation }: Props) {
                 padding: 4,
               }}
             >
-              <ModeTab label="使用当前位置" active={mode === 'gps'} disabled={locationBusy} onPress={selectGps} />
-              <ModeTab label="手动输入" active={mode === 'manual'} disabled={locationBusy} onPress={selectManual} />
+              <ModeTab label={t('settings.city.gps')} active={mode === 'gps'} disabled={locationBusy} onPress={selectGps} />
+              <ModeTab label={t('settings.city.manual')} active={mode === 'manual'} disabled={locationBusy} onPress={selectManual} />
             </View>
 
             {mode === 'gps' ? (
@@ -212,10 +277,10 @@ export function SettingsScreen({ navigation }: Props) {
                   <SystemIcon name="refresh" size={16} color={colors.secondaryLabel} />
                 )}
                 <Text style={{ ...type.body, color: colors.label, flex: 1 }} numberOfLines={1}>
-                  {locating ? '正在定位…' : (gpsLabel ?? '点此获取当前位置')}
+                  {locating ? t('settings.city.locating') : (gpsLabel ?? t('settings.city.tapToLocate'))}
                 </Text>
                 <Text style={{ ...type.caption, color: colors.tertiaryLabel }}>
-                  {locating ? '' : '重新定位'}
+                  {locating ? '' : t('settings.city.relocate')}
                 </Text>
               </Pressable>
             ) : (
@@ -223,7 +288,7 @@ export function SettingsScreen({ navigation }: Props) {
                 <TextInput
                   value={manualText}
                   onChangeText={setManualText}
-                  placeholder="例如：杭州 / 上海浦东"
+                  placeholder={t('settings.city.manualPlaceholder')}
                   placeholderTextColor={colors.quaternaryLabel}
                   maxLength={120}
                   returnKeyType="done"
@@ -243,7 +308,7 @@ export function SettingsScreen({ navigation }: Props) {
                 <Button
                   variant="tonal"
                   size="sm"
-                  label="保存"
+                  label={t('common.save')}
                   onPress={saveManualLocation}
                   disabled={!manualDirty || locationBusy}
                   loading={locationMutation.isPending}
@@ -254,35 +319,35 @@ export function SettingsScreen({ navigation }: Props) {
 
             <OperationBanner
               phase={locationPhase}
-              pendingText={locating ? '正在定位…' : '正在保存所在城市…'}
-              successText="所在城市已保存"
-              errorText="保存失败，请重试"
+              pendingText={locating ? t('settings.city.locating') : t('settings.city.saving')}
+              successText={t('settings.city.saved')}
+              errorText={t('settings.city.saveFailed')}
               onRetry={retryLocation}
             />
           </View>
         </Section>
 
-        <Section title="衣橱">
-          <Row label="数据管理" detail="逐件维护" onPress={confirmClear} />
+        <Section title={t('settings.section.wardrobe')}>
           <Row
-            label="推荐来源"
-            detail="仅使用你的衣橱"
-            onPress={() =>
-              showToast({ message: '今日推荐只会使用已录入且可穿的衣物。', kind: 'info' })
-            }
+            label={t('settings.dataManagement')}
+            detail={t('settings.dataManagement.detail')}
+            onPress={confirmClear}
+          />
+          <Row
+            label={t('settings.recSource')}
+            detail={t('settings.recSource.detail')}
+            onPress={() => showToast({ message: t('settings.recSource.toast'), kind: 'info' })}
           />
         </Section>
 
-        <Section title="隐私">
+        <Section title={t('settings.section.privacy')}>
           <Row
-            label="照片用途"
-            detail="识别与推荐"
-            onPress={() =>
-              showToast({ message: '衣物图片仅用于识别、保存和生成搭配推荐。', kind: 'info' })
-            }
+            label={t('settings.photoUse')}
+            detail={t('settings.photoUse.detail')}
+            onPress={() => showToast({ message: t('settings.photoUse.toast'), kind: 'info' })}
           />
           <Row
-            label="版本"
+            label={t('settings.version')}
             detail={Constants.expoConfig?.version ?? '0.1.0'}
             onPress={() => undefined}
             disabled
@@ -290,7 +355,7 @@ export function SettingsScreen({ navigation }: Props) {
         </Section>
 
         <View style={{ paddingTop: 2 }}>
-          <SecondaryButton label="退出登录" onPress={signOut} />
+          <SecondaryButton label={t('settings.signOut')} onPress={signOut} />
         </View>
       </ScrollView>
     </ScreenContainer>

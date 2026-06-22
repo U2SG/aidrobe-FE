@@ -8,12 +8,12 @@ import { InlineRetry } from '@/components/feedback/InlineRetry';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { SiriOrb } from '@/components/ui/SiriOrb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
+import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { useWardrobeItemNames } from '@/hooks/useWardrobeItemNames';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { DiscoverStackParamList } from '@/types/navigation';
 import { httpStatus } from '@/utils/http';
-import { getDeviceLocale } from '@/utils/locale';
 
 type Props = NativeStackScreenProps<DiscoverStackParamList, 'AskAidrobe'>;
 
@@ -37,17 +37,18 @@ const T = {
 };
 
 function ItemRefsRow({ ids }: { ids: string[] }) {
+  const { t } = useT();
   const nameById = useWardrobeItemNames(ids);
   if (ids.length === 0) return null;
   return (
     <View style={{ marginTop: 10 }}>
-      <Text style={{ ...type.caption, color: T.ink3, marginBottom: 6 }}>衣橱里的相关单品</Text>
+      <Text style={{ ...type.caption, color: T.ink3, marginBottom: 6 }}>{t('ask.relatedItems')}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
         {ids.map((iid) => (
           <View key={iid} style={{ width: 60 }}>
             <View style={{ width: 60, height: 60, borderRadius: radius.sm, backgroundColor: T.cardSoft }} />
             <Text style={{ ...type.caption, color: T.ink2, marginTop: 4 }} numberOfLines={1}>
-              {nameById.get(iid) ?? '单品'}
+              {nameById.get(iid) ?? t('ask.itemFallback')}
             </Text>
           </View>
         ))}
@@ -91,6 +92,7 @@ function TurnView({ turn, onRetry, retryBusy }: { turn: Turn; onRetry: () => voi
 }
 
 export function AskAidrobeScreen({ navigation, route }: Props) {
+  const { t, locale } = useT();
   const track = useTrack();
   const focusedItemId = route.params?.focusedItemId;
   const focusedNames = useWardrobeItemNames(focusedItemId ? [focusedItemId] : []);
@@ -127,7 +129,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         question: vars.question,
         context: { scene: 'commute' },
         focusedItemId,
-        locale: getDeviceLocale(),
+        locale,
       }),
     onMutate: (vars) => {
       // Idempotent on tempId: a retry reuses the failed turn's own id (already
@@ -150,14 +152,14 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     },
     onError: (err, vars) => {
       const code = httpStatus(err);
-      setTurns((t) =>
-        t.map((x) =>
+      setTurns((prev) =>
+        prev.map((x) =>
           x.id === vars.tempId
             ? {
                 ...x,
                 pending: false,
                 failed: true,
-                answer: code === 503 ? '问答功能正在接入中，稍后再试。' : '出错了，请稍后再试。',
+                answer: code === 503 ? t('ask.error.unavailable') : t('ask.error.generic'),
               }
             : x,
         ),
@@ -190,7 +192,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
-      <ScreenHeader title="问 Aidrobe" onBack={() => navigation.goBack()} />
+      <ScreenHeader title={t('ask.title')} onBack={() => navigation.goBack()} />
 
       <ScrollView
         ref={scrollRef}
@@ -204,10 +206,10 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
           <View style={{ paddingVertical: 48, alignItems: 'center' }}>
             <SiriOrb size={140} variant="vivid" />
             <Text style={{ ...type.headline, color: T.ink, marginTop: 12, textAlign: 'center' }}>
-              问问你的衣橱
+              {t('ask.emptyTitle')}
             </Text>
             <Text style={{ ...type.callout, color: T.ink3, marginTop: 6, textAlign: 'center' }}>
-              比如「明天通勤穿什么」「这件配什么鞋」
+              {t('ask.emptyHint')}
             </Text>
           </View>
         ) : (
@@ -249,7 +251,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
           >
             <SystemIcon name="sparkle" size={12} color={T.accent} strokeWidth={1.9} />
             <Text style={{ ...type.caption, color: T.ink2 }} numberOfLines={1}>
-              {`围绕「${focusedName ?? '这件单品'}」搭配`}
+              {t('ask.focusedChip', { name: focusedName ?? t('ask.focusedFallback') })}
             </Text>
           </View>
         ) : null}
@@ -257,7 +259,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
           <TextInput
             value={input}
             onChangeText={setInput}
-            placeholder={focusedItemId ? '想怎么搭这件？' : '问问搭配…'}
+            placeholder={focusedItemId ? t('ask.placeholderFocused') : t('ask.placeholder')}
             placeholderTextColor={colors.quaternaryLabel}
             multiline
             style={{

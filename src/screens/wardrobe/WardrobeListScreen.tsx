@@ -12,11 +12,15 @@ import { GarmentSvg } from '@/components/ui/GarmentSvg';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { WardrobeShowcaseEmpty } from '@/components/wardrobe/WardrobeShowcaseEmpty';
+import { useT, type UseT } from '@/hooks/useT';
+import { resolveItemDisplayName } from '@/i18n/domainLabels';
 import { colors, radius, shadow } from '@/theme/design';
 import type { ItemCategory, WardrobeItem } from '@/types/api';
 import type { WardrobeStackParamList } from '@/types/navigation';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'WardrobeList'>;
+
+const CATEGORY_KEYS: (ItemCategory | 'all')[] = ['all', 'top', 'bottom', 'outerwear', 'shoes', 'accessory'];
 
 const T = {
   bg: colors.groupedBackground,
@@ -35,22 +39,21 @@ const T = {
   shadowMd: shadow.elevated,
 };
 
-const CATEGORIES: { key: ItemCategory | 'all'; label: string }[] = [
-  { key: 'all', label: '全部' },
-  { key: 'top', label: '上衣' },
-  { key: 'bottom', label: '下装' },
-  { key: 'outerwear', label: '外套' },
-  { key: 'shoes', label: '鞋' },
-  { key: 'accessory', label: '可穿' },
-];
-
 function ItemCard({
   item,
   onPress,
+  t,
 }: {
   item: WardrobeItem;
   onPress: () => void;
+  t: UseT;
 }) {
+  const displayName = resolveItemDisplayName(t.locale, {
+    name: item.name,
+    nameSource: item.nameSource,
+    displayName: item.displayName,
+    localizedNames: item.localizedNames,
+  });
   return (
     <Pressable onPress={onPress} style={{ flex: 1 }}>
       <View
@@ -90,11 +93,14 @@ function ItemCard({
               numberOfLines={1}
               style={{ fontSize: 14, fontWeight: '600', color: T.ink, flex: 1 }}
             >
-              {item.name}
+              {displayName}
             </Text>
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <StatusPill kind={item.status === 'wearable' ? 'ok' : 'warn'} />
+            <StatusPill
+              kind={item.status === 'wearable' ? 'ok' : 'warn'}
+              label={t.tEnum('status', item.status)}
+            />
             <Text style={{ fontSize: 10, color: T.ink4 }}>{item.color}</Text>
           </View>
         </View>
@@ -104,7 +110,12 @@ function ItemCard({
 }
 
 export function WardrobeListScreen({ navigation }: Props) {
+  const t = useT();
   const [category, setCategory] = useState<ItemCategory | 'all'>('all');
+  const CATEGORIES = CATEGORY_KEYS.map((key) => ({
+    key,
+    label: key === 'all' ? t.t('common.all') : t.tEnum('category', key),
+  }));
   // Poll while any item is still being cut out; give up after ~90s (the worker's
   // reconcile job will flip stragglers to 'failed' and the original photo stays).
   const pollStartRef = useRef<number | null>(null);
@@ -141,20 +152,22 @@ export function WardrobeListScreen({ navigation }: Props) {
   const total = query.data?.total ?? 0;
   const insightChips = [
     {
-      label: '主色调',
+      label: t.t('wardrobe.insights.mainColor'),
       value: insightsQuery.data?.favoriteColor ?? '—',
       meta: insightsQuery.data?.activeRate
         ? `${Math.round(insightsQuery.data.activeRate * 100)}%`
         : '',
     },
     {
-      label: '最常穿',
+      label: t.t('wardrobe.insights.mostWorn'),
       value: topItemsQuery.data?.[0]?.name ?? insightsQuery.data?.mostWornCategory ?? '—',
       meta: topItemsQuery.data?.[0]?.wearCount ? `${topItemsQuery.data[0].wearCount}×` : '',
     },
     {
-      label: '闲置',
-      value: insightsQuery.data ? `${insightsQuery.data.idleCount} 件` : '—',
+      label: t.t('wardrobe.insights.idle'),
+      value: insightsQuery.data
+        ? `${insightsQuery.data.idleCount} ${t.t('wardrobe.itemUnit')}`
+        : '—',
       meta: insightsQuery.data ? `${insightsQuery.data.idleThresholdDays}d+` : '',
     },
   ];
@@ -162,6 +175,7 @@ export function WardrobeListScreen({ navigation }: Props) {
   const renderItem = ({ item }: { item: WardrobeItem }) => (
     <ItemCard
       item={item}
+      t={t}
       onPress={() => navigation.navigate('ItemDetail', { itemId: item.id })}
     />
   );
@@ -182,16 +196,16 @@ export function WardrobeListScreen({ navigation }: Props) {
               }}
             >
               <View>
-                <Text style={{ fontSize: 30, fontWeight: '600', color: T.ink }}>我的衣橱</Text>
+                <Text style={{ fontSize: 30, fontWeight: '600', color: T.ink }}>{t.t('wardrobe.title')}</Text>
                 {query.isSuccess && (
                   <View style={{ flexDirection: 'row', gap: 4, marginTop: 8, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 13, color: T.ink2 }}>已收纳 </Text>
+                    <Text style={{ fontSize: 13, color: T.ink2 }}>{t.t('wardrobe.stored')} </Text>
                     <Text
                       style={{ fontSize: 18, fontWeight: '600', color: T.accent }}
                     >
                       {total}
                     </Text>
-                    <Text style={{ fontSize: 13, color: T.ink2 }}> 件</Text>
+                    <Text style={{ fontSize: 13, color: T.ink2 }}> {t.t('wardrobe.itemUnit')}</Text>
                   </View>
                 )}
               </View>
@@ -226,7 +240,7 @@ export function WardrobeListScreen({ navigation }: Props) {
                 }}
               >
                 <SystemIcon name="search" size={17} color={T.ink3} />
-                <Text style={{ color: T.ink4, fontSize: 14 }}>搜索衣物 · 颜色 · 品类</Text>
+                <Text style={{ color: T.ink4, fontSize: 14 }}>{t.t('wardrobe.searchPlaceholder')}</Text>
               </View>
               <Pressable
                 style={{
@@ -242,7 +256,7 @@ export function WardrobeListScreen({ navigation }: Props) {
                 }}
               >
                 <SystemIcon name="slider" size={16} color={T.ink2} />
-                <Text style={{ fontSize: 13, color: T.ink2, fontWeight: '600' }}>筛选</Text>
+                <Text style={{ fontSize: 13, color: T.ink2, fontWeight: '600' }}>{t.t('wardrobe.filter')}</Text>
               </Pressable>
             </View>
 
@@ -292,10 +306,10 @@ export function WardrobeListScreen({ navigation }: Props) {
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <SystemIcon name="chart" size={18} color={T.ink2} />
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: T.ink }}>本周穿搭洞察</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: T.ink }}>{t.t('wardrobe.insights')}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                  <Text style={{ fontSize: 11, color: T.ink3 }}>查看全部</Text>
+                  <Text style={{ fontSize: 11, color: T.ink3 }}>{t.t('common.viewAll')}</Text>
                   <SystemIcon name="chevronRight" size={13} color={T.ink3} />
                 </View>
               </View>

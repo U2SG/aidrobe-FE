@@ -8,15 +8,19 @@ import { ProcessingOverlay } from '@/components/feedback/ProcessingOverlay';
 import { SaveBar } from '@/components/feedback/SaveBar';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
 import { SystemIcon } from '@/components/ui/SystemIcon';
+import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { invalidateAfterConfirmImport } from '@/state/invalidation';
 import { phaseFromFlags } from '@/state/operationState';
 import { useImportDraftStore } from '@/store/importDraft';
 import { colors, shadow } from '@/theme/design';
-import type { ConfirmImportTaskBody, ItemCategory } from '@/types/api';
+import type { ConfirmImportTaskBody, FitIntent, ItemCategory } from '@/types/api';
 import type { WardrobeStackParamList } from '@/types/navigation';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'ImportConfirm'>;
+
+const CATEGORY_KEYS: ItemCategory[] = ['top', 'bottom', 'outerwear', 'dress', 'shoes', 'accessory'];
+const FIT_KEYS: FitIntent[] = ['fitted', 'regular', 'relaxed', 'oversized'];
 
 const T = {
   bg: colors.groupedBackground,
@@ -34,23 +38,10 @@ const T = {
   shadowSm: shadow.soft,
 };
 
-const CATEGORY_OPTIONS: { id: ItemCategory; label: string }[] = [
-  { id: 'top', label: '上衣' },
-  { id: 'bottom', label: '下装' },
-  { id: 'outerwear', label: '外套' },
-  { id: 'dress', label: '连衣裙' },
-  { id: 'shoes', label: '鞋' },
-  { id: 'accessory', label: '配饰' },
-];
-
-const FIT_OPTIONS = [
-  { id: 'fitted', label: 'fitted' },
-  { id: 'regular', label: 'regular' },
-  { id: 'relaxed', label: 'relaxed' },
-  { id: 'oversized', label: 'oversized' },
-] as const;
-
 export function ImportConfirmScreen({ navigation, route }: Props) {
+  const { t, tEnum } = useT();
+  const CATEGORY_OPTIONS = CATEGORY_KEYS.map((id) => ({ id, label: tEnum('category', id) }));
+  const FIT_OPTIONS = FIT_KEYS.map((id) => ({ id, label: tEnum('fitIntent', id) }));
   const { taskId, queue, queueIndex } = route.params;
   // Multi-image batch: confirm this task, then advance to the next one.
   const queueLen = queue?.length ?? 0;
@@ -113,7 +104,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
 
   const data = query.data;
   if (!data || data.status !== 'waiting_confirm') {
-    return <ProcessingOverlay title="正在识别衣物" />;
+    return <ProcessingOverlay title={t('import.recognizing')} />;
   }
 
   const save = async () => {
@@ -157,7 +148,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
         <Pressable onPress={() => navigation.popToTop()}>
           <SystemIcon name="x" size={22} color={T.ink2} />
         </Pressable>
-        <Text style={{ fontSize: 13, color: T.ink2 }}>{`识别 ${current} / ${total}`}</Text>
+        <Text style={{ fontSize: 13, color: T.ink2 }}>{t('import.progress', { current, total })}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -168,12 +159,12 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
         keyboardShouldPersistTaps="handled"
       >
         <Text style={{ fontSize: 26, fontWeight: '600', color: T.ink, lineHeight: 32, marginBottom: 6 }}>
-          确认一下识别结果
+          {t('import.confirmTitle')}
         </Text>
         <Text style={{ fontSize: 12, color: T.ink3, marginBottom: 18 }}>
           {confidencePct !== null
-            ? `有 ${confidencePct}% 把握，但你最了解自己的衣服。`
-            : '识别仅供参考，你最了解自己的衣服。'}
+            ? t('import.confidence', { pct: confidencePct })
+            : t('import.confidenceUnknown')}
         </Text>
 
         {/* Image */}
@@ -212,7 +203,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
             >
               <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#9ED9A1' }} />
               <Text style={{ fontSize: 10, color: '#fff', fontFamily: 'monospace', letterSpacing: 0.5 }}>
-                {`AI · ${confidencePct}% 置信度`}
+                {t('import.confidenceBadge', { pct: confidencePct })}
               </Text>
             </View>
           )}
@@ -220,18 +211,18 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
 
         {/* Name field */}
         <View style={{ backgroundColor: T.card, borderRadius: 14, padding: 14, marginBottom: 12, ...T.shadowSm }}>
-          <Text style={{ fontSize: 11, color: T.ink3, marginBottom: 6 }}>名称</Text>
+          <Text style={{ fontSize: 11, color: T.ink3, marginBottom: 6 }}>{t('import.fieldName')}</Text>
           <TextInput
             value={form.name}
             onChangeText={(name) => setForm((c) => ({ ...c, name }))}
-            placeholder="给它起个名字"
+            placeholder={t('import.namePlaceholder')}
             placeholderTextColor={T.ink4}
             style={{ fontSize: 17, fontWeight: '600', color: T.ink }}
           />
         </View>
 
         {/* Category */}
-        <FieldGroup label="品类">
+        <FieldGroup label={t('import.fieldCategory')}>
           {CATEGORY_OPTIONS.map((o) => (
             <ChoiceChip
               key={o.id}
@@ -244,18 +235,18 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
 
         {/* Color */}
         <View style={{ backgroundColor: T.card, borderRadius: 14, padding: 14, marginBottom: 12, ...T.shadowSm }}>
-          <Text style={{ fontSize: 11, color: T.ink3, marginBottom: 6 }}>主色</Text>
+          <Text style={{ fontSize: 11, color: T.ink3, marginBottom: 6 }}>{t('import.fieldColor')}</Text>
           <TextInput
             value={form.color}
             onChangeText={(color) => setForm((c) => ({ ...c, color }))}
-            placeholder="例如：白色、米白、黑"
+            placeholder={t('import.colorPlaceholder')}
             placeholderTextColor={T.ink4}
             style={{ fontSize: 15, color: T.ink }}
           />
         </View>
 
         {/* Fit */}
-        <FieldGroup label="版型">
+        <FieldGroup label={t('import.fieldFit')}>
           {FIT_OPTIONS.map((o) => (
             <ChoiceChip
               key={o.id}
@@ -269,8 +260,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
         {/* Info note */}
         <View style={{ marginTop: 14, padding: 12, backgroundColor: T.cardSoft, borderRadius: 12 }}>
           <Text style={{ fontSize: 12, color: T.ink2, lineHeight: 19 }}>
-            这件会进入「主衣柜」，状态「可穿」。{'\n'}
-            可在衣物详情里随时调整位置、状态、合身度。
+            {t('import.note')}
           </Text>
         </View>
       </ScrollView>
@@ -278,11 +268,11 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
       {/* Sticky save bar: shows pending/error inline; error keeps form intact. */}
       <SaveBar
         phase={savePhase}
-        saveLabel="保存到衣橱"
+        saveLabel={t('import.save')}
         onSave={save}
-        secondaryLabel={inQueue ? '跳过这件' : '不是这件，重拍'}
+        secondaryLabel={inQueue ? t('import.skip') : t('import.reshoot')}
         onSecondary={() => (inQueue ? goNextOrExit() : navigation.popToTop())}
-        errorText="保存失败，你的修改已保留，请重试"
+        errorText={t('import.saveBarError')}
       />
     </View>
   );

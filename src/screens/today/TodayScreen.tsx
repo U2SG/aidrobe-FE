@@ -26,12 +26,16 @@ import topCreamShirt from '@/assets/wardrobe/top-cream-shirt.png';
 import topOatKnit from '@/assets/wardrobe/top-oat-knit.png';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
 import { SystemIcon } from '@/components/ui/SystemIcon';
+import { useT, type UseT } from '@/hooks/useT';
+import type { I18nKey, TParams } from '@/i18n';
 import { useTrack } from '@/hooks/useTrack';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow } from '@/theme/design';
 import type { ItemCategory, OutfitSummary, OutfitVariant, WardrobeItem, WeatherContext } from '@/types/api';
 import type { MainTabsParamList, TodayStackParamList } from '@/types/navigation';
 import WeatherBackdrop from './WeatherBackdrop';
+
+type TFn = (key: I18nKey, params?: TParams) => string;
 
 type Props = CompositeScreenProps<
   NativeStackScreenProps<TodayStackParamList, 'Today'>,
@@ -79,7 +83,6 @@ type GarmentPiece = {
 
 type StrategyPreset = {
   title: string;
-  label: string;
   signal: string;
   icon: 'shield' | 'clock' | 'sparkle';
   pieces: GarmentPiece[];
@@ -100,7 +103,6 @@ const GARMENT_IMAGES: Partial<Record<GarmentKind, ImageSourcePropType>> = {
 const PRESETS: Record<StrategyKey, StrategyPreset> = {
   safe: {
     title: '雨天通勤',
-    label: '稳',
     signal: '防潮外层',
     icon: 'shield',
     pieces: [
@@ -114,7 +116,6 @@ const PRESETS: Record<StrategyKey, StrategyPreset> = {
   },
   fast: {
     title: '五分钟出门',
-    label: '快',
     signal: '少翻找',
     icon: 'clock',
     pieces: [
@@ -127,7 +128,6 @@ const PRESETS: Record<StrategyKey, StrategyPreset> = {
   },
   stylish: {
     title: '银蓝冷调',
-    label: '型',
     signal: '轮廓更清晰',
     icon: 'sparkle',
     pieces: [
@@ -207,22 +207,22 @@ function useRemainingMinutes(departureTime: string | null): number {
   return Math.max(0, Math.min(90, diff));
 }
 
-function weatherLabel(condition: string) {
+function weatherLabel(t: TFn, condition: string) {
   const c = condition.toLowerCase();
-  if (c.includes('rain')) return '轻雨';
-  if (c.includes('cloud')) return '多云';
-  if (c.includes('sun') || c.includes('clear')) return '晴';
+  if (c.includes('rain')) return t('today.weather.rain');
+  if (c.includes('cloud')) return t('today.weather.cloud');
+  if (c.includes('sun') || c.includes('clear')) return t('today.weather.sun');
   return condition;
 }
 
-function sceneLabel(scene: string | null) {
+function sceneLabel(t: TFn, scene: string | null) {
   switch (scene) {
     case 'commute':
-      return '通勤';
+      return t('today.scene.commute');
     case 'formal':
-      return '正式';
+      return t('today.scene.formal');
     case 'casual':
-      return '休闲';
+      return t('today.scene.casual');
     default:
       return scene;
   }
@@ -247,19 +247,29 @@ const WX_THEME: Record<WeatherTier, { top: string; bottom: string; ribbon: strin
   cloud: { top: '#F4F3EF', bottom: '#E7E6E0', ribbon: '#ECEBE5', tint: '#94938F' },
 };
 
-function windLabel(weather: WeatherContext): string | null {
+function windLabel(t: TFn, weather: WeatherContext): string | null {
   if (!weather.windDir) return null;
-  return weather.windScale ? `${weather.windDir}${weather.windScale}级` : weather.windDir;
+  return weather.windScale
+    ? t('today.weather.windScale', { dir: weather.windDir, scale: weather.windScale })
+    : weather.windDir;
 }
 
-function climateAdvice(weather: WeatherContext) {
-  if (weatherTier(weather) === 'rain') return '防水鞋面';
-  if (weather.temperatureC >= 28) return '轻薄透气';
-  if (weather.temperatureC <= 12) return '叠穿保温';
-  return '轻外套';
+function climateAdvice(t: TFn, weather: WeatherContext) {
+  if (weatherTier(weather) === 'rain') return t('today.advice.waterproof');
+  if (weather.temperatureC >= 28) return t('today.advice.breathable');
+  if (weather.temperatureC <= 12) return t('today.advice.layer');
+  return t('today.advice.lightJacket');
 }
 
-function WeatherRibbon({ weather, theme }: { weather: WeatherContext; theme: { ribbon: string; tint: string } }) {
+function WeatherRibbon({
+  weather,
+  theme,
+  t,
+}: {
+  weather: WeatherContext;
+  theme: { ribbon: string; tint: string };
+  t: TFn;
+}) {
   const rain = Math.round(weather.rainProbability * 100);
   return (
     <View
@@ -276,12 +286,14 @@ function WeatherRibbon({ weather, theme }: { weather: WeatherContext; theme: { r
       <View style={{ width: 1, height: 92, backgroundColor: theme.tint }} />
       <View style={{ alignItems: 'center', gap: 3 }}>
         <Text style={{ color: theme.tint, fontSize: 11, fontWeight: '700', letterSpacing: 0.8 }}>{rain}%</Text>
-        <Text style={{ color: P.muted, fontSize: 10 }}>rain</Text>
+        <Text style={{ color: P.muted, fontSize: 10 }}>{t('today.weather.rainLabel')}</Text>
       </View>
       <View style={{ alignItems: 'center', gap: 3 }}>
-        <Text style={{ color: P.ink, fontSize: 12, fontWeight: '700' }}>{weatherLabel(weather.condition)}</Text>
+        <Text style={{ color: P.ink, fontSize: 12, fontWeight: '700' }}>{weatherLabel(t, weather.condition)}</Text>
         <Text style={{ color: P.muted, fontSize: 10 }}>
-          {weather.humidity != null ? `湿${weather.humidity}%` : `体感${Math.round(weather.feelsLikeC)}°`}
+          {weather.humidity != null
+            ? t('today.weather.humidity', { value: weather.humidity })
+            : t('today.weather.feelsLike', { value: Math.round(weather.feelsLikeC) })}
         </Text>
       </View>
     </View>
@@ -291,21 +303,23 @@ function WeatherRibbon({ weather, theme }: { weather: WeatherContext; theme: { r
 function StrategyRail({
   active,
   onChange,
+  tEnum,
 }: {
   active: StrategyKey;
   onChange: (key: StrategyKey) => void;
+  tEnum: UseT['tEnum'];
 }) {
   return (
     <View style={{ flexDirection: 'row', gap: 8 }}>
       {STRATEGY_ORDER.map((key) => {
-        const preset = PRESETS[key];
         const selected = key === active;
+        const variantLabel = tEnum('variant', key);
         return (
           <Pressable
             key={key}
             onPress={() => onChange(key)}
             accessibilityRole="button"
-            accessibilityLabel={preset.title}
+            accessibilityLabel={variantLabel}
             style={{
               height: 40,
               minWidth: 58,
@@ -318,7 +332,7 @@ function StrategyRail({
               justifyContent: 'center',
             }}
           >
-            <Text style={{ color: selected ? '#fff' : P.muted, fontSize: 13, fontWeight: '700' }}>{preset.label}</Text>
+            <Text style={{ color: selected ? '#fff' : P.muted, fontSize: 13, fontWeight: '700' }}>{variantLabel}</Text>
           </Pressable>
         );
       })}
@@ -418,7 +432,7 @@ function OutfitCanvas({ pieces }: { pieces: GarmentPiece[] }) {
   );
 }
 
-function EmptyCanvas() {
+function EmptyCanvas({ t }: { t: TFn }) {
   return (
     <View
       style={{
@@ -443,9 +457,9 @@ function EmptyCanvas() {
       />
       <SystemIcon name="sparkle" size={22} color={P.faint} strokeWidth={1.8} />
       <Text style={{ color: P.muted, fontSize: 13, fontWeight: '700', marginTop: 10 }}>
-        这套暂时搭不出来
+        {t('today.cantBuild')}
       </Text>
-      <Text style={{ color: P.faint, fontSize: 11, marginTop: 4 }}>补几件单品就能解锁更多搭配</Text>
+      <Text style={{ color: P.faint, fontSize: 11, marginTop: 4 }}>{t('today.unlockMore')}</Text>
     </View>
   );
 }
@@ -456,12 +470,14 @@ function CompactCandidate({
   selected,
   empty,
   onPress,
+  t,
 }: {
   preset: StrategyPreset;
   pieces: GarmentPiece[];
   selected: boolean;
   empty?: boolean;
   onPress: () => void;
+  t: TFn;
 }) {
   return (
     <Pressable
@@ -485,7 +501,7 @@ function CompactCandidate({
         }}
       >
         {empty ? (
-          <Text style={{ color: P.faint, fontSize: 11, fontWeight: '700' }}>暂无</Text>
+          <Text style={{ color: P.faint, fontSize: 11, fontWeight: '700' }}>{t('today.candidateNone')}</Text>
         ) : (
         pieces.slice(0, 3).map((piece, index) => {
           const image = piece.imageUrl ? { uri: piece.imageUrl } : GARMENT_IMAGES[piece.kind];
@@ -517,13 +533,16 @@ function CompactCandidate({
         {preset.title}
       </Text>
       <Text numberOfLines={1} style={{ color: P.muted, fontSize: 10, marginTop: 2 }}>
-        {empty ? '补单品解锁' : `${preset.prepMinutes} 分钟 · ${preset.signal}`}
+        {empty
+          ? t('today.candidateUnlock')
+          : t('today.candidateMeta', { minutes: preset.prepMinutes, signal: preset.signal })}
       </Text>
     </Pressable>
   );
 }
 
 export function TodayScreen({ navigation }: Props) {
+  const { t, tEnum } = useT();
   const [strategy, setStrategy] = useState<StrategyKey>('safe');
   const { width, height } = useWindowDimensions();
   const track = useTrack();
@@ -577,11 +596,11 @@ export function TodayScreen({ navigation }: Props) {
     mutationFn: () => refreshTodayRecommendation('commute'),
     onSuccess: (data) => {
       qc.setQueryData(['todayRecommendation'], data);
-      showToast({ message: '已换一套', kind: 'success' });
+      showToast({ message: t('today.swapped'), kind: 'success' });
     },
     onError: (err: { response?: { status?: number } }) => {
       if (err?.response?.status === 429) {
-        showToast({ message: '今天的刷新次数用完了', kind: 'error' });
+        showToast({ message: t('today.refreshExhausted'), kind: 'error' });
       }
     },
   });
@@ -603,11 +622,11 @@ export function TodayScreen({ navigation }: Props) {
   const departureTime = settingsQuery.data?.departureTime ?? null;
   const remaining = useRemainingMinutes(departureTime);
   const weather = todayQuery.data?.context?.weather ?? null;
-  const scene = sceneLabel(todayQuery.data?.context?.scene ?? null);
+  const scene = sceneLabel(t, todayQuery.data?.context?.scene ?? null);
   const tier = weather ? weatherTier(weather) : null;
   const wxTheme = tier ? WX_THEME[tier] : null;
   const candidateMeta = weather
-    ? [weather.locationName, windLabel(weather)].filter(Boolean).join(' · ') || scene
+    ? [weather.locationName, windLabel(t, weather)].filter(Boolean).join(' · ') || scene
     : scene;
   const preset = PRESETS[strategy];
   const apiOutfit = outfitsByKey.get(strategy);
@@ -619,9 +638,9 @@ export function TodayScreen({ navigation }: Props) {
   const activeIsEmpty = hasAnyReal && !apiOutfit;
   const guidanceText = todayQuery.data?.guidanceText ?? null;
   const visualPieces = resolveOutfitPieces(apiOutfit, preset, itemById);
-  const title = activeIsEmpty ? '暂无该方案' : apiOutfit?.title || preset.title;
+  const title = activeIsEmpty ? t('today.noVariant') : apiOutfit?.title || preset.title;
   const outfitId = apiOutfit?.id ?? 'local-showcase';
-  const timeHint = remaining > 0 ? `余 ${remaining} 分钟` : '现在出门';
+  const timeHint = remaining > 0 ? t('today.minutesLeft', { count: remaining }) : t('today.leaveNow');
 
   const riseAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -654,11 +673,11 @@ export function TodayScreen({ navigation }: Props) {
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text style={{ color: P.faint, fontSize: 11, fontWeight: '800', letterSpacing: 2.4 }}>AIDROBE</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <StrategyRail active={strategy} onChange={setStrategy} />
+            <StrategyRail active={strategy} onChange={setStrategy} tEnum={tEnum} />
             <Pressable
               onPress={() => navigation.navigate('OutfitCalendar')}
               accessibilityRole="button"
-              accessibilityLabel="打开穿搭日历"
+              accessibilityLabel={t('today.openCalendar')}
               style={{
                 width: 40,
                 height: 40,
@@ -683,10 +702,10 @@ export function TodayScreen({ navigation }: Props) {
           }}
         >
           <View style={{ flexDirection: 'row', gap: 14, alignItems: 'stretch' }}>
-            {weather && wxTheme ? <WeatherRibbon weather={weather} theme={wxTheme} /> : null}
+            {weather && wxTheme ? <WeatherRibbon weather={weather} theme={wxTheme} t={t} /> : null}
 
             <View style={{ flex: 1 }}>
-              {activeIsEmpty ? <EmptyCanvas /> : <OutfitCanvas pieces={visualPieces} />}
+              {activeIsEmpty ? <EmptyCanvas t={t} /> : <OutfitCanvas pieces={visualPieces} />}
             </View>
           </View>
 
@@ -708,8 +727,8 @@ export function TodayScreen({ navigation }: Props) {
                 </Text>
                 <Text numberOfLines={2} style={{ color: P.muted, fontSize: 12, lineHeight: 17, marginTop: 4 }}>
                   {activeIsEmpty
-                    ? '这套需要更多单品才能搭出来'
-                    : [weather ? climateAdvice(weather) : null, preset.signal, timeHint]
+                    ? t('today.needMoreItems')
+                    : [weather ? climateAdvice(t, weather) : null, preset.signal, timeHint]
                         .filter(Boolean)
                         .join(' · ')}
                 </Text>
@@ -727,7 +746,7 @@ export function TodayScreen({ navigation }: Props) {
                 >
                   <SystemIcon name={preset.icon} size={18} color={P.sage} strokeWidth={2.1} />
                   <Text style={{ color: P.sage, fontSize: 9, fontWeight: '800', marginTop: 1 }}>
-                    {preset.prepMinutes}m
+                    {t('today.prepMinutes', { minutes: preset.prepMinutes })}
                   </Text>
                 </View>
               )}
@@ -748,14 +767,14 @@ export function TodayScreen({ navigation }: Props) {
                 })}
               >
                 <Text style={{ color: activeIsEmpty ? P.faint : '#fff', fontSize: 14, fontWeight: '800' }}>
-                  穿这套
+                  {t('today.wearThis')}
                 </Text>
               </Pressable>
               <Pressable
                 onPress={handleRefresh}
                 disabled={refreshMutation.isPending}
                 accessibilityRole="button"
-                accessibilityLabel="换一套"
+                accessibilityLabel={t('today.swapAnother')}
                 style={{
                   width: 48,
                   height: 48,
@@ -772,7 +791,7 @@ export function TodayScreen({ navigation }: Props) {
                 onPress={activeIsEmpty ? undefined : () => navigation.navigate('OutfitDetail', { outfitId })}
                 disabled={activeIsEmpty}
                 accessibilityRole="button"
-                accessibilityLabel="查看详情"
+                accessibilityLabel={t('today.viewDetail')}
                 style={{
                   width: 48,
                   height: 48,
@@ -791,7 +810,7 @@ export function TodayScreen({ navigation }: Props) {
 
         <View style={{ marginTop: 18 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <Text style={{ color: P.ink, fontSize: 13, fontWeight: '800' }}>候选</Text>
+            <Text style={{ color: P.ink, fontSize: 13, fontWeight: '800' }}>{t('today.candidates')}</Text>
             {candidateMeta ? (
               <Text style={{ color: P.faint, fontSize: 10, fontWeight: '700', letterSpacing: 1 }}>{candidateMeta}</Text>
             ) : null}
@@ -805,6 +824,7 @@ export function TodayScreen({ navigation }: Props) {
                 selected={key === strategy}
                 empty={hasAnyReal && !outfitsByKey.has(key)}
                 onPress={() => setStrategy(key)}
+                t={t}
               />
             ))}
           </View>
@@ -836,9 +856,9 @@ export function TodayScreen({ navigation }: Props) {
               borderColor: colors.warning,
             }}
           >
-            <Text style={{ color: colors.label, fontSize: 13, fontWeight: '700' }}>衣橱数据还不够</Text>
+            <Text style={{ color: colors.label, fontSize: 13, fontWeight: '700' }}>{t('today.notEnoughData')}</Text>
             <Text style={{ color: colors.secondaryLabel, fontSize: 12, lineHeight: 18, marginTop: 4 }}>
-              先补几件上衣、下装和鞋，推荐会更准。
+              {t('today.notEnoughData.hint')}
             </Text>
           </View>
         ) : null}

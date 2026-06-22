@@ -46,11 +46,15 @@ export type FitFeedbackType =
 
 export type FitScene = 'commute' | 'formal' | 'casual' | 'date' | 'travel';
 
+// User language preference (BE#30). 'system' defers to the device locale.
+export type LocalePref = 'zh-CN' | 'en-US' | 'system';
+
 export interface UserSettings {
   departureTime: string | null;
   deviceToken?: string | null;
   pushEnabled?: boolean | null;
   location?: string | null;
+  locale?: LocalePref | null;
 }
 
 export interface ServerUserSettings {
@@ -58,6 +62,7 @@ export interface ServerUserSettings {
   device_token?: string | null;
   push_enabled?: boolean | null;
   location?: string | null;
+  locale?: string | null;
 }
 
 export interface UpdateUserSettingsBody {
@@ -65,6 +70,7 @@ export interface UpdateUserSettingsBody {
   deviceToken?: string | null;
   pushEnabled?: boolean | null;
   location?: string | null;
+  locale?: LocalePref | null;
 }
 
 // V4 item cutout lifecycle. `queued` → show original photo + "精修中" badge;
@@ -75,6 +81,11 @@ export type CutoutStatus = 'skipped' | 'queued' | 'ready' | 'failed';
 export interface WardrobeItem {
   id: string;
   name: string;
+  // BE#30 (optional; server may omit on older deployments). When present these
+  // drive the localized display-name fallback (see resolveItemDisplayName).
+  nameSource?: string | null;
+  displayName?: string | null;
+  localizedNames?: Record<string, string> | null;
   category: ItemCategory;
   color: string;
   imageUrl: string | null;
@@ -103,6 +114,11 @@ export interface WardrobeItem {
 export interface ServerWardrobeItem {
   item_id: string;
   title: string;
+  // BE#30 localization fields (optional — older deployments omit them).
+  name_source?: string | null;
+  display_name?: string | null;
+  canonical_name?: string | null;
+  localized_names?: Record<string, string> | null;
   category: ItemCategory;
   color_main: string;
   status: ItemStatus;
@@ -663,6 +679,8 @@ export interface CreateImportTaskBody {
   sourceType: ImportSourceType;
   imageUrl?: string;
   sourceUrl?: string;
+  // BE#30: BCP-47 locale so vision recognition names come back localized.
+  locale?: string;
 }
 
 export interface ConfirmImportTaskBody {
