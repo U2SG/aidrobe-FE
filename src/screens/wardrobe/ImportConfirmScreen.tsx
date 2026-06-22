@@ -4,13 +4,14 @@ import { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { confirmImportTask, getImportTask } from '@/api/importTasks';
-import { Button } from '@/components/ui/Button';
+import { ProcessingOverlay } from '@/components/feedback/ProcessingOverlay';
+import { SaveBar } from '@/components/feedback/SaveBar';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
-import { SiriOrb } from '@/components/ui/SiriOrb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useTrack } from '@/hooks/useTrack';
+import { invalidateAfterConfirmImport } from '@/state/invalidation';
+import { phaseFromFlags } from '@/state/operationState';
 import { useImportDraftStore } from '@/store/importDraft';
-import { useToastStore } from '@/store/toast';
 import { colors, shadow } from '@/theme/design';
 import type { ConfirmImportTaskBody, ItemCategory } from '@/types/api';
 import type { WardrobeStackParamList } from '@/types/navigation';
@@ -68,7 +69,6 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
   const qc = useQueryClient();
   const resetDraft = useImportDraftStore((state) => state.reset);
   const localImageUri = useImportDraftStore((state) => state.localImageUri);
-  const showToast = useToastStore((state) => state.show);
   const track = useTrack();
 
   const query = useQuery({
@@ -84,6 +84,10 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
   const [form, setForm] = useState<ConfirmImportTaskBody>({ name: '', category: 'top', color: '' });
   const [selectedFit, setSelectedFit] = useState('regular');
   const [saving, setSaving] = useState(false);
+  // Surfaces save failure inline (in the SaveBar) instead of a 2.5s toast that
+  // vanishes. The edited `form` state is never touched on failure, so retrying
+  // resubmits the same content with no re-typing.
+  const [saveFailed, setSaveFailed] = useState(false);
   // Synchronous gate: `saving` state only disables the button after a re-render,
   // so two taps in the same frame can both fire confirmImportTask -> duplicate
   // item. The ref blocks the second call immediately, before React re-renders.
@@ -109,32 +113,32 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
 
   const data = query.data;
   if (!data || data.status !== 'waiting_confirm') {
-    return (
-      <View style={{ flex: 1, backgroundColor: T.bg, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-        <SiriOrb size={120} />
-        <Text style={{ fontSize: 15, color: T.ink2 }}>正在识别衣物</Text>
-      </View>
-    );
+    return <ProcessingOverlay title="正在识别衣物" />;
   }
 
   const save = async () => {
     if (savingRef.current) return;
     savingRef.current = true;
     setSaving(true);
+    setSaveFailed(false);
     try {
       await confirmImportTask(taskId, form);
       track('item_saved', { taskId });
-      qc.invalidateQueries({ queryKey: ['wardrobeItems'] });
-      qc.invalidateQueries({ queryKey: ['todayRecommendation'] });
+      // confirm import → wardrobeItems, todayRecommendation (see state/invalidation).
+      invalidateAfterConfirmImport(qc);
       resetDraft();
       goNextOrExit();
     } catch {
-      showToast({ message: '保存失败，请重试', kind: 'error' });
+      // Leave `form` untouched so the user's edits survive; surface the error
+      // inline in the SaveBar instead of a transient toast.
+      setSaveFailed(true);
     } finally {
       savingRef.current = false;
       setSaving(false);
     }
   };
+
+  const savePhase = phaseFromFlags({ pending: saving, failed: saveFailed, busyPhase: 'saving' });
 
   // In batch mode the cached draft uri only matches one task, so prefer the
   // task's own (server) image; single mode keeps the instant local preview.
@@ -271,38 +275,15 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
         </View>
       </ScrollView>
 
-      {/* Sticky CTA */}
-      <View
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          paddingHorizontal: 20,
-          paddingTop: 14,
-          paddingBottom: 36,
-          backgroundColor: T.bg,
-          flexDirection: 'row',
-          gap: 10,
-        }}
-      >
-        <Button
-          variant="outline"
-          size="sm"
-          label={inQueue ? '跳过这件' : '不是这件，重拍'}
-          onPress={() => (inQueue ? goNextOrExit() : navigation.popToTop())}
-          // size="sm" + tighter padding keep the longer label on one line in the
-          // narrow flex:1 slot; minHeight pins it level with the save CTA.
-          style={{ flex: 1, minHeight: 50, paddingHorizontal: 10, borderRadius: 14 }}
-        />
-        <Button
-          variant="primary"
-          label="保存到衣橱"
-          onPress={save}
-          loading={saving}
-          style={{ flex: 2, borderRadius: 14 }}
-        />
-      </View>
+      {/* Sticky save bar: shows pending/error inline; error keeps form intact. */}
+      <SaveBar
+        phase={savePhase}
+        saveLabel="保存到衣橱"
+        onSave={save}
+        secondaryLabel={inQueue ? '跳过这件' : '不是这件，重拍'}
+        onSecondary={() => (inQueue ? goNextOrExit() : navigation.popToTop())}
+        errorText="保存失败，你的修改已保留，请重试"
+      />
     </View>
   );
 }
