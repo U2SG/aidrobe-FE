@@ -130,6 +130,9 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'import.reshoot': "Not this — reshoot",
   'import.saveBarError': 'Save failed; your edits are kept, please retry',
   'import.saveFailed': 'Save failed, please retry',
+  'import.multiTitle': '{count} items detected',
+  'import.multiSubtitle': 'Pick the pieces to add — edit each as needed',
+  'import.saveSelected': 'Save {count} selected',
 
   // --- Ask Aidrobe ---------------------------------------------------------
   'ask.title': 'Ask Aidrobe',

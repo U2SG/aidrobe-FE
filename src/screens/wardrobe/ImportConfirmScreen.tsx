@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
-import { confirmImportTask, getImportTask } from '@/api/importTasks';
+import { confirmImportTask, confirmImportTaskItems, getImportTask } from '@/api/importTasks';
 import { ProcessingOverlay } from '@/components/feedback/ProcessingOverlay';
 import { SaveBar } from '@/components/feedback/SaveBar';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
@@ -14,7 +14,7 @@ import { invalidateAfterConfirmImport } from '@/state/invalidation';
 import { phaseFromFlags } from '@/state/operationState';
 import { useImportDraftStore } from '@/store/importDraft';
 import { colors, shadow } from '@/theme/design';
-import type { ConfirmImportTaskBody, FitIntent, ItemCategory } from '@/types/api';
+import type { ConfirmImportTaskBody, FitIntent, ImportTask, ItemCategory } from '@/types/api';
 import type { WardrobeStackParamList } from '@/types/navigation';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'ImportConfirm'>;
@@ -105,6 +105,21 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
   const data = query.data;
   if (!data || data.status !== 'waiting_confirm') {
     return <ProcessingOverlay title={t('import.recognizing')} />;
+  }
+
+  // BE#24/#25 — one photo can yield multiple candidates. Single (<=1) keeps the
+  // existing form below; multi (>1) shows the batch select/edit + confirm-items.
+  if (data.candidateItems.length > 1) {
+    return (
+      <MultiCandidateConfirm
+        task={data}
+        current={current}
+        total={total}
+        inQueue={inQueue}
+        onClose={() => navigation.popToTop()}
+        onAdvance={goNextOrExit}
+      />
+    );
   }
 
   const save = async () => {
@@ -272,6 +287,200 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
         onSave={save}
         secondaryLabel={inQueue ? t('import.skip') : t('import.reshoot')}
         onSecondary={() => (inQueue ? goNextOrExit() : navigation.popToTop())}
+        errorText={t('import.saveBarError')}
+      />
+    </View>
+  );
+}
+
+type CandidateDraft = {
+  key: string;
+  tempItemId: string | null;
+  selected: boolean;
+  name: string;
+  category: ItemCategory;
+  color: string;
+  imageUrl: string | null;
+};
+
+// BE#24/#25 — batch select + edit + confirm for a single photo that yielded
+// multiple candidates. Unselected candidates are simply not imported.
+function MultiCandidateConfirm({
+  task,
+  current,
+  total,
+  inQueue,
+  onClose,
+  onAdvance,
+}: {
+  task: ImportTask;
+  current: number;
+  total: number;
+  inQueue: boolean;
+  onClose: () => void;
+  onAdvance: () => void;
+}) {
+  const { t, tEnum } = useT();
+  const CATEGORY_OPTIONS = CATEGORY_KEYS.map((id) => ({ id, label: tEnum('category', id) }));
+  const qc = useQueryClient();
+  const track = useTrack();
+  const resetDraft = useImportDraftStore((state) => state.reset);
+
+  const [drafts, setDrafts] = useState<CandidateDraft[]>(() =>
+    task.candidateItems.map((c, i) => ({
+      key: c.tempItemId ?? `idx-${i}`,
+      tempItemId: c.tempItemId,
+      // Default-select the recommended candidates; a candidate with no
+      // temp_item_id can't be batch-confirmed, so it can't be selected.
+      selected: c.shouldImport && c.tempItemId !== null,
+      name: c.name,
+      category: c.category,
+      color: c.colorMain,
+      imageUrl: c.imageUrl,
+    })),
+  );
+  const [saving, setSaving] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
+  const savingRef = useRef(false);
+
+  const update = (key: string, patch: Partial<CandidateDraft>) =>
+    setDrafts((ds) => ds.map((d) => (d.key === key ? { ...d, ...patch } : d)));
+
+  const selectedCount = drafts.filter((d) => d.selected && d.tempItemId !== null).length;
+
+  const save = async () => {
+    if (savingRef.current || selectedCount === 0) return;
+    savingRef.current = true;
+    setSaving(true);
+    setSaveFailed(false);
+    try {
+      await confirmImportTaskItems(
+        task.id,
+        drafts
+          .filter((d) => d.selected && d.tempItemId !== null)
+          .map((d) => ({
+            tempItemId: d.tempItemId as string,
+            title: d.name,
+            category: d.category,
+            color: d.color,
+          })),
+      );
+      track('item_saved', { taskId: task.id, count: selectedCount });
+      // confirm import → wardrobeItems, todayRecommendation.
+      invalidateAfterConfirmImport(qc);
+      resetDraft();
+      onAdvance();
+    } catch {
+      // Keep all edits + selections on failure so retry needs no re-entry.
+      setSaveFailed(true);
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
+
+  const savePhase = phaseFromFlags({ pending: saving, failed: saveFailed, busyPhase: 'saving' });
+
+  return (
+    <View style={{ flex: 1, backgroundColor: T.bg }}>
+      <View style={{ paddingTop: 52, paddingHorizontal: 16, paddingBottom: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Pressable onPress={onClose}>
+          <SystemIcon name="x" size={22} color={T.ink2} />
+        </Pressable>
+        <Text style={{ fontSize: 13, color: T.ink2 }}>{t('import.progress', { current, total })}</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={{ fontSize: 24, fontWeight: '600', color: T.ink, lineHeight: 30, marginBottom: 4 }}>
+          {t('import.multiTitle', { count: drafts.length })}
+        </Text>
+        <Text style={{ fontSize: 12, color: T.ink3, marginBottom: 16 }}>{t('import.multiSubtitle')}</Text>
+
+        {drafts.map((d) => {
+          const disabled = d.tempItemId === null;
+          return (
+            <View
+              key={d.key}
+              style={{ backgroundColor: T.card, borderRadius: 16, padding: 14, marginBottom: 12, opacity: disabled ? 0.5 : 1, ...T.shadowSm }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                <Pressable
+                  onPress={() => !disabled && update(d.key, { selected: !d.selected })}
+                  hitSlop={8}
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 7,
+                    borderWidth: 2,
+                    borderColor: d.selected ? colors.label : T.divider,
+                    backgroundColor: d.selected ? colors.label : 'transparent',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {d.selected ? <SystemIcon name="check" size={14} color={colors.inverse} /> : null}
+                </Pressable>
+                <View style={{ width: 52, height: 52, borderRadius: 10, overflow: 'hidden', backgroundColor: T.cardSoft, alignItems: 'center', justifyContent: 'center' }}>
+                  {d.imageUrl ? (
+                    <Image source={{ uri: d.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  ) : (
+                    <GarmentSvg kind="shirt" size={34} />
+                  )}
+                </View>
+                <TextInput
+                  value={d.name}
+                  onChangeText={(name) => update(d.key, { name })}
+                  editable={!disabled}
+                  placeholder={t('import.namePlaceholder')}
+                  placeholderTextColor={T.ink4}
+                  style={{ flex: 1, fontSize: 16, fontWeight: '600', color: T.ink }}
+                />
+              </View>
+
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                {CATEGORY_OPTIONS.map((o) => (
+                  <ChoiceChip
+                    key={o.id}
+                    active={d.category === o.id}
+                    onPress={() => !disabled && update(d.key, { category: o.id })}
+                    label={o.label}
+                  />
+                ))}
+              </View>
+
+              <View style={{ backgroundColor: T.cardInner, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}>
+                <Text style={{ fontSize: 10, color: T.ink3, marginBottom: 2 }}>{t('import.fieldColor')}</Text>
+                <TextInput
+                  value={d.color}
+                  onChangeText={(color) => update(d.key, { color })}
+                  editable={!disabled}
+                  placeholder={t('import.colorPlaceholder')}
+                  placeholderTextColor={T.ink4}
+                  style={{ fontSize: 14, color: T.ink }}
+                />
+              </View>
+            </View>
+          );
+        })}
+
+        <View style={{ marginTop: 6, padding: 12, backgroundColor: T.cardSoft, borderRadius: 12 }}>
+          <Text style={{ fontSize: 12, color: T.ink2, lineHeight: 19 }}>{t('import.note')}</Text>
+        </View>
+      </ScrollView>
+
+      <SaveBar
+        phase={savePhase}
+        saveLabel={t('import.saveSelected', { count: selectedCount })}
+        saveDisabled={selectedCount === 0}
+        onSave={save}
+        secondaryLabel={inQueue ? t('import.skip') : t('import.reshoot')}
+        onSecondary={inQueue ? onAdvance : onClose}
         errorText={t('import.saveBarError')}
       />
     </View>

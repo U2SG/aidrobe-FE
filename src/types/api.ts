@@ -621,6 +621,18 @@ export type ImportTaskStatus =
   | 'processing'
   | (string & NonNullable<unknown>);
 
+export interface ImportCandidateItem {
+  // null for legacy/single payloads that carry no addressable temp id; such
+  // candidates can't be batch-confirmed (no temp_item_id to reference).
+  tempItemId: string | null;
+  name: string;
+  category: ItemCategory;
+  colorMain: string;
+  confidenceScore?: number;
+  imageUrl: string | null;
+  shouldImport: boolean;
+}
+
 export interface ImportTask {
   id: string;
   status: ImportTaskStatus;
@@ -631,8 +643,26 @@ export interface ImportTask {
     color?: string;
     confidenceScore?: number;
   };
+  // BE#24 — 1..N detected candidates. Always length >= 1 when there's any
+  // candidate (single payloads map to length 1).
+  candidateItems: ImportCandidateItem[];
   errorReason?: ImportFailureReason;
   errorMessage?: string | null;
+}
+
+export interface ServerImportCandidate {
+  temp_item_id?: string | null;
+  title?: string | null;
+  display_name?: string | null;
+  name?: string | null;
+  category: ItemCategory;
+  sub_category?: string | null;
+  color_main: string;
+  confidence_score?: number | null;
+  original_image_url?: string | null;
+  crop_image_url?: string | null;
+  cutout_image_url?: string | null;
+  should_import?: boolean | null;
 }
 
 export interface ServerImportTask {
@@ -645,8 +675,19 @@ export interface ServerImportTask {
     confidence_score: number;
     original_image_url: string;
   } | null;
+  candidate_items?: ServerImportCandidate[];
   error_code?: string | null;
   error_message?: string | null;
+}
+
+export interface ConfirmImportItemBody {
+  tempItemId: string;
+  title: string;
+  category: ItemCategory;
+  color: string;
+  location?: string | null;
+  sizeLabel?: string | null;
+  fitStatus?: FitStatus | null;
 }
 
 export type ImportFailureReason =
