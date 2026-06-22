@@ -1,12 +1,12 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { askAidrobe, getAskHistory } from '@/api/ask';
 import { InlineRetry } from '@/components/feedback/InlineRetry';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
-import { SiriOrb } from '@/components/ui/SiriOrb';
+import { AIOrb } from '@/components/ui/AIOrb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { ItemRefsRow } from '@/components/wardrobe/ItemRefsRow';
 import { useT } from '@/hooks/useT';
@@ -53,7 +53,11 @@ function TurnView({ turn, onRetry, retryBusy }: { turn: Turn; onRetry: () => voi
           <Text style={{ ...type.caption, color: T.accent, fontWeight: '700', letterSpacing: 0.5 }}>AIDROBE</Text>
         </View>
         {turn.pending ? (
-          <ActivityIndicator color={T.accent} style={{ alignSelf: 'flex-start', marginTop: 6 }} />
+          // AI "thinking" presence — the small vivid orb shares the motion
+          // language with the Ask empty state and the import processing wait.
+          <View style={{ alignSelf: 'flex-start', marginTop: 2 }}>
+            <AIOrb variant="thinking" size="sm" />
+          </View>
         ) : (
           <>
             <Text style={{ ...type.body, color: turn.failed ? T.ink3 : T.ink2, lineHeight: 22 }}>
@@ -227,7 +231,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
       >
         {isEmpty ? (
           <View style={{ paddingVertical: 48, alignItems: 'center' }}>
-            <SiriOrb size={140} variant="vivid" />
+            <AIOrb variant="vivid" size={140} />
             <Text style={{ ...type.headline, color: T.ink, marginTop: 12, textAlign: 'center' }}>
               {t('ask.emptyTitle')}
             </Text>

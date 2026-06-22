@@ -1,6 +1,6 @@
 import { ActivityIndicator, Text, View } from 'react-native';
 
-import { SiriOrb } from '@/components/ui/SiriOrb';
+import { AIOrb } from '@/components/ui/AIOrb';
 import { colors, type } from '@/theme/design';
 
 interface Props {
@@ -30,7 +30,7 @@ export function ProcessingOverlay({ title, detail, variant = 'orb' }: Props) {
         backgroundColor: colors.groupedBackground,
       }}
     >
-      {variant === 'orb' ? <SiriOrb size={120} /> : <ActivityIndicator color={colors.accent} />}
+      {variant === 'orb' ? <AIOrb variant="ink" size="lg" /> : <ActivityIndicator color={colors.accent} />}
       <Text style={{ ...type.headline, color: colors.secondaryLabel, textAlign: 'center' }}>{title}</Text>
       {detail ? (
         <Text style={{ ...type.callout, color: colors.tertiaryLabel, textAlign: 'center' }}>{detail}</Text>
