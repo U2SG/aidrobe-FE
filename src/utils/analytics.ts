@@ -18,6 +18,7 @@ export const ANALYTICS_EVENTS = {
   today_viewed: 'today_viewed',
   outfit_detail_viewed: 'outfit_detail_viewed',
   outfit_worn: 'outfit_worn',
+  outfit_shared: 'outfit_shared',
   outfit_feedback_sent: 'outfit_feedback_sent',
   calendar_viewed: 'calendar_viewed',
   outfit_plan_created: 'outfit_plan_created',

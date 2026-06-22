@@ -9,6 +9,7 @@ import { getOutfitVisualAsset } from '@/api/outfitVisual';
 import { createPresignedUpload, uploadToPresigned } from '@/api/uploads';
 import { PrimaryButton } from '@/components/forms/PrimaryButton';
 import { SystemIcon } from '@/components/ui/SystemIcon';
+import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
@@ -39,8 +40,15 @@ const TEMPLATES: { value: OotdPosterTemplate; label: string }[] = [
 const CONSENT_TEXT = '我已知悉海报由第三方 AI 模型生成，效果图仅供参考，可能与实物存在差异。';
 
 export function OotdPosterScreen({ navigation, route }: Props) {
+  const { t } = useT();
   const track = useTrack();
   const showToast = useToastStore((s) => s.show);
+
+  // The look the user came from. API_GAP[FE#15]: the poster API is selfie-based
+  // (background-repaint only) and does NOT consume the outfit, so outfitId can't
+  // drive the generated image. Rather than silently dropping it, we surface the
+  // look's title as context and keep it on the start-analytics event below.
+  const fromOutfitTitle = route.params?.outfitTitle ?? null;
 
   const [phase, setPhase] = useState<Phase>('compose');
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -175,6 +183,18 @@ export function OotdPosterScreen({ navigation, route }: Props) {
             contentContainerStyle={{ padding: spacing.screen, gap: 20 }}
             showsVerticalScrollIndicator={false}
           >
+            {/* Context: the poster is built from the SELFIE, not the chosen
+                outfit board. Make that explicit so a user arriving from an
+                outfit doesn't expect the look itself to be rendered. */}
+            <View style={{ backgroundColor: colors.accentSoft, borderRadius: radius.lg, padding: 14, gap: 4 }}>
+              {fromOutfitTitle ? (
+                <Text style={{ ...type.footnote, color: T.ink2 }}>
+                  {t('ootd.fromOutfit', { title: fromOutfitTitle })}
+                </Text>
+              ) : null}
+              <Text style={{ ...type.footnote, color: T.ink3, lineHeight: 18 }}>{t('ootd.selfieBased')}</Text>
+            </View>
+
             {/* Image picker */}
             <Pressable
               onPress={uploading ? undefined : pickImage}
