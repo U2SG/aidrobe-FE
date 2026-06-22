@@ -127,6 +127,9 @@ export const zhCN = {
   'import.reshoot': '不是这件，重拍',
   'import.saveBarError': '保存失败，你的修改已保留，请重试',
   'import.saveFailed': '保存失败，请重试',
+  'import.multiTitle': '识别到 {count} 件衣物',
+  'import.multiSubtitle': '勾选要加入衣橱的单品，可分别编辑',
+  'import.saveSelected': '保存所选 {count} 件',
 
   // --- Ask Aidrobe ---------------------------------------------------------
   'ask.title': '问 Aidrobe',
