@@ -42,10 +42,14 @@ function toImportTask(task: ServerImportTask): ImportTask {
             },
           ]
         : [];
+  // Seed the single-item form from the first candidate when the legacy
+  // candidate_item is absent (BE#24 can return only candidate_items), so a
+  // single-candidate import doesn't open with a blank name/color/category.
+  const first = candidateItems[0];
   return {
     id: task.task_id,
     status: task.status,
-    imageUrl: task.candidate_item?.original_image_url ?? candidateItems[0]?.imageUrl ?? null,
+    imageUrl: task.candidate_item?.original_image_url ?? first?.imageUrl ?? null,
     recognized: task.candidate_item
       ? {
           name: task.candidate_item.title,
@@ -53,7 +57,14 @@ function toImportTask(task: ServerImportTask): ImportTask {
           color: task.candidate_item.color_main,
           confidenceScore: task.candidate_item.confidence_score,
         }
-      : undefined,
+      : first
+        ? {
+            name: first.name,
+            category: first.category,
+            color: first.colorMain,
+            confidenceScore: first.confidenceScore,
+          }
+        : undefined,
     candidateItems,
     errorReason: task.status === 'failed' ? 'recognition_failed' : undefined,
     errorMessage: task.error_message ?? null,
