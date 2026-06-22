@@ -288,9 +288,12 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
       >
         <Button
           variant="outline"
+          size="sm"
           label={inQueue ? '跳过这件' : '不是这件，重拍'}
           onPress={() => (inQueue ? goNextOrExit() : navigation.popToTop())}
-          style={{ flex: 1, borderRadius: 14 }}
+          // size="sm" + tighter padding keep the longer label on one line in the
+          // narrow flex:1 slot; minHeight pins it level with the save CTA.
+          style={{ flex: 1, minHeight: 50, paddingHorizontal: 10, borderRadius: 14 }}
         />
         <Button
           variant="primary"

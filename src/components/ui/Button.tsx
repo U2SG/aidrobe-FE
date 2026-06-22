@@ -161,7 +161,7 @@ export function Button({
       ) : (
         <>
           {icon}
-          <Text style={{ ...textStyle, fontWeight: v.fontWeight, color: foreground }}>
+          <Text numberOfLines={1} style={{ ...textStyle, fontWeight: v.fontWeight, color: foreground }}>
             {label}
           </Text>
         </>
