@@ -135,6 +135,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'ask.title': 'Ask Aidrobe',
   'ask.relatedItems': 'Related items in your wardrobe',
   'ask.itemFallback': 'Item',
+  'ask.moreItems': '{count} more',
   'ask.placeholder': 'Ask about outfits…',
   'ask.placeholderFocused': 'How should I wear this?',
   'ask.emptyTitle': 'Ask your wardrobe',
