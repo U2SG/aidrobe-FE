@@ -8,6 +8,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View 
 import { getUserSettings, updateUserSettings } from '@/api/settings';
 import { SecondaryButton } from '@/components/forms/SecondaryButton';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
+import { Button } from '@/components/ui/Button';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useAuthStore } from '@/store/auth';
 import { useLocationPrefStore, type LocationMode } from '@/store/locationPref';
@@ -210,21 +211,15 @@ export function SettingsScreen({ navigation }: Props) {
                     color: colors.label,
                   }}
                 />
-                <Pressable
+                <Button
+                  variant="tonal"
+                  size="sm"
+                  label="保存"
                   onPress={saveManualLocation}
                   disabled={!manualDirty || locationBusy}
-                  style={{
-                    height: 44,
-                    paddingHorizontal: 16,
-                    borderRadius: radius.md,
-                    backgroundColor: colors.fill,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    opacity: !manualDirty || locationBusy ? 0.42 : 1,
-                  }}
-                >
-                  <Text style={{ ...type.callout, fontWeight: '600', color: colors.label }}>保存</Text>
-                </Pressable>
+                  loading={locationMutation.isPending}
+                  style={{ minHeight: 44 }}
+                />
               </View>
             )}
           </View>

@@ -2,7 +2,6 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Modal,
   Pressable,
   ScrollView,
@@ -16,6 +15,7 @@ import {
 import { API_BASE_URL, APP_ENV } from '@/api/client';
 import { createImportTask } from '@/api/importTasks';
 import { createPresignedUpload, uploadFileUriToPresigned } from '@/api/uploads';
+import { Button } from '@/components/ui/Button';
 import { SiriOrb } from '@/components/ui/SiriOrb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useTrack } from '@/hooks/useTrack';
@@ -366,17 +366,13 @@ function LinkImportModal({
             onSubmitEditing={onSubmit}
             style={styles.linkInput}
           />
-          <Pressable
+          <Button
+            variant="primary"
+            label="抓取衣物"
             onPress={onSubmit}
-            disabled={submitting}
-            style={({ pressed }) => [styles.modalSubmit, pressed && styles.pressed, submitting && styles.disabled]}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.modalSubmitText}>抓取衣物</Text>
-            )}
-          </Pressable>
+            loading={submitting}
+            style={styles.modalSubmit}
+          />
         </Pressable>
       </Pressable>
     </Modal>
@@ -658,14 +654,6 @@ const styles = StyleSheet.create({
   modalSubmit: {
     minHeight: 54,
     borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: P.black,
-  },
-  modalSubmitText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '800',
   },
   processingBackdrop: {
     flex: 1,

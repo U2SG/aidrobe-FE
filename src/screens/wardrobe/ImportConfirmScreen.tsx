@@ -1,9 +1,10 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { confirmImportTask, getImportTask } from '@/api/importTasks';
+import { Button } from '@/components/ui/Button';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
 import { SiriOrb } from '@/components/ui/SiriOrb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
@@ -285,45 +286,19 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
           gap: 10,
         }}
       >
-        <Pressable
+        <Button
+          variant="outline"
+          label={inQueue ? '跳过这件' : '不是这件，重拍'}
           onPress={() => (inQueue ? goNextOrExit() : navigation.popToTop())}
-          style={{
-            flex: 1,
-            height: 50,
-            borderRadius: 14,
-            backgroundColor: 'transparent',
-            borderWidth: 1,
-            borderColor: T.divider,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Text style={{ fontSize: 13, fontWeight: '500', color: T.ink2 }}>
-            {inQueue ? '跳过这件' : '不是这件，重拍'}
-          </Text>
-        </Pressable>
-        <Pressable
+          style={{ flex: 1, borderRadius: 14 }}
+        />
+        <Button
+          variant="primary"
+          label="保存到衣橱"
           onPress={save}
-          disabled={saving}
-          style={({ pressed }) => ({
-            flex: 2,
-            height: 50,
-            borderRadius: 14,
-            backgroundColor: T.ink,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: saving || pressed ? 0.75 : 1,
-          })}
-        >
-          {saving ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <ActivityIndicator size="small" color="#fff" />
-              <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>保存中…</Text>
-            </View>
-          ) : (
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>保存到衣橱</Text>
-          )}
-        </Pressable>
+          loading={saving}
+          style={{ flex: 2, borderRadius: 14 }}
+        />
       </View>
     </View>
   );
