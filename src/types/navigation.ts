@@ -56,7 +56,9 @@ export type DiscoverStackParamList = {
   SenseCheck: undefined;
   StyleInspirations: undefined;
   AddInspiration: undefined;
-  AskAidrobe: { focusedItemId?: string } | undefined;
+  // `focusedItemId` scopes the Ask to one wardrobe item (scope=item). `scope`
+  // lets other entrypoints (e.g. today) flow through; absent → global.
+  AskAidrobe: { focusedItemId?: string; scope?: 'today' } | undefined;
 };
 
 export type MainTabsParamList = {

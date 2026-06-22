@@ -8,10 +8,12 @@ import { InlineRetry } from '@/components/feedback/InlineRetry';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { SiriOrb } from '@/components/ui/SiriOrb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
+import { ItemRefsRow } from '@/components/wardrobe/ItemRefsRow';
 import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { useWardrobeItemNames } from '@/hooks/useWardrobeItemNames';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
+import type { AskItemRefSnapshot, AskScope } from '@/types/api';
 import type { DiscoverStackParamList } from '@/types/navigation';
 import { httpStatus } from '@/utils/http';
 
@@ -22,6 +24,7 @@ type Turn = {
   question: string;
   answer: string | null;
   itemRefs: string[];
+  itemRefSnapshots: AskItemRefSnapshot[];
   pending: boolean;
   failed?: boolean;
 };
@@ -35,27 +38,6 @@ const T = {
   ink3: colors.tertiaryLabel,
   accent: colors.accent,
 };
-
-function ItemRefsRow({ ids }: { ids: string[] }) {
-  const { t } = useT();
-  const nameById = useWardrobeItemNames(ids);
-  if (ids.length === 0) return null;
-  return (
-    <View style={{ marginTop: 10 }}>
-      <Text style={{ ...type.caption, color: T.ink3, marginBottom: 6 }}>{t('ask.relatedItems')}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-        {ids.map((iid) => (
-          <View key={iid} style={{ width: 60 }}>
-            <View style={{ width: 60, height: 60, borderRadius: radius.sm, backgroundColor: T.cardSoft }} />
-            <Text style={{ ...type.caption, color: T.ink2, marginTop: 4 }} numberOfLines={1}>
-              {nameById.get(iid) ?? t('ask.itemFallback')}
-            </Text>
-          </View>
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
 
 function TurnView({ turn, onRetry, retryBusy }: { turn: Turn; onRetry: () => void; retryBusy: boolean }) {
   return (
@@ -82,7 +64,7 @@ function TurnView({ turn, onRetry, retryBusy }: { turn: Turn; onRetry: () => voi
               // user never has to retype.
               <InlineRetry onRetry={onRetry} busy={retryBusy} />
             ) : (
-              <ItemRefsRow ids={turn.itemRefs} />
+              <ItemRefsRow snapshots={turn.itemRefSnapshots} ids={turn.itemRefs} />
             )}
           </>
         )}
@@ -95,6 +77,9 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   const { t, locale } = useT();
   const track = useTrack();
   const focusedItemId = route.params?.focusedItemId;
+  // Scope derives from the entrypoint: focused item → 'item', explicit today
+  // param → 'today', otherwise global discover. No forced scene anymore.
+  const scope: AskScope = focusedItemId ? 'item' : route.params?.scope === 'today' ? 'today' : 'global';
   const focusedNames = useWardrobeItemNames(focusedItemId ? [focusedItemId] : []);
   const focusedName = focusedItemId ? focusedNames.get(focusedItemId) : undefined;
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -103,10 +88,22 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
-    track('ask_viewed', {});
-  }, [track]);
+    track('ask_viewed', { scope });
+  }, [track, scope]);
 
-  const historyQuery = useQuery({ queryKey: ['askHistory'], queryFn: () => getAskHistory(20), retry: 1 });
+  // Key by scope + focusedItemId so focused and global history never share a
+  // cache entry — focused mode must not surface global Asks.
+  const historyQuery = useQuery({
+    queryKey: ['askHistory', scope, focusedItemId ?? null],
+    queryFn: () =>
+      getAskHistory({
+        limit: 20,
+        focusedItemId,
+        scope: focusedItemId ? 'item' : undefined,
+        entrypoint: focusedItemId ? 'item_detail' : undefined,
+      }),
+    retry: 1,
+  });
 
   useEffect(() => {
     if (!seededRef.current && historyQuery.data) {
@@ -117,6 +114,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
           question: h.question,
           answer: h.answer,
           itemRefs: h.itemRefs,
+          itemRefSnapshots: h.itemRefSnapshots,
           pending: false,
         })),
       );
@@ -127,7 +125,6 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     mutationFn: (vars: { tempId: string; question: string }) =>
       askAidrobe({
         question: vars.question,
-        context: { scene: 'commute' },
         focusedItemId,
         locale,
       }),
@@ -137,18 +134,35 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
       setTurns((t) =>
         t.some((x) => x.id === vars.tempId)
           ? t
-          : [...t, { id: vars.tempId, question: vars.question, answer: null, itemRefs: [], pending: true }],
+          : [
+              ...t,
+              {
+                id: vars.tempId,
+                question: vars.question,
+                answer: null,
+                itemRefs: [],
+                itemRefSnapshots: [],
+                pending: true,
+              },
+            ],
       );
     },
     onSuccess: (result, vars) => {
       setTurns((t) =>
         t.map((x) =>
           x.id === vars.tempId
-            ? { id: result.askSessionId, question: x.question, answer: result.answer, itemRefs: result.itemRefs, pending: false }
+            ? {
+                id: result.askSessionId,
+                question: x.question,
+                answer: result.answer,
+                itemRefs: result.itemRefs,
+                itemRefSnapshots: result.itemRefSnapshots,
+                pending: false,
+              }
             : x,
         ),
       );
-      track('ask_sent', {});
+      track('ask_sent', { scope });
     },
     onError: (err, vars) => {
       const code = httpStatus(err);

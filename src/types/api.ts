@@ -715,6 +715,9 @@ export interface AskContext {
   timeLeftMinutes?: number;
 }
 
+// How the Ask screen was entered — drives context/history scoping.
+export type AskScope = 'global' | 'item' | 'today';
+
 export interface AskBody {
   question: string;
   context?: AskContext;
@@ -724,10 +727,30 @@ export interface AskBody {
   locale?: string;
 }
 
+// BE#29 — denormalized snapshot of a referenced wardrobe item, already
+// user-scoped / non-deleted / localized / signed by the server. Lets the
+// client render the refs row without an N+1 of per-item detail fetches.
+export interface ServerAskItemRefSnapshot {
+  item_id: string;
+  name: string;
+  category: ItemCategory;
+  color_main: string;
+  thumbnail_url?: string | null;
+}
+
+export interface AskItemRefSnapshot {
+  itemId: string;
+  name: string;
+  category: ItemCategory;
+  colorMain: string;
+  thumbnailUrl: string | null;
+}
+
 export interface AskResult {
   askSessionId: string;
   answer: string;
   itemRefs: string[];
+  itemRefSnapshots: AskItemRefSnapshot[];
   tokensUsed: number;
 }
 
@@ -735,6 +758,7 @@ export interface ServerAskResponse {
   ask_session_id: string;
   answer: string;
   item_refs: string[];
+  item_ref_snapshots?: ServerAskItemRefSnapshot[];
   tokens_used: number;
 }
 
@@ -743,6 +767,7 @@ export interface AskHistoryEntry {
   question: string;
   answer: string | null;
   itemRefs: string[];
+  itemRefSnapshots: AskItemRefSnapshot[];
   createdAt: string;
 }
 
@@ -751,6 +776,7 @@ export interface ServerAskHistoryItem {
   question: string;
   answer?: string | null;
   item_refs?: string[];
+  item_ref_snapshots?: ServerAskItemRefSnapshot[];
   created_at: string;
 }
 

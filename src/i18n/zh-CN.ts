@@ -132,6 +132,7 @@ export const zhCN = {
   'ask.title': '问 Aidrobe',
   'ask.relatedItems': '衣橱里的相关单品',
   'ask.itemFallback': '单品',
+  'ask.moreItems': '还有 {count} 件',
   'ask.placeholder': '问问搭配…',
   'ask.placeholderFocused': '想怎么搭这件？',
   'ask.emptyTitle': '问问你的衣橱',
