@@ -24,6 +24,7 @@ import bottomIvoryTrousers from '@/assets/wardrobe/bottom-ivory-trousers.png';
 import shoesWhiteCanvas from '@/assets/wardrobe/shoes-white-canvas.png';
 import topCreamShirt from '@/assets/wardrobe/top-cream-shirt.png';
 import topOatKnit from '@/assets/wardrobe/top-oat-knit.png';
+import { AIOrb } from '@/components/ui/AIOrb';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT, type UseT } from '@/hooks/useT';
@@ -31,6 +32,7 @@ import type { I18nKey, TParams } from '@/i18n';
 import { useTrack } from '@/hooks/useTrack';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow } from '@/theme/design';
+import { motion } from '@/theme/motion';
 import type { ItemCategory, OutfitSummary, OutfitVariant, WardrobeItem, WeatherContext } from '@/types/api';
 import type { MainTabsParamList, TodayStackParamList } from '@/types/navigation';
 import WeatherBackdrop from './WeatherBackdrop';
@@ -646,7 +648,7 @@ export function TodayScreen({ navigation }: Props) {
   const riseAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     riseAnim.setValue(0);
-    Animated.timing(riseAnim, { toValue: 1, duration: 420, delay: 40, useNativeDriver: false }).start();
+    Animated.timing(riseAnim, { toValue: 1, duration: motion.duration.slow, delay: 40, useNativeDriver: false }).start();
   }, [riseAnim, strategy]);
 
   useEffect(() => {
@@ -787,10 +789,16 @@ export function TodayScreen({ navigation }: Props) {
                   backgroundColor: P.blueSoft,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  opacity: refreshMutation.isPending ? 0.5 : 1,
+                  opacity: refreshMutation.isPending ? 0.85 : 1,
                 }}
               >
-                <SystemIcon name="refresh" size={18} color={P.blue} strokeWidth={2.1} />
+                {refreshMutation.isPending ? (
+                  // Shared motion language: the small orb signals the swap is in
+                  // flight instead of a static dimmed icon.
+                  <AIOrb variant="thinking" size={24} />
+                ) : (
+                  <SystemIcon name="refresh" size={18} color={P.blue} strokeWidth={2.1} />
+                )}
               </Pressable>
               <Pressable
                 onPress={activeIsEmpty ? undefined : () => navigation.navigate('OutfitDetail', { outfitId })}

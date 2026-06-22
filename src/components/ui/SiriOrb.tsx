@@ -84,18 +84,40 @@ half4 main(float2 fragCoord){
 if (!source) throw new Error('SiriOrb: failed to compile runtime shader');
 const effect = source;
 
-export function SiriOrb({ size = 160, variant = 'ink' }: { size?: number; variant?: SiriOrbVariant }) {
+export function SiriOrb({
+  size = 160,
+  variant = 'ink',
+  paused = false,
+}: {
+  size?: number;
+  variant?: SiriOrbVariant;
+  /**
+   * Freeze the internal churn at a fixed, pleasant frame instead of animating.
+   * Used by AIOrb's reduce-motion fallback — the orb still renders its full
+   * glass/ink look, it just doesn't move.
+   */
+  paused?: boolean;
+}) {
   const clock = useClock(); // ms, driven on the UI thread
-  const uniforms = useDerivedValue(() => ({
+  const animated = useDerivedValue(() => ({
     u_time: clock.value / 1000,
     u_resolution: [size, size],
     u_vivid: variant === 'vivid' ? 1 : 0,
   }));
+  // When paused (reduce-motion), feed the Canvas a CONSTANT uniforms object so
+  // it never subscribes to the clock — the orb renders its full look at a fixed,
+  // pleasant frame with zero per-frame shader repaints (no GPU burn). The
+  // animated value still ticks on the UI thread but nothing renders it.
+  const staticUniforms = {
+    u_time: 6.2,
+    u_resolution: [size, size],
+    u_vivid: variant === 'vivid' ? 1 : 0,
+  };
 
   return (
     <Canvas style={{ width: size, height: size }}>
       <Fill>
-        <Shader source={effect} uniforms={uniforms} />
+        <Shader source={effect} uniforms={paused ? staticUniforms : animated} />
       </Fill>
     </Canvas>
   );

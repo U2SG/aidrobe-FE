@@ -8,7 +8,15 @@ export type SiriOrbVariant = 'ink' | 'vivid';
 // bundle. Web isn't the primary target (native Android), so render a static,
 // dependency-free orb that keeps the same footprint. Metro picks this `.web.tsx`
 // over `SiriOrb.tsx` automatically.
-export function SiriOrb({ size = 160, variant = 'ink' }: { size?: number; variant?: SiriOrbVariant }) {
+export function SiriOrb({
+  size = 160,
+  variant = 'ink',
+}: {
+  size?: number;
+  variant?: SiriOrbVariant;
+  /** Accepted for parity with the native orb; the web fallback is always static. */
+  paused?: boolean;
+}) {
   const body = variant === 'vivid' ? '#7E6BD6' : '#8C8B8E';
   const halo = variant === 'vivid' ? 'rgba(126,107,214,0.28)' : 'rgba(140,139,142,0.22)';
   const inner = variant === 'vivid' ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.42)';
