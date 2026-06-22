@@ -42,17 +42,9 @@ export function SettingsScreen({ navigation }: Props) {
 
   const langPref = useLocalePrefStore((s) => s.preference);
   const setLangPref = useLocalePrefStore((s) => s.setPreference);
-  // Adopt the server's stored locale on fresh load (only when the local store is
-  // still at its default 'system' — never clobber an explicit local choice).
-  const serverLocale = settingsQuery.data?.locale ?? null;
-  useEffect(() => {
-    if (serverLocale && langPref === 'system' && serverLocale !== 'system') {
-      setLangPref(serverLocale);
-    }
-    // Run only when the server value arrives; deliberately not depending on
-    // langPref so a later manual switch back to 'system' isn't re-overwritten.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverLocale]);
+  // Server→local locale adoption runs app-wide at startup via useLocaleSync
+  // (mounted in MainTabs), so every tab reflects the saved language on fresh
+  // load — not just this screen.
 
   const languageMutation = useMutation({
     mutationFn: (locale: LocalePref) => updateUserSettings({ locale }),

@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import { SystemIcon } from '@/components/ui/SystemIcon';
+import { useLocaleSync } from '@/hooks/useLocaleSync';
 import { useLocationSync } from '@/hooks/useLocationSync';
 import { colors, type } from '@/theme/design';
 import type { MainTabsParamList } from '@/types/navigation';
@@ -29,6 +30,7 @@ function TabIcon({
 }
 
 export function MainTabs() {
+  useLocaleSync();
   useLocationSync();
   return (
     <Tabs.Navigator

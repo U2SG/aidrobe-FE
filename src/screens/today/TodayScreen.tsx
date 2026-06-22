@@ -82,8 +82,8 @@ type GarmentPiece = {
 };
 
 type StrategyPreset = {
-  title: string;
-  signal: string;
+  // Display copy (title/signal) is sourced from i18n (today.preset.<key>.*);
+  // the preset only carries the visual + timing showcase data.
   icon: 'shield' | 'clock' | 'sparkle';
   pieces: GarmentPiece[];
   prepMinutes: number;
@@ -102,8 +102,6 @@ const GARMENT_IMAGES: Partial<Record<GarmentKind, ImageSourcePropType>> = {
 
 const PRESETS: Record<StrategyKey, StrategyPreset> = {
   safe: {
-    title: '雨天通勤',
-    signal: '防潮外层',
     icon: 'shield',
     pieces: [
       { kind: 'shirt', x: 8, y: 14, scale: 1.12, rotate: '-7deg' },
@@ -115,8 +113,6 @@ const PRESETS: Record<StrategyKey, StrategyPreset> = {
     reason: '深色外层压住雨天湿冷感，鞋面更好打理。',
   },
   fast: {
-    title: '五分钟出门',
-    signal: '少翻找',
     icon: 'clock',
     pieces: [
       { kind: 'sweater', x: 28, y: 18, scale: 1.22, rotate: '-4deg' },
@@ -127,8 +123,6 @@ const PRESETS: Record<StrategyKey, StrategyPreset> = {
     reason: '只拿高频单品，减少搭配决策。',
   },
   stylish: {
-    title: '银蓝冷调',
-    signal: '轮廓更清晰',
     icon: 'sparkle',
     pieces: [
       { kind: 'shirt', x: 2, y: 22, scale: 1.08, rotate: '-8deg' },
@@ -466,6 +460,7 @@ function EmptyCanvas({ t }: { t: TFn }) {
 
 function CompactCandidate({
   preset,
+  strategyKey,
   pieces,
   selected,
   empty,
@@ -473,6 +468,7 @@ function CompactCandidate({
   t,
 }: {
   preset: StrategyPreset;
+  strategyKey: StrategyKey;
   pieces: GarmentPiece[];
   selected: boolean;
   empty?: boolean;
@@ -530,12 +526,15 @@ function CompactCandidate({
         )}
       </View>
       <Text numberOfLines={1} style={{ color: P.ink, fontSize: 13, fontWeight: '700', marginTop: 4 }}>
-        {preset.title}
+        {t(`today.preset.${strategyKey}.title`)}
       </Text>
       <Text numberOfLines={1} style={{ color: P.muted, fontSize: 10, marginTop: 2 }}>
         {empty
           ? t('today.candidateUnlock')
-          : t('today.candidateMeta', { minutes: preset.prepMinutes, signal: preset.signal })}
+          : t('today.candidateMeta', {
+              minutes: preset.prepMinutes,
+              signal: t(`today.preset.${strategyKey}.signal`),
+            })}
       </Text>
     </Pressable>
   );
@@ -638,7 +637,9 @@ export function TodayScreen({ navigation }: Props) {
   const activeIsEmpty = hasAnyReal && !apiOutfit;
   const guidanceText = todayQuery.data?.guidanceText ?? null;
   const visualPieces = resolveOutfitPieces(apiOutfit, preset, itemById);
-  const title = activeIsEmpty ? t('today.noVariant') : apiOutfit?.title || preset.title;
+  const title = activeIsEmpty
+    ? t('today.noVariant')
+    : apiOutfit?.title || t(`today.preset.${strategy}.title`);
   const outfitId = apiOutfit?.id ?? 'local-showcase';
   const timeHint = remaining > 0 ? t('today.minutesLeft', { count: remaining }) : t('today.leaveNow');
 
@@ -728,7 +729,11 @@ export function TodayScreen({ navigation }: Props) {
                 <Text numberOfLines={2} style={{ color: P.muted, fontSize: 12, lineHeight: 17, marginTop: 4 }}>
                   {activeIsEmpty
                     ? t('today.needMoreItems')
-                    : [weather ? climateAdvice(t, weather) : null, preset.signal, timeHint]
+                    : [
+                        weather ? climateAdvice(t, weather) : null,
+                        t(`today.preset.${strategy}.signal`),
+                        timeHint,
+                      ]
                         .filter(Boolean)
                         .join(' · ')}
                 </Text>
@@ -820,6 +825,7 @@ export function TodayScreen({ navigation }: Props) {
               <CompactCandidate
                 key={key}
                 preset={PRESETS[key]}
+                strategyKey={key}
                 pieces={resolveOutfitPieces(outfitsByKey.get(key), PRESETS[key], itemById)}
                 selected={key === strategy}
                 empty={hasAnyReal && !outfitsByKey.has(key)}
