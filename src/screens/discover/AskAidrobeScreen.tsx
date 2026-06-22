@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { askAidrobe, getAskHistory } from '@/api/ask';
+import { InlineRetry } from '@/components/feedback/InlineRetry';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { SiriOrb } from '@/components/ui/SiriOrb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
@@ -55,7 +56,7 @@ function ItemRefsRow({ ids }: { ids: string[] }) {
   );
 }
 
-function TurnView({ turn }: { turn: Turn }) {
+function TurnView({ turn, onRetry, retryBusy }: { turn: Turn; onRetry: () => void; retryBusy: boolean }) {
   return (
     <View style={{ gap: 10 }}>
       {/* Question bubble */}
@@ -75,7 +76,13 @@ function TurnView({ turn }: { turn: Turn }) {
             <Text style={{ ...type.body, color: turn.failed ? T.ink3 : T.ink2, lineHeight: 22 }}>
               {turn.answer}
             </Text>
-            {!turn.failed ? <ItemRefsRow ids={turn.itemRefs} /> : null}
+            {turn.failed ? (
+              // Retry re-fires the original question (kept on the turn), so the
+              // user never has to retype.
+              <InlineRetry onRetry={onRetry} busy={retryBusy} />
+            ) : (
+              <ItemRefsRow ids={turn.itemRefs} />
+            )}
           </>
         )}
       </View>
@@ -123,10 +130,13 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         locale: getDeviceLocale(),
       }),
     onMutate: (vars) => {
-      setTurns((t) => [
-        ...t,
-        { id: vars.tempId, question: vars.question, answer: null, itemRefs: [], pending: true },
-      ]);
+      // Idempotent on tempId: a retry reuses the failed turn's own id (already
+      // reset to pending by retryTurn), so only a brand-new question appends.
+      setTurns((t) =>
+        t.some((x) => x.id === vars.tempId)
+          ? t
+          : [...t, { id: vars.tempId, question: vars.question, answer: null, itemRefs: [], pending: true }],
+      );
     },
     onSuccess: (result, vars) => {
       setTurns((t) =>
@@ -162,6 +172,20 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     askMutation.mutate({ tempId: `local-${Date.now()}`, question: q });
   };
 
+  // Retry a failed turn without re-typing: reset it to pending in place
+  // (keeping its id + original question) and re-fire reusing the turn's id as
+  // tempId. onMutate is idempotent on tempId so it won't append a duplicate;
+  // onSuccess/onError reconcile by id.
+  const retryTurn = (turn: Turn) => {
+    if (askMutation.isPending) return;
+    setTurns((t) =>
+      t.map((x) =>
+        x.id === turn.id ? { ...x, pending: true, failed: false, answer: null } : x,
+      ),
+    );
+    askMutation.mutate({ tempId: turn.id, question: turn.question });
+  };
+
   const isEmpty = turns.length === 0;
 
   return (
@@ -187,7 +211,14 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
             </Text>
           </View>
         ) : (
-          turns.map((turn) => <TurnView key={turn.id} turn={turn} />)
+          turns.map((turn) => (
+            <TurnView
+              key={turn.id}
+              turn={turn}
+              onRetry={() => retryTurn(turn)}
+              retryBusy={askMutation.isPending}
+            />
+          ))
         )}
       </ScrollView>
 

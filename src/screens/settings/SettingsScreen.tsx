@@ -2,14 +2,17 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import * as Location from 'expo-location';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { getUserSettings, updateUserSettings } from '@/api/settings';
+import { OperationBanner } from '@/components/feedback/OperationBanner';
 import { SecondaryButton } from '@/components/forms/SecondaryButton';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { Button } from '@/components/ui/Button';
 import { SystemIcon } from '@/components/ui/SystemIcon';
+import { invalidateAfterUpdateLocation } from '@/state/invalidation';
+import { phaseFromFlags } from '@/state/operationState';
 import { useAuthStore } from '@/store/auth';
 import { useLocationPrefStore, type LocationMode } from '@/store/locationPref';
 import { useOnboardingStore } from '@/store/onboarding';
@@ -42,6 +45,9 @@ export function SettingsScreen({ navigation }: Props) {
 
   const [manualText, setManualText] = useState('');
   const [locating, setLocating] = useState(false);
+  // Remembers the last submitted location so the banner's retry can re-fire it
+  // without the user re-typing or re-locating.
+  const lastSubmittedRef = useRef<string | null>(null);
   useEffect(() => {
     // Never seed the input with raw coords — only a real city name.
     setManualText(isCoords(savedLocation) ? '' : savedLocation);
@@ -51,10 +57,14 @@ export function SettingsScreen({ navigation }: Props) {
     mutationFn: (value: string) => updateUserSettings({ location: value }),
     onSuccess: (data) => {
       queryClient.setQueryData(['userSettings'], data);
-      // Let the home screen re-pull so weather follows the new location.
-      queryClient.invalidateQueries({ queryKey: ['todayRecommendation'] });
+      // update location → userSettings, todayRecommendation (see state/invalidation).
+      // userSettings is set directly above; this refreshes today so weather
+      // follows the new location.
+      invalidateAfterUpdateLocation(queryClient);
     },
     onError: () => {
+      // Inline OperationBanner now carries the error + retry; keep the toast as
+      // a lightweight echo for users not looking at the banner.
       showToast({ message: '保存失败，请稍后重试', kind: 'error' });
     },
   });
@@ -62,11 +72,29 @@ export function SettingsScreen({ navigation }: Props) {
   const manualDirty = manualText.trim() !== (isCoords(savedLocation) ? '' : savedLocation);
   const locationBusy = locating || locationMutation.isPending;
 
+  // Phase for the inline status banner. `locating` (GPS lookup) counts as
+  // in-flight too, so the banner shows pending across the whole flow. Success is
+  // owned by the toast (a one-shot), so the banner only carries pending + error
+  // — otherwise React Query's sticky `isSuccess` would leave a green banner up
+  // indefinitely, duplicating the toast.
+  const locationPhase = phaseFromFlags({
+    pending: locationBusy,
+    failed: locationMutation.isError,
+    busyPhase: locating ? 'processing' : 'saving',
+  });
+
+  const retryLocation = () => {
+    const value = lastSubmittedRef.current;
+    if (!value || locationBusy) return;
+    locationMutation.mutate(value);
+  };
+
   const saveManualLocation = () => {
     const value = manualText.trim();
     if (!value || locationBusy) return;
     setPrefMode('manual');
     setGpsLabel(null);
+    lastSubmittedRef.current = value;
     locationMutation.mutate(value, {
       onSuccess: () => showToast({ message: '所在城市已保存', kind: 'success' }),
     });
@@ -86,6 +114,7 @@ export function SettingsScreen({ navigation }: Props) {
       const label = await reverseGeocodeLabel(coords.longitude, coords.latitude);
       setPrefMode('gps');
       setGpsLabel(label);
+      lastSubmittedRef.current = value;
       locationMutation.mutate(value, {
         onSuccess: () => showToast({ message: '已根据当前位置更新', kind: 'success' }),
       });
@@ -222,6 +251,14 @@ export function SettingsScreen({ navigation }: Props) {
                 />
               </View>
             )}
+
+            <OperationBanner
+              phase={locationPhase}
+              pendingText={locating ? '正在定位…' : '正在保存所在城市…'}
+              successText="所在城市已保存"
+              errorText="保存失败，请重试"
+              onRetry={retryLocation}
+            />
           </View>
         </Section>
 

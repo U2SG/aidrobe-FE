@@ -1,10 +1,14 @@
 import { useNavigation } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { API_BASE_URL, APP_ENV } from '@/api/client';
 import { updateUserSettings } from '@/api/settings';
+import { OperationBanner } from '@/components/feedback/OperationBanner';
 import { useTrack } from '@/hooks/useTrack';
+import { invalidateAfterUpdateDepartureTime } from '@/state/invalidation';
+import { phaseFromFlags } from '@/state/operationState';
 import { useOnboardingStore } from '@/store/onboarding';
 import { useToastStore } from '@/store/toast';
 import { colors, shadow } from '@/theme/design';
@@ -26,8 +30,10 @@ const TIMES = ['07:30:00', '08:00:00', '08:30:00', '09:00:00', '09:30:00'];
 
 export function DepartureTimeScreen() {
   const navigation = useNavigation();
+  const queryClient = useQueryClient();
   const [time, setTime] = useState('08:30:00');
   const [saving, setSaving] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
   const setCompleted = useOnboardingStore((state) => state.setCompleted);
   const showToast = useToastStore((state) => state.show);
   const track = useTrack();
@@ -39,20 +45,29 @@ export function DepartureTimeScreen() {
 
   const save = async () => {
     setSaving(true);
+    setSaveFailed(false);
     try {
       await updateUserSettings({ departureTime: time });
       track('departure_time_saved', { time });
+      // update departure time → userSettings, todayRecommendation (see state/invalidation).
+      invalidateAfterUpdateDepartureTime(queryClient);
       finish();
     } catch (error) {
       const detail =
         APP_ENV === 'production'
           ? ''
           : `（${httpStatus(error) ?? (error as Error)?.message ?? 'unknown'} @ ${API_BASE_URL}）`;
+      // Banner now carries the inline error + retry; keep the toast for detail.
+      setSaveFailed(true);
       showToast({ message: `保存失败，请稍后重试${detail}`, kind: 'error' });
     } finally {
       setSaving(false);
     }
   };
+
+  // The selected `time` persists across a failed save, so retry never requires
+  // re-picking. Banner reflects pending/error inline.
+  const savePhase = phaseFromFlags({ pending: saving, failed: saveFailed, busyPhase: 'saving' });
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -185,6 +200,13 @@ export function DepartureTimeScreen() {
         </View>
 
         <View style={{ gap: 10 }}>
+          <OperationBanner
+            phase={savePhase}
+            pendingText="正在保存出门时间…"
+            successText="已保存"
+            errorText="保存失败，请重试"
+            onRetry={save}
+          />
           <Pressable
             onPress={save}
             disabled={saving}
