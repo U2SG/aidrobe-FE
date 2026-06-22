@@ -18,6 +18,7 @@ import { createPresignedUpload, uploadFileUriToPresigned } from '@/api/uploads';
 import { Button } from '@/components/ui/Button';
 import { SiriOrb } from '@/components/ui/SiriOrb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
+import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { useImportDraftStore } from '@/store/importDraft';
 import { useToastStore } from '@/store/toast';
@@ -65,6 +66,7 @@ const P = {
 };
 
 export function AddItemScreen({ navigation }: Props) {
+  const { t, locale } = useT();
   const setDraft = useImportDraftStore((state) => state.set);
   const showToast = useToastStore((state) => state.show);
   const track = useTrack();
@@ -84,13 +86,13 @@ export function AddItemScreen({ navigation }: Props) {
   const submitLink = async () => {
     const url = extractFirstUrl(linkUrl);
     if (!url) {
-      showToast({ message: '没找到链接，请粘贴商品链接或含链接的分享文案', kind: 'error' });
+      showToast({ message: t('add.noLink'), kind: 'error' });
       return;
     }
     setSubmittingLink(true);
     try {
       const sourceType = detectLinkSource(url);
-      const task = await createImportTask({ inputType: 'link', sourceType, sourceUrl: url });
+      const task = await createImportTask({ inputType: 'link', sourceType, sourceUrl: url, locale });
       track('import_task_created', { taskId: task.id, sourceType });
       setLinkModalOpen(false);
       setLinkUrl('');
@@ -110,12 +112,12 @@ export function AddItemScreen({ navigation }: Props) {
     labelPrefix = '',
   ) => {
     setUploadProgress(0);
-    setProcessingLabel(`${labelPrefix}整理照片`);
+    setProcessingLabel(`${labelPrefix}${t('add.tidyPhoto')}`);
     console.log('[import] compress:start', { sourceType });
     const compressed = await compressImage(uri);
     console.log('[import] compress:done', { uri: compressed.uri });
 
-    setProcessingLabel(`${labelPrefix}打开衣橱通道`);
+    setProcessingLabel(`${labelPrefix}${t('add.openChannel')}`);
     const fileName = `wardrobe-${Date.now()}.jpg`;
     console.log('[import] presign:start', { fileName });
     const presign = await createPresignedUpload({
@@ -129,14 +131,14 @@ export function AddItemScreen({ navigation }: Props) {
       fields: Object.keys(presign.fields ?? {}),
     });
 
-    setProcessingLabel(`${labelPrefix}上传衣物`);
+    setProcessingLabel(`${labelPrefix}${t('add.uploading')}`);
     console.log('[import] upload:start');
     await uploadFileUriToPresigned(presign, 'image/jpeg', compressed.uri, fileName, setUploadProgress);
     console.log('[import] upload:done');
 
-    setProcessingLabel(`${labelPrefix}生成衣物卡片`);
+    setProcessingLabel(`${labelPrefix}${t('add.makingCard')}`);
     console.log('[import] task:start');
-    const task = await createImportTask({ inputType: 'image', sourceType, imageUrl: presign.fileUrl });
+    const task = await createImportTask({ inputType: 'image', sourceType, imageUrl: presign.fileUrl, locale });
     console.log('[import] task:done', { taskId: task.id });
     return { task, localUri: compressed.uri };
   };
@@ -169,7 +171,11 @@ export function AddItemScreen({ navigation }: Props) {
     let failed = 0;
     for (const [i, uri] of uris.entries()) {
       try {
-        const { task } = await runImportPipeline(uri, 'album', `处理 ${i + 1}/${uris.length} · `);
+        const { task } = await runImportPipeline(
+          uri,
+          'album',
+          t('add.batchPrefix', { index: i + 1, total: uris.length }),
+        );
         taskIds.push(task.id);
         track('import_task_created', { taskId: task.id, sourceType: 'album' });
       } catch (error) {
@@ -184,7 +190,7 @@ export function AddItemScreen({ navigation }: Props) {
       return;
     }
     if (failed > 0) {
-      showToast({ message: `${failed} 张未能导入，已跳过`, kind: 'error' });
+      showToast({ message: t('add.someSkipped', { count: failed }), kind: 'error' });
     }
     navigation.replace('ImportConfirm', { taskId: firstTask, queue: taskIds, queueIndex: 0 });
   };
@@ -193,7 +199,7 @@ export function AddItemScreen({ navigation }: Props) {
     if (busy) return;
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      showToast({ message: '需要相机权限', kind: 'error' });
+      showToast({ message: t('add.cameraPermission'), kind: 'error' });
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 1, mediaTypes: ['images'] });
@@ -204,7 +210,7 @@ export function AddItemScreen({ navigation }: Props) {
     if (busy) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      showToast({ message: '需要相册权限', kind: 'error' });
+      showToast({ message: t('add.albumPermission'), kind: 'error' });
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -233,7 +239,7 @@ export function AddItemScreen({ navigation }: Props) {
         >
           <SystemIcon name="chevronLeft" size={24} color={P.ink} strokeWidth={2.2} />
         </Pressable>
-        <Text style={styles.headerTitle}>收进衣橱</Text>
+        <Text style={styles.headerTitle}>{t('add.title')}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -261,15 +267,15 @@ export function AddItemScreen({ navigation }: Props) {
           <GarmentSpecimen variant="coat" />
           <GarmentSpecimen variant="shirt" />
           <View style={styles.stageFooter}>
-            <Text style={styles.stageTitle}>拍一件衣服</Text>
-            <Text style={styles.stageSub}>对准单品，留一点边界</Text>
+            <Text style={styles.stageTitle}>{t('add.stageTitle')}</Text>
+            <Text style={styles.stageSub}>{t('add.stageSub')}</Text>
           </View>
         </Pressable>
 
         <View style={styles.importDock}>
-          <DockAction icon="photo" label="相册" onPress={pickFromLibrary} disabled={busy} />
-          <DockAction icon="link" label="链接" onPress={() => setLinkModalOpen(true)} disabled={busy} />
-          <DockAction icon="share" label="分享" onPress={() => setLinkModalOpen(true)} disabled={busy} />
+          <DockAction icon="photo" label={t('add.dock.album')} onPress={pickFromLibrary} disabled={busy} />
+          <DockAction icon="link" label={t('add.dock.link')} onPress={() => setLinkModalOpen(true)} disabled={busy} />
+          <DockAction icon="share" label={t('add.dock.share')} onPress={() => setLinkModalOpen(true)} disabled={busy} />
         </View>
       </ScrollView>
 
@@ -277,6 +283,9 @@ export function AddItemScreen({ navigation }: Props) {
         visible={linkModalOpen}
         value={linkUrl}
         submitting={submittingLink}
+        title={t('add.modalTitle')}
+        placeholder={t('add.linkPlaceholder')}
+        submitLabel={t('add.fetchItem')}
         onChange={setLinkUrl}
         onSubmit={submitLink}
         onClose={() => !submittingLink && setLinkModalOpen(false)}
@@ -337,6 +346,9 @@ function LinkImportModal({
   visible,
   value,
   submitting,
+  title,
+  placeholder,
+  submitLabel,
   onChange,
   onSubmit,
   onClose,
@@ -344,6 +356,9 @@ function LinkImportModal({
   visible: boolean;
   value: string;
   submitting: boolean;
+  title: string;
+  placeholder: string;
+  submitLabel: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
   onClose: () => void;
@@ -353,11 +368,11 @@ function LinkImportModal({
       <Pressable onPress={onClose} style={styles.modalBackdrop}>
         <Pressable onPress={() => {}} style={styles.linkSheet}>
           <View style={styles.modalHandle} />
-          <Text style={styles.modalTitle}>贴链接或分享文案</Text>
+          <Text style={styles.modalTitle}>{title}</Text>
           <TextInput
             value={value}
             onChangeText={onChange}
-            placeholder="粘贴商品链接，或整段分享文案"
+            placeholder={placeholder}
             placeholderTextColor={P.faint}
             autoCapitalize="none"
             autoCorrect={false}
@@ -368,7 +383,7 @@ function LinkImportModal({
           />
           <Button
             variant="primary"
-            label="抓取衣物"
+            label={submitLabel}
             onPress={onSubmit}
             loading={submitting}
             style={styles.modalSubmit}

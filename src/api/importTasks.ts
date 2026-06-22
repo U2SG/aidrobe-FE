@@ -31,6 +31,7 @@ export async function createImportTask(body: CreateImportTaskBody) {
       source_type: body.sourceType,
       image_url: body.imageUrl,
       source_url: body.sourceUrl,
+      locale: body.locale ?? null,
     }),
   );
 }

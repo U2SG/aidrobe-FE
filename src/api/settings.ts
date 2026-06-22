@@ -1,5 +1,9 @@
 import { apiGet, apiPatch } from './client';
-import type { ServerUserSettings, UpdateUserSettingsBody, UserSettings } from '@/types/api';
+import type { LocalePref, ServerUserSettings, UpdateUserSettingsBody, UserSettings } from '@/types/api';
+
+function toLocalePref(value: string | null | undefined): LocalePref | null {
+  return value === 'zh-CN' || value === 'en-US' || value === 'system' ? value : null;
+}
 
 function toUserSettings(data: ServerUserSettings): UserSettings {
   return {
@@ -7,6 +11,7 @@ function toUserSettings(data: ServerUserSettings): UserSettings {
     deviceToken: data.device_token ?? null,
     pushEnabled: data.push_enabled ?? null,
     location: data.location ?? null,
+    locale: toLocalePref(data.locale),
   };
 }
 
@@ -21,6 +26,7 @@ export async function updateUserSettings(body: UpdateUserSettingsBody) {
       device_token: body.deviceToken,
       push_enabled: body.pushEnabled,
       location: body.location,
+      locale: body.locale,
     }),
   );
 }

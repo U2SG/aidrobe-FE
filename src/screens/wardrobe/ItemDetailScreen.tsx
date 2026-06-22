@@ -16,11 +16,15 @@ import { GarmentSvg } from '@/components/ui/GarmentSvg';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { SHOWCASE_WARDROBE } from '@/data/wardrobeShowcase';
+import { useT } from '@/hooks/useT';
+import { resolveItemDisplayName } from '@/i18n/domainLabels';
 import { colors, shadow } from '@/theme/design';
 import type { ItemCategory, UpdateWardrobeItemBody, WardrobeItem } from '@/types/api';
 import type { WardrobeStackParamList } from '@/types/navigation';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'ItemDetail'>;
+
+const CATEGORY_KEYS: ItemCategory[] = ['top', 'bottom', 'dress', 'shoes', 'outerwear', 'accessory'];
 
 const T = {
   bg: colors.groupedBackground,
@@ -35,15 +39,6 @@ const T = {
   accent: colors.accent,
   shadowSm: shadow.soft,
 };
-
-const CATEGORY_OPTIONS: { key: ItemCategory; label: string }[] = [
-  { key: 'top', label: '上衣' },
-  { key: 'bottom', label: '下装' },
-  { key: 'dress', label: '连衣裙' },
-  { key: 'shoes', label: '鞋' },
-  { key: 'outerwear', label: '外套' },
-  { key: 'accessory', label: '配饰' },
-];
 
 const LOG_COLORS = [colors.separatorSoft, '#D7D3CC', colors.accent, colors.label];
 
@@ -66,7 +61,9 @@ function buildIntensitySeries(
 }
 
 export function ItemDetailScreen({ navigation, route }: Props) {
+  const { t, tEnum, locale } = useT();
   const { itemId } = route.params;
+  const CATEGORY_OPTIONS = CATEGORY_KEYS.map((key) => ({ key, label: tEnum('category', key) }));
   const showcaseItem = useMemo(
     () => SHOWCASE_WARDROBE.find((item) => item.id === itemId),
     [itemId],
@@ -144,10 +141,19 @@ export function ItemDetailScreen({ navigation, route }: Props) {
   const backendItem = query.data;
   const imageUri = showcaseItem ? null : (backendItem?.imageUrl ?? null);
 
+  const displayName = backendItem
+    ? resolveItemDisplayName(locale, {
+        name: draft.name ?? backendItem.name,
+        nameSource: backendItem.nameSource,
+        displayName: backendItem.displayName,
+        localizedNames: backendItem.localizedNames,
+      })
+    : (draft.name ?? '');
+
   const confirmDelete = () =>
-    Alert.alert('删除衣物', '删除后不可恢复，确认删除？', [
-      { text: '取消', style: 'cancel' },
-      { text: '删除', style: 'destructive', onPress: () => remove.mutate() },
+    Alert.alert(t('item.delete.title'), t('item.delete.body'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => remove.mutate() },
     ]);
 
   return (
@@ -190,28 +196,35 @@ export function ItemDetailScreen({ navigation, route }: Props) {
         {/* Title + status */}
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 24, fontWeight: '600', color: T.ink }}>{draft.name ?? '—'}</Text>
+            <Text style={{ fontSize: 24, fontWeight: '600', color: T.ink }}>{displayName || '—'}</Text>
             <Text style={{ marginTop: 6, fontSize: 12, color: T.ink3 }}>
               {[
-                backendItem?.purchaseDate ? `购于 ${backendItem.purchaseDate}` : null,
+                backendItem?.purchaseDate
+                  ? t('item.purchasedOn', { date: backendItem.purchaseDate })
+                  : null,
                 backendItem?.material,
                 draft.color,
-                draft.location ?? '主衣柜',
-                backendItem?.wearCount != null ? `已穿 ${backendItem.wearCount} 次` : null,
+                draft.location ?? t('today.defaultLocation'),
+                backendItem?.wearCount != null
+                  ? t('item.wornCount', { count: backendItem.wearCount })
+                  : null,
               ]
                 .filter(Boolean)
                 .join(' · ')}
             </Text>
           </View>
-          <StatusPill kind={draft.status === 'wearable' ? 'ok' : 'danger'} />
+          <StatusPill
+            kind={draft.status === 'wearable' ? 'ok' : 'danger'}
+            label={tEnum('status', draft.status)}
+          />
         </View>
 
         {/* Specs grid */}
         <View style={{ marginTop: 18, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {[
-            { label: '品类', value: CATEGORY_OPTIONS.find((c) => c.key === draft.category)?.label ?? '—' },
-            { label: '颜色', value: draft.color ?? '—' },
-            { label: '存放位置', value: draft.location ?? '—' },
+            { label: t('item.category'), value: draft.category ? tEnum('category', draft.category) : '—' },
+            { label: t('item.color'), value: draft.color ?? '—' },
+            { label: t('item.location'), value: draft.location ?? '—' },
           ].map((s) => (
             <View key={s.label} style={{ backgroundColor: T.card, borderRadius: 10, ...T.shadowSm, minWidth: 100, padding: 12 }}>
               <Text style={{ fontSize: 10, color: T.ink3, marginBottom: 3 }}>{s.label}</Text>
@@ -222,7 +235,7 @@ export function ItemDetailScreen({ navigation, route }: Props) {
 
         {/* Name edit */}
         <View style={{ marginTop: 14, backgroundColor: T.card, borderRadius: 14, padding: 14, ...T.shadowSm }}>
-          <Text style={{ fontSize: 11, color: T.ink3, marginBottom: 6 }}>名称</Text>
+          <Text style={{ fontSize: 11, color: T.ink3, marginBottom: 6 }}>{t('item.name')}</Text>
           <TextInput
             value={draft.name ?? ''}
             onChangeText={(name) => setDraft((c) => ({ ...c, name }))}
@@ -232,7 +245,7 @@ export function ItemDetailScreen({ navigation, route }: Props) {
 
         {/* Category */}
         <View style={{ marginTop: 12 }}>
-          <Text style={{ fontSize: 11, color: T.ink3, marginBottom: 8, paddingHorizontal: 4 }}>品类</Text>
+          <Text style={{ fontSize: 11, color: T.ink3, marginBottom: 8, paddingHorizontal: 4 }}>{t('item.category')}</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
             {CATEGORY_OPTIONS.map((cat) => (
               <Pressable
@@ -257,11 +270,11 @@ export function ItemDetailScreen({ navigation, route }: Props) {
 
         {/* Location edit */}
         <View style={{ marginTop: 12, backgroundColor: T.card, borderRadius: 14, padding: 14, ...T.shadowSm }}>
-          <Text style={{ fontSize: 11, color: T.ink3, marginBottom: 6 }}>存放位置</Text>
+          <Text style={{ fontSize: 11, color: T.ink3, marginBottom: 6 }}>{t('item.location')}</Text>
           <TextInput
             value={draft.location ?? ''}
             onChangeText={(location) => setDraft((c) => ({ ...c, location }))}
-            placeholder="主衣柜 / 抽屉 / 鞋柜"
+            placeholder={t('item.location.placeholder')}
             placeholderTextColor={T.ink4}
             style={{ fontSize: 15, color: T.ink }}
           />
@@ -270,9 +283,9 @@ export function ItemDetailScreen({ navigation, route }: Props) {
         {/* Wearable toggle */}
         <View style={{ marginTop: 14, backgroundColor: T.card, borderRadius: 14, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', ...T.shadowSm }}>
           <View style={{ flex: 1, paddingRight: 16 }}>
-            <Text style={{ fontSize: 14, fontWeight: '500', color: T.ink }}>可穿状态</Text>
+            <Text style={{ fontSize: 14, fontWeight: '500', color: T.ink }}>{t('item.wearable')}</Text>
             <Text style={{ marginTop: 4, fontSize: 11, lineHeight: 17, color: T.ink3 }}>
-              暂不可用的衣物不会进入今日推荐。
+              {t('item.wearable.hint')}
             </Text>
           </View>
           <Switch
@@ -288,8 +301,8 @@ export function ItemDetailScreen({ navigation, route }: Props) {
         {/* Wear log */}
         <View style={{ marginTop: 14, backgroundColor: T.card, borderRadius: 14, padding: 14, ...T.shadowSm }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: T.ink }}>穿着记录</Text>
-            <Text style={{ fontSize: 11, color: T.ink3 }}>近 60 天</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: T.ink }}>{t('item.wearLog')}</Text>
+            <Text style={{ fontSize: 11, color: T.ink3 }}>{t('item.wearLog.period')}</Text>
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 3 }}>
             {intensity.map((v, i) => (
@@ -306,13 +319,15 @@ export function ItemDetailScreen({ navigation, route }: Props) {
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
             <Text style={{ fontSize: 10, color: T.ink3 }}>
-              共穿 {backendItem?.wearCount ?? 0} 次
+              {t('item.wornTotal', { count: backendItem?.wearCount ?? 0 })}
               {backendItem?.purchasePrice && (backendItem?.wearCount ?? 0) > 0
-                ? ` · ¥${Math.round(backendItem.purchasePrice / Math.max(1, backendItem.wearCount ?? 1))} / 次`
+                ? ` · ${t('item.costPerWear', { amount: Math.round(backendItem.purchasePrice / Math.max(1, backendItem.wearCount ?? 1)) })}`
                 : ''}
             </Text>
             <Text style={{ fontSize: 10, color: T.ink3 }}>
-              {backendItem?.lastWorn ? `最近：${backendItem.lastWorn}` : '近 60 天分布'}
+              {backendItem?.lastWorn
+                ? t('item.lastWorn', { date: backendItem.lastWorn })
+                : t('item.wearLog.period')}
             </Text>
           </View>
         </View>
@@ -325,7 +340,7 @@ export function ItemDetailScreen({ navigation, route }: Props) {
             onPress={() => navigation.goBack()}
             style={({ pressed }) => ({ height: 50, borderRadius: 14, backgroundColor: T.ink, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.75 : 1 })}
           >
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>返回衣橱</Text>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>{t('item.backToWardrobe')}</Text>
           </Pressable>
         ) : (
           <>
@@ -339,14 +354,14 @@ export function ItemDetailScreen({ navigation, route }: Props) {
               style={({ pressed }) => ({ height: 50, borderRadius: 14, backgroundColor: T.card, borderWidth: 1, borderColor: T.divider, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: pressed ? 0.75 : 1 })}
             >
               <SystemIcon name="sparkle" size={15} color={T.accent} strokeWidth={1.9} />
-              <Text style={{ fontSize: 15, fontWeight: '600', color: T.ink }}>用这件搭一套</Text>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: T.ink }}>{t('item.askOutfit')}</Text>
             </Pressable>
             <Pressable
               onPress={() => update.mutate(draft)}
               disabled={update.isPending}
               style={({ pressed }) => ({ height: 50, borderRadius: 14, backgroundColor: T.ink, alignItems: 'center', justifyContent: 'center', opacity: update.isPending || pressed ? 0.75 : 1 })}
             >
-              <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>保存修改</Text>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>{t('common.saveChanges')}</Text>
             </Pressable>
           </>
         )}

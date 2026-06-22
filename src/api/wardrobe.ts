@@ -20,6 +20,9 @@ export function toWardrobeItem(item: ServerWardrobeItem): WardrobeItem {
   return {
     id: item.item_id,
     name: item.title,
+    nameSource: item.name_source ?? null,
+    displayName: item.display_name ?? null,
+    localizedNames: item.localized_names ?? null,
     category: item.category,
     color: item.color_main,
     imageUrl: item.cover_image_url ?? item.original_image_url ?? null,
