@@ -62,13 +62,17 @@ device-independent** so one renderer scales to any canvas:
 
 ### Coordinate decision
 
-- **Normalized 0..1, not absolute px.** The current presets are px on 320×420;
-  those convert via `x_norm = x_px / 320`, `y_norm = y_px / 420`. Normalized keeps
-  the contract canvas-agnostic (phone, board export, web).
+- **Normalized 0..1, not absolute px.** Normalized keeps the contract
+  canvas-agnostic (phone, board export, web).
+- **`x`/`y` address the piece CENTER**, but the current presets are top-left px
+  for a `132*scale` tile on a 320×420 board (`OutfitPiece.tsx` applies
+  `piece.x`/`y` directly to `left`/`top`). So migrating a preset MUST add the
+  half-tile offset before normalizing, or every garment shifts ~half a tile
+  up/left:
+  `x_norm = (x_px + tile/2) / 320`, `y_norm = (y_px + tile/2) / 420`
+  (`tile = 132 * scale`). The renderer then reverses it: `left = x*W - tileW/2`.
 - **`rotation` is a number in degrees**, not the current CSS string (`'-7deg'`),
   so it's platform-neutral; the RN renderer formats it.
-- **`x`/`y` address the piece center** (current presets treat them as top-left;
-  the renderer already knows piece size, so center is unambiguous across scales).
 
 ## Fallback behavior
 
