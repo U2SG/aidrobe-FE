@@ -1,5 +1,7 @@
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, View } from 'react-native';
 
+import { Badge, Card, Typography } from '@/components/ui';
+import { colors } from '@/theme/design';
 import type { WardrobeItem } from '@/types/api';
 
 interface Props {
@@ -7,30 +9,41 @@ interface Props {
   onPress: () => void;
 }
 
+// FE#32 — migrated off the legacy NativeWind palette onto token primitives
+// (Card/Badge/Typography). Image is flush, so the card uses padding=0 with an
+// inner padded block. Normalized colors; not pixel-verified — see PR.
 export function WardrobeItemCard({ item, onPress }: Props) {
   return (
-    <Pressable
+    <Card
       onPress={onPress}
-      className="mb-3 flex-1 overflow-hidden rounded-2xl border border-ink-100 bg-white"
+      radius={16}
+      bordered
+      padding={0}
+      style={{ flex: 1, overflow: 'hidden', marginBottom: 12 }}
     >
-      <View className="aspect-square w-full bg-ink-100">
+      <View style={{ width: '100%', aspectRatio: 1, backgroundColor: colors.fill }}>
         {item.imageUrl ? (
-          <Image source={{ uri: item.imageUrl }} className="h-full w-full" resizeMode="cover" />
+          <Image source={{ uri: item.imageUrl }} style={{ height: '100%', width: '100%' }} resizeMode="cover" />
         ) : null}
       </View>
-      <View className="p-2">
-        <Text numberOfLines={1} className="text-sm font-medium text-ink-900">
+      <View style={{ padding: 8 }}>
+        <Typography variant="callout" color="label" numberOfLines={1} style={{ fontWeight: '500' }}>
           {item.name}
-        </Text>
-        <View className="mt-1 flex-row items-center justify-between">
-          <Text className="text-xs text-ink-500">{item.color}</Text>
-          {item.status === 'unavailable' ? (
-            <Text className="rounded-full bg-ink-100 px-2 py-0.5 text-[10px] text-ink-500">
-              暂不可用
-            </Text>
-          ) : null}
+        </Typography>
+        <View
+          style={{
+            marginTop: 4,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <Typography variant="caption" color="tertiaryLabel">
+            {item.color}
+          </Typography>
+          {item.status === 'unavailable' ? <Badge tone="neutral" label="暂不可用" /> : null}
         </View>
       </View>
-    </Pressable>
+    </Card>
   );
 }

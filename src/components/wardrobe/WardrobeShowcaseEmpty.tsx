@@ -1,20 +1,12 @@
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
 
+import { Card, Typography } from '@/components/ui';
 import { SHOWCASE_WARDROBE } from '@/data/wardrobeShowcase';
-import { colors, radius, shadow } from '@/theme/design';
+import { colors, radius } from '@/theme/design';
 
-const T = {
-  card: colors.elevated,
-  cardInner: colors.background,
-  ink: colors.label,
-  ink2: colors.secondaryLabel,
-  ink3: colors.tertiaryLabel,
-};
-
-// V4.1 P1 — empty-wardrobe showcase. Instead of a bare empty state, show the
-// local sample garments so a brand-new user can see what a filled wardrobe (and
-// the item-detail / "用这件搭一套" flow) looks like. Tapping a card opens
-// ItemDetail, which already renders showcase items by id.
+// V4.1 P1 — empty-wardrobe showcase. FE#32: item cards use the Card primitive
+// (its elevated/lg/soft-shadow defaults match the prior inline values) and text
+// uses Typography. The bespoke CTA keeps its lg radius.
 export function WardrobeShowcaseEmpty({
   onAddItem,
   onOpenItem,
@@ -24,23 +16,21 @@ export function WardrobeShowcaseEmpty({
 }) {
   return (
     <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
-      <Text style={{ fontSize: 17, fontWeight: '600', color: T.ink }}>衣橱还是空的</Text>
-      <Text style={{ fontSize: 13, color: T.ink3, marginTop: 6, lineHeight: 19 }}>
+      <Typography variant="headline" color="label">
+        衣橱还是空的
+      </Typography>
+      <Typography variant="footnote" color="tertiaryLabel" style={{ marginTop: 6 }}>
         先看看示例衣橱 —— 点任意一件感受单品详情和「用这件搭一套」，准备好就添加你自己的。
-      </Text>
+      </Typography>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 16 }}>
         {SHOWCASE_WARDROBE.map((item) => (
-          <Pressable
-            key={item.id}
-            onPress={() => onOpenItem(item.id)}
-            style={{ width: '47%' }}
-          >
-            <View style={{ backgroundColor: T.card, borderRadius: radius.lg, padding: 12, gap: 8, ...shadow.soft }}>
+          <Pressable key={item.id} onPress={() => onOpenItem(item.id)} style={{ width: '47%' }}>
+            <Card padding={12} style={{ gap: 8 }}>
               <View
                 style={{
                   height: 130,
-                  backgroundColor: T.cardInner,
+                  backgroundColor: colors.background,
                   borderRadius: radius.md,
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -53,14 +43,14 @@ export function WardrobeShowcaseEmpty({
                 />
               </View>
               <View>
-                <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: '600', color: T.ink }}>
+                <Typography variant="callout" color="label" numberOfLines={1} style={{ fontWeight: '600' }}>
                   {item.name}
-                </Text>
-                <Text numberOfLines={1} style={{ fontSize: 11, color: T.ink3, marginTop: 3 }}>
+                </Typography>
+                <Typography variant="caption" color="tertiaryLabel" numberOfLines={1} style={{ marginTop: 3 }}>
                   {item.tone}
-                </Text>
+                </Typography>
               </View>
-            </View>
+            </Card>
           </Pressable>
         ))}
       </View>
@@ -70,14 +60,16 @@ export function WardrobeShowcaseEmpty({
         style={({ pressed }) => ({
           height: 50,
           borderRadius: radius.lg,
-          backgroundColor: T.ink,
+          backgroundColor: colors.label,
           alignItems: 'center',
           justifyContent: 'center',
           marginTop: 20,
           opacity: pressed ? 0.75 : 1,
         })}
       >
-        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.inverse }}>添加我的第一件衣物</Text>
+        <Typography variant="body" color="inverse" style={{ fontWeight: '600' }}>
+          添加我的第一件衣物
+        </Typography>
       </Pressable>
     </View>
   );
