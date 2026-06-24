@@ -1,4 +1,7 @@
 import * as Location from 'expo-location';
+import { Platform } from 'react-native';
+
+import AmapLocation from '../../modules/amap-location';
 
 // A backend `location` string is either a city name (manual) or "lng,lat" coords
 // (GPS). QWeather wants longitude first, two decimals.
@@ -22,6 +25,7 @@ export function coordsValue(longitude: number, latitude: number): string {
 // total failure throws an error annotated with provider status for diagnosis.
 const ONESHOT_TIMEOUT_MS = 12_000;
 const WATCH_TIMEOUT_MS = 18_000;
+const AMAP_TIMEOUT_MS = 16_000;
 const LAST_KNOWN_MAX_AGE_MS = 10 * 60 * 1000;
 
 type Coords = { longitude: number; latitude: number };
@@ -60,6 +64,20 @@ async function watchOnce(): Promise<Coords> {
 }
 
 export async function getCurrentCoords(): Promise<Coords> {
+  // China: expo-location's Google-backed provider can't reach Google and hangs.
+  // Prefer the Amap (高德) SDK on Android, falling back to expo-location if Amap
+  // fails (e.g. no API key configured) or on other platforms.
+  if (Platform.OS === 'android') {
+    try {
+      return pick(await withTimeout(AmapLocation.getCurrentPosition(), AMAP_TIMEOUT_MS, 'amap timeout'));
+    } catch {
+      // fall through to expo-location.
+    }
+  }
+  return expoCoords();
+}
+
+async function expoCoords(): Promise<Coords> {
   const last = await Location.getLastKnownPositionAsync({ maxAge: LAST_KNOWN_MAX_AGE_MS }).catch(
     () => null,
   );
