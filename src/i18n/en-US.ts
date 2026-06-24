@@ -24,6 +24,8 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'settings.section.wardrobe': 'Wardrobe',
   'settings.section.privacy': 'Privacy',
   'settings.departureTime': 'Departure time',
+  'settings.departureTimeSaved': 'Departure time updated',
+  'settings.departureTimeSaveFailed': 'Save failed, please try again',
   'settings.language': 'Language',
   'settings.language.zh-CN': '简体中文',
   'settings.language.en-US': 'English',

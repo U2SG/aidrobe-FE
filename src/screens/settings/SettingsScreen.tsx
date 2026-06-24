@@ -11,11 +11,13 @@ import { getUserSettings, updateUserSettings } from '@/api/settings';
 import { OperationBanner } from '@/components/feedback/OperationBanner';
 import { SecondaryButton } from '@/components/forms/SecondaryButton';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
+import { DepartureTimeSheet } from '@/components/settings/DepartureTimeSheet';
 import { Button } from '@/components/ui/Button';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
 import {
   invalidateAfterChangeLanguage,
+  invalidateAfterUpdateDepartureTime,
   invalidateAfterUpdateLocation,
 } from '@/state/invalidation';
 import { phaseFromFlags } from '@/state/operationState';
@@ -31,7 +33,7 @@ import { coordsValue, getCurrentCoords, isCoords, reverseGeocodeLabel } from '@/
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'Settings'>;
 
-export function SettingsScreen({ navigation }: Props) {
+export function SettingsScreen(_props: Props) {
   const { t } = useT();
   const showToast = useToastStore((state) => state.show);
   const clearAuth = useAuthStore((state) => state.clear);
@@ -66,6 +68,24 @@ export function SettingsScreen({ navigation }: Props) {
     setLangPref(locale);
     languageMutation.mutate(locale);
   };
+
+  // FE#14 — departure time edits happen in a Bottom Sheet on this screen rather
+  // than pushing the onboarding flow. Saving regenerates today (invalidates
+  // userSettings + todayRecommendation). `value` is "HH:MM"; persist with the
+  // ":00" seconds suffix the API/onboarding use.
+  const [timeSheetOpen, setTimeSheetOpen] = useState(false);
+  const departureMutation = useMutation({
+    mutationFn: (value: string) => updateUserSettings({ departureTime: `${value}:00` }),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['userSettings'], data);
+      invalidateAfterUpdateDepartureTime(queryClient);
+      showToast({ message: t('settings.departureTimeSaved'), kind: 'success' });
+      setTimeSheetOpen(false);
+    },
+    onError: () => {
+      showToast({ message: t('settings.departureTimeSaveFailed'), kind: 'error' });
+    },
+  });
 
   const prefMode = useLocationPrefStore((s) => s.mode);
   const gpsLabel = useLocationPrefStore((s) => s.label);
@@ -215,7 +235,7 @@ export function SettingsScreen({ navigation }: Props) {
                 ? settingsQuery.data.departureTime.slice(0, 5)
                 : t('common.notSet')
             }
-            onPress={() => navigation.navigate('DepartureTime')}
+            onPress={() => setTimeSheetOpen(true)}
           />
           <View style={{ padding: 16, gap: 10 }}>
             <Text style={{ ...type.body, color: colors.label }}>{t('settings.language')}</Text>
@@ -361,6 +381,13 @@ export function SettingsScreen({ navigation }: Props) {
           <SecondaryButton label={t('settings.signOut')} onPress={signOut} />
         </View>
       </ScrollView>
+      <DepartureTimeSheet
+        visible={timeSheetOpen}
+        initialValue={settingsQuery.data?.departureTime}
+        saving={departureMutation.isPending}
+        onSave={(value) => departureMutation.mutate(value)}
+        onClose={() => setTimeSheetOpen(false)}
+      />
     </ScreenContainer>
   );
 }

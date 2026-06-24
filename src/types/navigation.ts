@@ -46,7 +46,6 @@ export type WardrobeStackParamList = {
 
 export type SettingsStackParamList = {
   Settings: undefined;
-  DepartureTime: undefined;
 };
 
 // V4 — Discover hub: wardrobe tools + seasonal insights.
