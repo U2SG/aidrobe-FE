@@ -260,7 +260,7 @@ export function ItemDetailScreen({ navigation, route }: Props) {
                   borderColor: draft.category === cat.key ? T.ink : T.divider,
                 }}
               >
-                <Text style={{ fontSize: 12, color: draft.category === cat.key ? '#fff' : T.ink2 }}>
+                <Text style={{ fontSize: 12, color: draft.category === cat.key ? colors.inverse : T.ink2 }}>
                   {cat.label}
                 </Text>
               </Pressable>
@@ -340,7 +340,7 @@ export function ItemDetailScreen({ navigation, route }: Props) {
             onPress={() => navigation.goBack()}
             style={({ pressed }) => ({ height: 50, borderRadius: 14, backgroundColor: T.ink, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.75 : 1 })}
           >
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>{t('item.backToWardrobe')}</Text>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.inverse }}>{t('item.backToWardrobe')}</Text>
           </Pressable>
         ) : (
           <>
@@ -361,7 +361,7 @@ export function ItemDetailScreen({ navigation, route }: Props) {
               disabled={update.isPending}
               style={({ pressed }) => ({ height: 50, borderRadius: 14, backgroundColor: T.ink, alignItems: 'center', justifyContent: 'center', opacity: update.isPending || pressed ? 0.75 : 1 })}
             >
-              <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>{t('common.saveChanges')}</Text>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.inverse }}>{t('common.saveChanges')}</Text>
             </Pressable>
           </>
         )}

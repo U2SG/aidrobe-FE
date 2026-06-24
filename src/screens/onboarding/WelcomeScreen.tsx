@@ -218,7 +218,7 @@ export function WelcomeScreen({ navigation }: Props) {
                 opacity: signingIn ? 0.75 : 1,
               }}
             >
-              <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.inverse }}>
                 使用 Apple 登录
               </Text>
             </Pressable>
@@ -234,7 +234,7 @@ export function WelcomeScreen({ navigation }: Props) {
                 justifyContent: 'center',
               }}
             >
-              <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>开始使用</Text>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.inverse }}>开始使用</Text>
             </Pressable>
           )}
           <Pressable

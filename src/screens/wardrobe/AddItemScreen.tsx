@@ -22,7 +22,7 @@ import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { useImportDraftStore } from '@/store/importDraft';
 import { useToastStore } from '@/store/toast';
-import { shadow } from '@/theme/design';
+import { colors, shadow } from '@/theme/design';
 import type { ImportSourceType } from '@/types/api';
 import type { WardrobeStackParamList } from '@/types/navigation';
 import { compressImage, MAX_UPLOAD_BYTES } from '@/utils/image';
@@ -596,7 +596,7 @@ const styles = StyleSheet.create({
   stageTitle: {
     fontSize: 25,
     fontWeight: '800',
-    color: '#fff',
+    color: colors.inverse,
   },
   stageSub: {
     fontSize: 13,

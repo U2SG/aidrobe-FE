@@ -77,7 +77,7 @@ export function WardrobeShowcaseEmpty({
           opacity: pressed ? 0.75 : 1,
         })}
       >
-        <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>添加我的第一件衣物</Text>
+        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.inverse }}>添加我的第一件衣物</Text>
       </Pressable>
     </View>
   );

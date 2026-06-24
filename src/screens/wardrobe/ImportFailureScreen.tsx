@@ -2,7 +2,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { SystemIcon } from '@/components/ui/SystemIcon';
-import { shadow } from '@/theme/design';
+import { colors, shadow } from '@/theme/design';
 import type { WardrobeStackParamList } from '@/types/navigation';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'ImportFailure'>;
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   primaryText: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#fff',
+    color: colors.inverse,
   },
   secondaryButton: {
     minHeight: 58,

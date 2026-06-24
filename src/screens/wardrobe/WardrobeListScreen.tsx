@@ -283,7 +283,7 @@ export function WardrobeListScreen({ navigation }: Props) {
                     style={{
                       fontSize: 13,
                       fontWeight: category === cat.key ? '600' : '500',
-                      color: category === cat.key ? '#fff' : T.ink2,
+                      color: category === cat.key ? colors.inverse : T.ink2,
                     }}
                   >
                     {cat.label}

@@ -19,6 +19,21 @@ export const colors = {
   danger: '#B85C4A',
   dangerBg: '#F6DDD6',
   inverse: '#FFFFFF',
+
+  // ── Semantic aliases (FE#31) ───────────────────────────────────────────
+  // Canonical, intent-named vocabulary for new code + the NativeWind theme
+  // (tailwind.config maps these to `text-*`/`bg-*`/`border-*` utilities). They
+  // mirror the iOS-named tokens above (kept for existing call sites) so there's
+  // one palette, two names — never hardcode `#fff`/`text-white`; use `inverse`
+  // / `textInverse` instead.
+  textPrimary: '#1A1714', // = label
+  textSecondary: '#3F3A33', // = secondaryLabel
+  textMuted: '#7A736A', // = tertiaryLabel
+  textInverse: '#FFFFFF', // = inverse — white text, only on dark/controlled bg
+  surface: '#FFFFFF', // = elevated
+  surfaceElevated: '#F5EFE6', // = secondaryElevated
+  borderSubtle: '#EFE8DC', // = separatorSoft
+  borderStrong: '#E5DFD2', // = separator
 } as const;
 
 export const radius = {

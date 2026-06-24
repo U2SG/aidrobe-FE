@@ -285,7 +285,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                       borderRadius: 8,
                     }}
                   >
-                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>自动替换</Text>
+                    <Text style={{ color: colors.inverse, fontSize: 11, fontWeight: '600' }}>自动替换</Text>
                   </Pressable>
                   <Pressable
                     style={{
@@ -493,7 +493,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                       borderRadius: 8,
                     }}
                   >
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: isLaundry ? '#fff' : T.ink2 }}>替换</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: isLaundry ? colors.inverse : T.ink2 }}>替换</Text>
                   </Pressable>
                 </View>
               </Pressable>
@@ -593,7 +593,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
               opacity: pressed ? 0.88 : 1,
             })}
           >
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>今天穿这套</Text>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.inverse }}>今天穿这套</Text>
           </Pressable>
         </View>
       </View>
