@@ -1,0 +1,23 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.amaplocation'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.amaplocation"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+  lintOptions {
+    abortOnError false
+  }
+}
+
+dependencies {
+  // 高德定位 SDK (Amap location). Published on Maven Central.
+  implementation 'com.amap.api:location:6.4.9'
+}
