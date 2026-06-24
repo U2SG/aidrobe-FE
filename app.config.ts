@@ -92,6 +92,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           'Allow Aidrobe to use your location to fetch local weather for outfit recommendations.',
       },
     ],
+    // Injects the Amap (高德) API key into AndroidManifest from AMAP_API_KEY.
+    './modules/amap-location/app.plugin.js',
   ] as ExpoConfig['plugins'],
   extra: {
     APP_ENV,
