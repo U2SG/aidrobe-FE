@@ -87,6 +87,8 @@ function toToday(data: ServerTodayRecommendation): TodayRecommendation {
     date: data.recommendation_date,
     state: data.status,
     guidanceText: data.guidance_text ?? null,
+    // API_GAP[untracked]: TodayRecommendation has no countdown_minutes from BE.
+    // Fallback: always null (Today doesn't render a countdown). See docs/api-gaps.md.
     countdownMinutes: null,
     outfits: data.outfits.map(toOutfit),
     styleContext: data.style_context
