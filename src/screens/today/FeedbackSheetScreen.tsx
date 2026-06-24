@@ -288,13 +288,13 @@ export function FeedbackSheetScreen({ navigation, route }: Props) {
                   style={{
                     fontSize: 12,
                     fontWeight: '700',
-                    color: overall === o.id ? '#fff' : T.ink2,
+                    color: overall === o.id ? colors.inverse : T.ink2,
                   }}
                 >
                   {o.mark}
                 </Text>
               </View>
-              <Text style={{ fontSize: 11, color: overall === o.id ? '#fff' : T.ink2 }}>{o.label}</Text>
+              <Text style={{ fontSize: 11, color: overall === o.id ? colors.inverse : T.ink2 }}>{o.label}</Text>
             </Pressable>
           ))}
         </View>
@@ -352,7 +352,7 @@ export function FeedbackSheetScreen({ navigation, route }: Props) {
                       borderColor: fitMap[it.id] === opt ? T.ink : T.divider,
                     }}
                   >
-                    <Text style={{ fontSize: 11, color: fitMap[it.id] === opt ? '#fff' : T.ink2 }}>
+                    <Text style={{ fontSize: 11, color: fitMap[it.id] === opt ? colors.inverse : T.ink2 }}>
                       {opt === 'tight' ? '紧' : opt === 'fit' ? '合身' : '松'}
                     </Text>
                   </Pressable>
@@ -377,7 +377,7 @@ export function FeedbackSheetScreen({ navigation, route }: Props) {
                 borderColor: selectedTags.includes(t.key) ? T.ink : T.divider,
               }}
             >
-              <Text style={{ fontSize: 11, color: selectedTags.includes(t.key) ? '#fff' : T.ink2 }}>
+              <Text style={{ fontSize: 11, color: selectedTags.includes(t.key) ? colors.inverse : T.ink2 }}>
                 {t.label}
               </Text>
             </Pressable>
@@ -409,7 +409,7 @@ export function FeedbackSheetScreen({ navigation, route }: Props) {
             opacity: saving || pressed ? 0.7 : 1,
           })}
         >
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>保存反馈 · 影响明天推荐</Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.inverse }}>保存反馈 · 影响明天推荐</Text>
         </Pressable>
       </View>
     </View>

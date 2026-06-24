@@ -46,7 +46,7 @@ export function OutfitCard({ outfit, selected, onPress, onWear }: Props) {
         onPress={onWear}
         className="h-10 items-center justify-center rounded-lg bg-brand-600 active:bg-brand-700"
       >
-        <Text className="text-sm font-semibold text-white">今天穿这套</Text>
+        <Text className="text-sm font-semibold text-inverse">今天穿这套</Text>
       </Pressable>
     </Pressable>
   );

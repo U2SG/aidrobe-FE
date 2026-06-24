@@ -217,7 +217,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
               }}
             >
               <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#9ED9A1' }} />
-              <Text style={{ fontSize: 10, color: '#fff', fontFamily: 'monospace', letterSpacing: 0.5 }}>
+              <Text style={{ fontSize: 10, color: colors.inverse, fontFamily: 'monospace', letterSpacing: 0.5 }}>
                 {t('import.confidenceBadge', { pct: confidencePct })}
               </Text>
             </View>

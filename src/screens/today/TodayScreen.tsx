@@ -297,7 +297,7 @@ function StrategyRail({
               justifyContent: 'center',
             }}
           >
-            <Text style={{ color: selected ? '#fff' : P.muted, fontSize: 13, fontWeight: '700' }}>{variantLabel}</Text>
+            <Text style={{ color: selected ? colors.inverse : P.muted, fontSize: 13, fontWeight: '700' }}>{variantLabel}</Text>
           </Pressable>
         );
       })}
@@ -678,7 +678,7 @@ export function TodayScreen({ navigation }: Props) {
                   opacity: pressed ? 0.86 : 1,
                 })}
               >
-                <Text style={{ color: activeIsEmpty ? P.faint : '#fff', fontSize: 14, fontWeight: '800' }}>
+                <Text style={{ color: activeIsEmpty ? P.faint : colors.inverse, fontSize: 14, fontWeight: '800' }}>
                   {t('today.wearThis')}
                 </Text>
               </Pressable>

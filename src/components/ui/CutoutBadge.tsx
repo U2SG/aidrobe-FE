@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
+import { colors } from '@/theme/design';
+
 /**
  * Lightweight "精修中" corner badge shown on a wardrobe item while its product-shot
  * cutout is still being generated server-side (cutout_status === 'queued').
@@ -47,7 +49,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 10,
-    color: '#fff',
+    color: colors.inverse,
     letterSpacing: 0.5,
   },
 });
