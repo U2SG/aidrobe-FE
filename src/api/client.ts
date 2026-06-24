@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { AxiosError, AxiosInstance, AxiosResponse } from 'axios';
+import type { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import Constants from 'expo-constants';
 
 import { useAuthStore } from '@/store/auth';
@@ -109,8 +109,15 @@ export async function apiGet<T>(url: string, params?: Record<string, unknown>) {
   return res.data;
 }
 
-export async function apiPost<T>(url: string, body?: unknown, params?: Record<string, unknown>) {
-  const res = await apiClient.post<T>(url, body, params ? { params } : undefined);
+export async function apiPost<T>(
+  url: string,
+  body?: unknown,
+  params?: Record<string, unknown>,
+  config?: AxiosRequestConfig,
+) {
+  // `config` lets a slow endpoint (e.g. LLM-backed today/refresh) override the
+  // default 15s timeout per-request without raising it globally.
+  const res = await apiClient.post<T>(url, body, { params, ...config });
   return res.data;
 }
 

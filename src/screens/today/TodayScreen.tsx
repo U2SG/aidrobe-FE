@@ -8,6 +8,7 @@ import {
   Animated,
   Image,
   Pressable,
+  RefreshControl,
   ScrollView,
   Share,
   Text,
@@ -565,6 +566,16 @@ export function TodayScreen({ navigation }: Props) {
         style={{ flex: 1, backgroundColor: 'transparent' }}
         contentContainerStyle={{ alignItems: 'center', paddingBottom: 108 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          // The swap button is a small icon many users miss — pull-to-refresh is
+          // the discoverable way to regenerate today (picks up a new city/weather).
+          <RefreshControl
+            refreshing={refreshMutation.isPending}
+            onRefresh={handleRefresh}
+            tintColor={P.blue}
+            colors={[P.blue]}
+          />
+        }
       >
       <View style={{ width: maxWidth, paddingHorizontal: 18, paddingTop: 52 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>

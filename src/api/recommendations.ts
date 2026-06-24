@@ -106,9 +106,17 @@ export async function getTodayRecommendation(scene?: 'commute' | 'formal' | 'cas
 
 // V3+ D3 — user-initiated refresh. Rate-limited (default 3/day).
 // Server returns 429 when the daily limit is exhausted; 503 when the feature flag is off.
+// Regeneration drives several LLM calls and routinely takes ~25s — well over the
+// client's default 15s timeout, which surfaced as a bogus "网络异常" while the
+// backend actually succeeded. Give it a generous 60s budget.
 export async function refreshTodayRecommendation(scene?: 'commute' | 'formal' | 'casual') {
   return toToday(
-    await apiPost<ServerTodayRecommendation>('/v1/recommendations/today/refresh', null, { scene }),
+    await apiPost<ServerTodayRecommendation>(
+      '/v1/recommendations/today/refresh',
+      null,
+      { scene },
+      { timeout: 60_000 },
+    ),
   );
 }
 

@@ -5,7 +5,7 @@ import { AppState } from 'react-native';
 
 import { getUserSettings, updateUserSettings } from '@/api/settings';
 import { useLocationPrefStore } from '@/store/locationPref';
-import { coordsValue, reverseGeocodeLabel } from '@/utils/location';
+import { coordsValue, getCurrentCoords, reverseGeocodeLabel } from '@/utils/location';
 
 // When the user opted into GPS, silently refresh their location every time the
 // app becomes active (cold start + return-to-foreground). Never prompts: if the
@@ -26,12 +26,10 @@ export function useLocationSync() {
       try {
         const perm = await Location.getForegroundPermissionsAsync();
         if (!perm.granted) return;
-        const { coords } = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Low,
-        });
+        const { longitude, latitude } = await getCurrentCoords();
         if (cancelled) return;
-        const value = coordsValue(coords.longitude, coords.latitude);
-        const label = await reverseGeocodeLabel(coords.longitude, coords.latitude);
+        const value = coordsValue(longitude, latitude);
+        const label = await reverseGeocodeLabel(longitude, latitude);
         if (cancelled) return;
         if (label) setLabel(label);
 
