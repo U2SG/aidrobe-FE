@@ -56,7 +56,11 @@ function WheelColumn({
       showsVerticalScrollIndicator={false}
       snapToInterval={ITEM_HEIGHT}
       decelerationRate="fast"
+      // A slow drag that snaps without a fling fires onScrollEndDrag but NOT
+      // onMomentumScrollEnd, so commit on both (handleEnd is idempotent — it
+      // no-ops when the snapped index is unchanged).
       onMomentumScrollEnd={handleEnd}
+      onScrollEndDrag={handleEnd}
       style={{ height: ITEM_HEIGHT * VISIBLE_ROWS }}
       contentContainerStyle={{ paddingVertical: ITEM_HEIGHT * PAD_ROWS }}
     >
