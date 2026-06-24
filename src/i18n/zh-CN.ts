@@ -23,6 +23,8 @@ export const zhCN = {
   'settings.section.wardrobe': '衣橱',
   'settings.section.privacy': '隐私',
   'settings.departureTime': '出门时间',
+  'settings.departureTimeSaved': '出门时间已更新',
+  'settings.departureTimeSaveFailed': '保存失败，请稍后重试',
   'settings.language': '语言',
   'settings.language.zh-CN': '简体中文',
   'settings.language.en-US': 'English',

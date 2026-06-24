@@ -1,6 +1,5 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import { DepartureTimeScreen } from '@/screens/onboarding/DepartureTimeScreen';
 import { SettingsScreen } from '@/screens/settings/SettingsScreen';
 import { colors } from '@/theme/design';
 import type { SettingsStackParamList } from '@/types/navigation';
@@ -18,11 +17,6 @@ export function SettingsNavigator() {
       }}
     >
       <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: '设置', headerShown: false }} />
-      <Stack.Screen
-        name="DepartureTime"
-        component={DepartureTimeScreen}
-        options={{ title: '出门时间' }}
-      />
     </Stack.Navigator>
   );
 }

@@ -6,6 +6,7 @@ import { Pressable, Text, View } from 'react-native';
 import { API_BASE_URL, APP_ENV } from '@/api/client';
 import { updateUserSettings } from '@/api/settings';
 import { OperationBanner } from '@/components/feedback/OperationBanner';
+import { WheelTimePicker } from '@/components/forms/WheelTimePicker';
 import { useTrack } from '@/hooks/useTrack';
 import { invalidateAfterUpdateDepartureTime } from '@/state/invalidation';
 import { phaseFromFlags } from '@/state/operationState';
@@ -25,8 +26,6 @@ const T = {
   divider: colors.separator,
   shadowSm: shadow.soft,
 };
-
-const TIMES = ['07:30:00', '08:00:00', '08:30:00', '09:00:00', '09:30:00'];
 
 export function DepartureTimeScreen() {
   const navigation = useNavigation();
@@ -161,40 +160,9 @@ export function DepartureTimeScreen() {
             </View>
             <Text style={{ marginTop: 4, fontSize: 11, color: T.ink3 }}>工作日 · 可分别设置</Text>
 
-            {/* Quick time chips */}
-            <View
-              style={{
-                marginTop: 20,
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                justifyContent: 'center',
-                gap: 8,
-              }}
-            >
-              {TIMES.map((t) => (
-                <Pressable
-                  key={t}
-                  onPress={() => setTime(t)}
-                  style={{
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    borderRadius: 10,
-                    backgroundColor: time === t ? T.ink : 'transparent',
-                    borderWidth: 1,
-                    borderColor: time === t ? T.ink : T.divider,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      color: time === t ? '#fff' : T.ink2,
-                      fontFamily: 'monospace',
-                    }}
-                  >
-                    {t.slice(0, 5)}
-                  </Text>
-                </Pressable>
-              ))}
+            {/* Shared wheel picker (also used by the settings Bottom Sheet). */}
+            <View style={{ marginTop: 16 }}>
+              <WheelTimePicker value={time.slice(0, 5)} onChange={(v) => setTime(`${v}:00`)} />
             </View>
           </View>
         </View>
