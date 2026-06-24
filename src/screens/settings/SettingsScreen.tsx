@@ -5,6 +5,8 @@ import * as Location from 'expo-location';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
+import { APP_ENV } from '@/api/client';
+import { refreshTodayRecommendation } from '@/api/recommendations';
 import { getUserSettings, updateUserSettings } from '@/api/settings';
 import { OperationBanner } from '@/components/feedback/OperationBanner';
 import { SecondaryButton } from '@/components/forms/SecondaryButton';
@@ -25,7 +27,7 @@ import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, type } from '@/theme/design';
 import type { LocalePref } from '@/types/api';
 import type { SettingsStackParamList } from '@/types/navigation';
-import { coordsValue, isCoords, reverseGeocodeLabel } from '@/utils/location';
+import { coordsValue, getCurrentCoords, isCoords, reverseGeocodeLabel } from '@/utils/location';
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'Settings'>;
 
@@ -89,10 +91,14 @@ export function SettingsScreen({ navigation }: Props) {
     mutationFn: (value: string) => updateUserSettings({ location: value }),
     onSuccess: (data) => {
       queryClient.setQueryData(['userSettings'], data);
-      // update location → userSettings, todayRecommendation (see state/invalidation).
-      // userSettings is set directly above; this refreshes today so weather
-      // follows the new location.
-      invalidateAfterUpdateLocation(queryClient);
+      // A plain invalidation only refetches today's ALREADY-frozen daily, so the
+      // city/weather wouldn't follow the change. Regenerate today in the
+      // background (refresh writes a new revision with the new location), then
+      // invalidate so the Today tab picks it up. On 429 (rate-limited) / 503
+      // (feature off) we keep the old daily — invalidation still runs.
+      void refreshTodayRecommendation()
+        .catch(() => undefined)
+        .finally(() => invalidateAfterUpdateLocation(queryClient));
     },
     onError: () => {
       // Inline OperationBanner now carries the error + retry; keep the toast as
@@ -104,15 +110,16 @@ export function SettingsScreen({ navigation }: Props) {
   const manualDirty = manualText.trim() !== (isCoords(savedLocation) ? '' : savedLocation);
   const locationBusy = locating || locationMutation.isPending;
 
-  // Phase for the inline status banner. `locating` (GPS lookup) counts as
-  // in-flight too, so the banner shows pending across the whole flow. Success is
-  // owned by the toast (a one-shot), so the banner only carries pending + error
-  // — otherwise React Query's sticky `isSuccess` would leave a green banner up
-  // indefinitely, duplicating the toast.
+  // Phase for the inline status banner. Success is owned by the toast (a
+  // one-shot), so the banner only carries pending + error — otherwise React
+  // Query's sticky `isSuccess` would leave a green banner up indefinitely,
+  // duplicating the toast. The GPS lookup already shows its own spinner on the
+  // locate Pressable, so the banner tracks ONLY the save step — otherwise both
+  // would render "正在定位…" at once (the duplicate the user reported).
   const locationPhase = phaseFromFlags({
-    pending: locationBusy,
+    pending: locationMutation.isPending,
     failed: locationMutation.isError,
-    busyPhase: locating ? 'processing' : 'saving',
+    busyPhase: 'saving',
   });
 
   const retryLocation = () => {
@@ -141,17 +148,21 @@ export function SettingsScreen({ navigation }: Props) {
         showToast({ message: t('settings.city.permissionDenied'), kind: 'error' });
         return;
       }
-      const { coords } = await Location.getCurrentPositionAsync({});
-      const value = coordsValue(coords.longitude, coords.latitude);
-      const label = await reverseGeocodeLabel(coords.longitude, coords.latitude);
+      const { longitude, latitude } = await getCurrentCoords();
+      const value = coordsValue(longitude, latitude);
+      const label = await reverseGeocodeLabel(longitude, latitude);
       setPrefMode('gps');
       setGpsLabel(label);
       lastSubmittedRef.current = value;
       locationMutation.mutate(value, {
         onSuccess: () => showToast({ message: t('settings.city.updatedToast'), kind: 'success' }),
       });
-    } catch {
-      showToast({ message: t('settings.city.locateFailed'), kind: 'error' });
+    } catch (error) {
+      // Surface the underlying expo-location error in non-prod so device-specific
+      // failures (GPS off / unavailable / Play-services) are diagnosable instead
+      // of hidden behind a generic "定位失败".
+      const detail = APP_ENV !== 'production' ? `：${(error as Error)?.message ?? 'unknown'}` : '';
+      showToast({ message: `${t('settings.city.locateFailed')}${detail}`, kind: 'error' });
     } finally {
       setLocating(false);
     }
