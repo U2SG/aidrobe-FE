@@ -135,6 +135,7 @@ export const zhCN = {
 
   // --- Ask Aidrobe ---------------------------------------------------------
   'ask.title': '问 Aidrobe',
+  'ask.barHint': '问问 Aidrobe，比如「这件配什么」',
   'ask.relatedItems': '衣橱里的相关单品',
   'ask.itemFallback': '单品',
   'ask.moreItems': '还有 {count} 件',
@@ -165,11 +166,11 @@ export const zhCN = {
   'today.candidateNone': '暂无',
   'today.candidateUnlock': '补单品解锁',
   'today.candidateMeta': '{minutes} 分钟 · {signal}',
-  'today.preset.safe.title': '雨天通勤',
-  'today.preset.safe.signal': '防潮外层',
+  'today.preset.safe.title': '稳妥百搭',
+  'today.preset.safe.signal': '不易出错',
   'today.preset.fast.title': '五分钟出门',
   'today.preset.fast.signal': '少翻找',
-  'today.preset.stylish.title': '银蓝冷调',
+  'today.preset.stylish.title': '更出彩',
   'today.preset.stylish.signal': '轮廓更清晰',
   'today.prepMinutes': '{minutes}m',
   'today.leaveNow': '现在出门',

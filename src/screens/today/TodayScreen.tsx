@@ -69,7 +69,6 @@ type StrategyPreset = {
   icon: 'shield' | 'clock' | 'sparkle';
   pieces: GarmentPiece[];
   prepMinutes: number;
-  reason: string;
 };
 
 
@@ -83,7 +82,6 @@ const PRESETS: Record<StrategyKey, StrategyPreset> = {
       { kind: 'sneaker', x: 208, y: 292, scale: 0.78, rotate: '-5deg' },
     ],
     prepMinutes: 8,
-    reason: '深色外层压住雨天湿冷感，鞋面更好打理。',
   },
   fast: {
     icon: 'clock',
@@ -93,7 +91,6 @@ const PRESETS: Record<StrategyKey, StrategyPreset> = {
       { kind: 'sneaker', x: 206, y: 300, scale: 0.82, rotate: '-6deg' },
     ],
     prepMinutes: 5,
-    reason: '只拿高频单品，减少搭配决策。',
   },
   stylish: {
     icon: 'sparkle',
@@ -104,7 +101,6 @@ const PRESETS: Record<StrategyKey, StrategyPreset> = {
       { kind: 'sneaker', x: 210, y: 292, scale: 0.78, rotate: '-5deg' },
     ],
     prepMinutes: 12,
-    reason: '保留低饱和底色，用外套线条做记忆点。',
   },
 };
 
