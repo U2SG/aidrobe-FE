@@ -102,7 +102,7 @@ export const zhCN = {
   'item.editOccasion': '选择场合',
   'item.editFit': '选择版型',
   'item.color.placeholder': '输入颜色',
-  'item.review.confirm': '确认',
+  'item.review.confirm': '看起来没问题',
   'item.review.change': '修改',
   'item.suggest.applied': '已根据品类补充建议标签',
   'item.bulk.selected': '已选 {count} 件',

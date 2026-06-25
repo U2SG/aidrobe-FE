@@ -174,6 +174,14 @@ export function ItemDetailScreen({ navigation, route }: Props) {
       qc.setQueryData(['wardrobeItem', itemId], next);
       qc.invalidateQueries({ queryKey: ['wardrobeItems'] });
     },
+    // Two-step save (metadata then fit): if fit fails after metadata persisted,
+    // the server is half-updated. Refetch both queries so the screen reflects the
+    // real persisted state instead of the stale draft. The item refetch re-runs
+    // the draft/fitIntent resync effect, so the chips repaint to server truth.
+    onError: () => {
+      qc.invalidateQueries({ queryKey: ['wardrobeItem', itemId] });
+      qc.invalidateQueries({ queryKey: ['wardrobeItems'] });
+    },
   });
 
   const remove = useMutation({
@@ -258,6 +266,11 @@ export function ItemDetailScreen({ navigation, route }: Props) {
   const catLow =
     !reviewed.category && isLowConfidence(backendItem?.categoryConfidence);
   const colorLow = !reviewed.color && isLowConfidence(backendItem?.colorConfidence);
+  // Session-only dismissal: marks the field as reviewed for this screen visit so
+  // the low-confidence prompt stops showing. It does NOT persist acceptance — if
+  // the server later returns scores, re-entering the screen re-shows the prompt.
+  // The copy reads as "looks right / dismiss", not durable confirmation.
+  // TODO(BE): durable confirmation needs a backend write (FE#39 seam).
   const markReviewed = (field: string) =>
     setReviewed((r) => ({ ...r, [field]: true }));
 

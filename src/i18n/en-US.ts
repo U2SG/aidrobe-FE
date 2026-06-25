@@ -104,7 +104,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'item.editOccasion': 'Choose occasions',
   'item.editFit': 'Choose fit',
   'item.color.placeholder': 'Enter a color',
-  'item.review.confirm': 'Confirm',
+  'item.review.confirm': 'Looks right',
   'item.review.change': 'Change',
   'item.suggest.applied': 'Suggested tags added from category',
   'item.bulk.selected': '{count} selected',
