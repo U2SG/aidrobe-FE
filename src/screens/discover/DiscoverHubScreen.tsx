@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { SystemIcon } from '@/components/ui/SystemIcon';
+import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { DiscoverStackParamList } from '@/types/navigation';
@@ -22,6 +23,7 @@ const T = {
 };
 
 function AskBar({ onPress }: { onPress: () => void }) {
+  const { t } = useT();
   return (
     <Pressable
       onPress={onPress}
@@ -37,7 +39,7 @@ function AskBar({ onPress }: { onPress: () => void }) {
       }}
     >
       <SystemIcon name="sparkle" size={18} color={T.accent} strokeWidth={1.9} />
-      <Text style={{ ...type.callout, color: T.ink3 }}>问问 Aidrobe，比如「这件配什么」</Text>
+      <Text style={{ ...type.callout, color: T.ink3 }}>{t('ask.barHint')}</Text>
     </Pressable>
   );
 }

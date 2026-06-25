@@ -138,6 +138,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
 
   // --- Ask Aidrobe ---------------------------------------------------------
   'ask.title': 'Ask Aidrobe',
+  'ask.barHint': 'Ask Aidrobe, e.g. "What goes with this"',
   'ask.relatedItems': 'Related items in your wardrobe',
   'ask.itemFallback': 'Item',
   'ask.moreItems': '{count} more',
@@ -168,11 +169,11 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'today.candidateNone': 'None',
   'today.candidateUnlock': 'Add items to unlock',
   'today.candidateMeta': '{minutes} min · {signal}',
-  'today.preset.safe.title': 'Rainy commute',
-  'today.preset.safe.signal': 'Water-resistant layer',
+  'today.preset.safe.title': 'Safe & versatile',
+  'today.preset.safe.signal': 'Hard to get wrong',
   'today.preset.fast.title': 'Out in 5 min',
   'today.preset.fast.signal': 'Fewer choices',
-  'today.preset.stylish.title': 'Silver-blue cool',
+  'today.preset.stylish.title': 'More expressive',
   'today.preset.stylish.signal': 'Sharper silhouette',
   'today.prepMinutes': '{minutes}m',
   'today.leaveNow': 'Leave now',
