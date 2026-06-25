@@ -56,7 +56,7 @@ export function OutfitCard({ outfit, selected, onPress, onWear }: Props) {
               width: 64,
               alignItems: 'center',
               justifyContent: 'center',
-              borderRadius: radius.sm,
+              borderRadius: radius.xs,
               backgroundColor: colors.fill,
             }}
           >
