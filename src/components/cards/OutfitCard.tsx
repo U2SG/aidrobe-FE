@@ -1,5 +1,7 @@
-import { Pressable, Text, View } from 'react-native';
+import { View } from 'react-native';
 
+import { Badge, Button, Card, Typography } from '@/components/ui';
+import { colors, radius } from '@/theme/design';
 import type { OutfitSummary, OutfitVariant } from '@/types/api';
 
 const VARIANT_LABEL: Record<OutfitVariant, string> = {
@@ -15,39 +17,57 @@ interface Props {
   onWear: () => void;
 }
 
+// FE#32 — migrated off the legacy NativeWind brand-*/ink-* palette onto the
+// design-token primitives (Card/Badge/Typography/Button). Colors normalize to
+// the token palette (selection uses `accent`); visually near-identical but
+// not pixel-verified — see PR.
 export function OutfitCard({ outfit, selected, onPress, onWear }: Props) {
   return (
-    <Pressable
+    <Card
       onPress={onPress}
-      className={`mb-4 rounded-2xl border bg-white p-4 ${
-        selected ? 'border-brand-600' : 'border-ink-100'
-      }`}
+      variant="flat"
+      radius={16}
+      bordered
+      style={{ marginBottom: 16, borderColor: selected ? colors.accent : colors.borderSubtle }}
     >
-      <View className="mb-2 flex-row items-center justify-between">
-        <Text className="text-base font-semibold text-ink-900">{outfit.title}</Text>
-        <Text className="rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-700">
-          {VARIANT_LABEL[outfit.variant]}
-        </Text>
+      <View
+        style={{
+          marginBottom: 8,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <Typography variant="headline" color="label">
+          {outfit.title}
+        </Typography>
+        <Badge tone="accent" label={VARIANT_LABEL[outfit.variant] ?? outfit.variant} />
       </View>
-      <Text className="mb-3 text-sm text-ink-500">{outfit.reason}</Text>
+      <Typography variant="callout" color="tertiaryLabel" style={{ marginBottom: 12 }}>
+        {outfit.reason}
+      </Typography>
 
-      <View className="mb-3 flex-row gap-2">
+      <View style={{ marginBottom: 12, flexDirection: 'row', gap: 8 }}>
         {outfit.items.slice(0, 4).map((item) => (
           <View
             key={item.id}
-            className="h-16 w-16 items-center justify-center rounded-lg bg-ink-100"
+            style={{
+              height: 64,
+              width: 64,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: radius.xs,
+              backgroundColor: colors.fill,
+            }}
           >
-            <Text className="text-xs text-ink-500">{item.category ?? 'item'}</Text>
+            <Typography variant="caption" color="tertiaryLabel">
+              {item.category ?? 'item'}
+            </Typography>
           </View>
         ))}
       </View>
 
-      <Pressable
-        onPress={onWear}
-        className="h-10 items-center justify-center rounded-lg bg-brand-600 active:bg-brand-700"
-      >
-        <Text className="text-sm font-semibold text-inverse">今天穿这套</Text>
-      </Pressable>
-    </Pressable>
+      <Button label="今天穿这套" onPress={onWear} variant="primary" size="sm" />
+    </Card>
   );
 }
