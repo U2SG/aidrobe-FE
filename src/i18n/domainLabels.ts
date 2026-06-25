@@ -6,7 +6,30 @@ import type { AppLocale } from '@/utils/locale';
 // guarded against unknown server values (the unions carry string escape hatches)
 // and fall back to the humanized raw value rather than throwing.
 
-export type EnumLabelKind = 'category' | 'status' | 'fitStatus' | 'fitIntent' | 'variant';
+export type EnumLabelKind =
+  | 'category'
+  | 'status'
+  | 'fitStatus'
+  | 'fitIntent'
+  | 'variant'
+  | 'season'
+  | 'occasion';
+
+// FE#39 quick-edit option sets. season → season_tags, occasion → style_tags on
+// the wire (both free-form string arrays server-side; we curate a stable set for
+// tap-to-edit and still localize any other value via humanize()).
+export const SEASON_VALUES = ['spring', 'summer', 'autumn', 'winter'] as const;
+export const OCCASION_VALUES = [
+  'casual',
+  'office',
+  'formal',
+  'sport',
+  'date',
+  'travel',
+  'home',
+] as const;
+export type SeasonTag = (typeof SEASON_VALUES)[number];
+export type OccasionTag = (typeof OCCASION_VALUES)[number];
 
 type LocaleMap<K extends string> = Record<AppLocale, Record<K, string>>;
 
@@ -94,6 +117,32 @@ const FIT_INTENT: LocaleMap<FitIntent> = {
   },
 };
 
+const SEASON: LocaleMap<SeasonTag> = {
+  'zh-CN': { spring: '春', summer: '夏', autumn: '秋', winter: '冬' },
+  'en-US': { spring: 'Spring', summer: 'Summer', autumn: 'Autumn', winter: 'Winter' },
+};
+
+const OCCASION: LocaleMap<OccasionTag> = {
+  'zh-CN': {
+    casual: '休闲',
+    office: '通勤',
+    formal: '正式',
+    sport: '运动',
+    date: '约会',
+    travel: '旅行',
+    home: '居家',
+  },
+  'en-US': {
+    casual: 'Casual',
+    office: 'Office',
+    formal: 'Formal',
+    sport: 'Sport',
+    date: 'Date',
+    travel: 'Travel',
+    home: 'Home',
+  },
+};
+
 // OutfitVariant carries a `(string & {})` escape hatch, so type the known keys.
 const VARIANT: Record<AppLocale, Record<'safe' | 'fast' | 'stylish', string>> = {
   'zh-CN': { safe: '稳妥', fast: '快速', stylish: '有风格' },
@@ -130,6 +179,14 @@ export function tFitStatus(locale: AppLocale, value: string | null | undefined):
 
 export function tFitIntent(locale: AppLocale, value: string | null | undefined): string {
   return lookup(FIT_INTENT, locale, value);
+}
+
+export function tSeason(locale: AppLocale, value: string | null | undefined): string {
+  return lookup(SEASON, locale, value);
+}
+
+export function tOccasion(locale: AppLocale, value: string | null | undefined): string {
+  return lookup(OCCASION, locale, value);
 }
 
 export function tVariant(locale: AppLocale, value: string | null | undefined): string {

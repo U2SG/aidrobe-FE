@@ -5,6 +5,8 @@ import {
   tCategory,
   tFitIntent,
   tFitStatus,
+  tOccasion,
+  tSeason,
   tStatus,
   tVariant,
   type EnumLabelKind,
@@ -46,6 +48,10 @@ export function useT(): UseT {
           return tFitIntent(locale, value);
         case 'variant':
           return tVariant(locale, value);
+        case 'season':
+          return tSeason(locale, value);
+        case 'occasion':
+          return tOccasion(locale, value);
         default:
           return value ?? '';
       }

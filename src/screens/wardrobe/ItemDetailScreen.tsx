@@ -8,19 +8,55 @@ import {
   getItemWearHistory,
   getWardrobeItem,
   updateWardrobeItem,
+  updateWardrobeItemFit,
 } from '@/api/wardrobe';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
+import {
+  EditableChip,
+  isLowConfidence,
+  OptionPickerSheet,
+  type PickerOption,
+} from '@/components/ui';
 import { CutoutBadge } from '@/components/ui/CutoutBadge';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { SHOWCASE_WARDROBE } from '@/data/wardrobeShowcase';
 import { useT } from '@/hooks/useT';
-import { resolveItemDisplayName } from '@/i18n/domainLabels';
+import {
+  OCCASION_VALUES,
+  resolveItemDisplayName,
+  SEASON_VALUES,
+} from '@/i18n/domainLabels';
 import { colors, shadow } from '@/theme/design';
-import type { ItemCategory, UpdateWardrobeItemBody, WardrobeItem } from '@/types/api';
+import type {
+  FitIntent,
+  ItemCategory,
+  UpdateWardrobeItemBody,
+  WardrobeItem,
+} from '@/types/api';
 import type { WardrobeStackParamList } from '@/types/navigation';
+
+const FIT_INTENT_KEYS: FitIntent[] = [
+  'regular',
+  'fitted',
+  'relaxed',
+  'oversized',
+  'cropped',
+  'longline',
+  'wide_leg',
+  'straight',
+  'slim',
+];
+
+// Which quick-edit field has its picker open. null = no sheet.
+type QuickField = 'category' | 'color' | 'season' | 'occasion' | 'fit' | null;
+
+// Format a 0–1 recognizer score as a percent label for the ConfidenceBadge.
+function confidencePct(score: number | null | undefined): string {
+  return score == null ? '' : `${Math.round(score * 100)}%`;
+}
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'ItemDetail'>;
 
@@ -97,20 +133,53 @@ export function ItemDetailScreen({ navigation, route }: Props) {
     [wearHistoryQuery.data?.dailyCounts],
   );
   const [draft, setDraft] = useState<UpdateWardrobeItemBody>({});
+  // Fit lives on a separate endpoint (updateWardrobeItemFit), so it's tracked
+  // apart from the metadata draft and saved alongside on the same CTA.
+  const [fitIntent, setFitIntent] = useState<FitIntent | null>(null);
+  const [activeField, setActiveField] = useState<QuickField>(null);
+  // Fields the user has explicitly confirmed/edited this session — clears the
+  // low-confidence review affordance once acted on.
+  const [reviewed, setReviewed] = useState<Record<string, boolean>>({});
+  // Shows a one-line note when a smart suggestion auto-fills related metadata.
+  const [suggestionApplied, setSuggestionApplied] = useState(false);
 
   useEffect(() => {
     if (showcaseItem) {
       setDraft({ name: showcaseItem.name, category: showcaseItem.category, color: showcaseItem.color, status: 'wearable', location: '主衣柜' });
+      setFitIntent(null);
     } else if (query.data) {
       const d = query.data;
-      setDraft({ name: d.name, category: d.category, color: d.color, status: d.status, location: d.location });
+      setDraft({
+        name: d.name,
+        category: d.category,
+        color: d.color,
+        status: d.status,
+        location: d.location,
+        seasonTags: d.seasonTags ?? [],
+        styleTags: d.styleTags ?? [],
+      });
+      setFitIntent(d.fitIntent ?? null);
     }
   }, [query.data, showcaseItem]);
 
   const update = useMutation({
-    mutationFn: (body: UpdateWardrobeItemBody) => updateWardrobeItem(itemId, body),
+    // Save metadata then (if changed) fit — fit is a separate endpoint. Both
+    // resolve to the same WardrobeItem shape so the cache lands on the latest.
+    mutationFn: async (body: UpdateWardrobeItemBody) => {
+      const next = await updateWardrobeItem(itemId, body);
+      const fitChanged = fitIntent != null && fitIntent !== (query.data?.fitIntent ?? null);
+      return fitChanged ? updateWardrobeItemFit(itemId, { fitIntent }) : next;
+    },
     onSuccess: (next: WardrobeItem) => {
       qc.setQueryData(['wardrobeItem', itemId], next);
+      qc.invalidateQueries({ queryKey: ['wardrobeItems'] });
+    },
+    // Two-step save (metadata then fit): if fit fails after metadata persisted,
+    // the server is half-updated. Refetch both queries so the screen reflects the
+    // real persisted state instead of the stale draft. The item refetch re-runs
+    // the draft/fitIntent resync effect, so the chips repaint to server truth.
+    onError: () => {
+      qc.invalidateQueries({ queryKey: ['wardrobeItem', itemId] });
       qc.invalidateQueries({ queryKey: ['wardrobeItems'] });
     },
   });
@@ -155,6 +224,55 @@ export function ItemDetailScreen({ navigation, route }: Props) {
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('common.delete'), style: 'destructive', onPress: () => remove.mutate() },
     ]);
+
+  // FE#39 quick-edit picker option sets (localized labels, stable wire values).
+  const categoryOptions: PickerOption[] = CATEGORY_OPTIONS.map((c) => ({
+    value: c.key,
+    label: c.label,
+  }));
+  const seasonOptions: PickerOption[] = SEASON_VALUES.map((s) => ({
+    value: s,
+    label: tEnum('season', s),
+  }));
+  const occasionOptions: PickerOption[] = OCCASION_VALUES.map((o) => ({
+    value: o,
+    label: tEnum('occasion', o),
+  }));
+  const fitOptions: PickerOption[] = FIT_INTENT_KEYS.map((f) => ({
+    value: f,
+    label: tEnum('fitIntent', f),
+  }));
+
+  const seasonValue = (draft.seasonTags ?? [])
+    .map((s) => tEnum('season', s))
+    .join(' · ');
+  const occasionValue = (draft.styleTags ?? [])
+    .map((s) => tEnum('occasion', s))
+    .join(' · ');
+
+  // Smart suggestion: a blazer-ish item implies office/formal occasions. Only
+  // adds (never removes) and only when occasion is still empty, so it's a hint
+  // rather than an override. Mirrors the issue's category→occasion example.
+  const applyCategorySuggestion = (category: ItemCategory) => {
+    // Keep the state updater pure (no side effects) — StrictMode double-invokes
+    // it in dev. Decide + flag here, then update draft.
+    if (category !== 'outerwear' || (draft.styleTags ?? []).length > 0) return;
+    setSuggestionApplied(true);
+    setDraft((c) => ({ ...c, styleTags: ['office', 'formal'] }));
+  };
+
+  // Confidence review: persisted items rarely carry scores yet (FE#39 seam), so
+  // these light up only when the server returns them and the user hasn't acted.
+  const catLow =
+    !reviewed.category && isLowConfidence(backendItem?.categoryConfidence);
+  const colorLow = !reviewed.color && isLowConfidence(backendItem?.colorConfidence);
+  // Session-only dismissal: marks the field as reviewed for this screen visit so
+  // the low-confidence prompt stops showing. It does NOT persist acceptance — if
+  // the server later returns scores, re-entering the screen re-shows the prompt.
+  // The copy reads as "looks right / dismiss", not durable confirmation.
+  // TODO(BE): durable confirmation needs a backend write (FE#39 seam).
+  const markReviewed = (field: string) =>
+    setReviewed((r) => ({ ...r, [field]: true }));
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -219,18 +337,64 @@ export function ItemDetailScreen({ navigation, route }: Props) {
           />
         </View>
 
-        {/* Specs grid */}
-        <View style={{ marginTop: 18, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {[
-            { label: t('item.category'), value: draft.category ? tEnum('category', draft.category) : '—' },
-            { label: t('item.color'), value: draft.color ?? '—' },
-            { label: t('item.location'), value: draft.location ?? '—' },
-          ].map((s) => (
-            <View key={s.label} style={{ backgroundColor: T.card, borderRadius: 10, ...T.shadowSm, minWidth: 100, padding: 12 }}>
-              <Text style={{ fontSize: 10, color: T.ink3, marginBottom: 3 }}>{s.label}</Text>
-              <Text style={{ fontSize: 13, color: T.ink, fontWeight: '500' }}>{s.value}</Text>
+        {/* Quick edit — tap any chip to fix a field without a full form (FE#39) */}
+        <View style={{ marginTop: 18 }}>
+          <Text style={{ fontSize: 11, color: T.ink3, marginBottom: 4, paddingHorizontal: 4 }}>
+            {t('item.quickEdit')}
+          </Text>
+          <Text style={{ fontSize: 11, color: T.ink4, marginBottom: 10, paddingHorizontal: 4 }}>
+            {t('item.quickEdit.hint')}
+          </Text>
+          <View style={{ gap: 8 }}>
+            <EditableChip
+              label={t('item.category')}
+              value={draft.category ? tEnum('category', draft.category) : null}
+              placeholder={t('item.notSet')}
+              onPress={() => setActiveField('category')}
+              lowConfidence={catLow}
+              confidenceScore={reviewed.category ? null : backendItem?.categoryConfidence}
+              confidenceLabel={confidencePct(backendItem?.categoryConfidence)}
+              onConfirm={catLow ? () => markReviewed('category') : undefined}
+              confirmLabel={t('item.review.confirm')}
+              changeLabel={t('item.review.change')}
+            />
+            <EditableChip
+              label={t('item.color')}
+              value={draft.color ?? null}
+              placeholder={t('item.notSet')}
+              onPress={() => setActiveField('color')}
+              lowConfidence={colorLow}
+              confidenceScore={reviewed.color ? null : backendItem?.colorConfidence}
+              confidenceLabel={confidencePct(backendItem?.colorConfidence)}
+              onConfirm={colorLow ? () => markReviewed('color') : undefined}
+              confirmLabel={t('item.review.confirm')}
+              changeLabel={t('item.review.change')}
+            />
+            <EditableChip
+              label={t('item.season')}
+              value={seasonValue || null}
+              placeholder={t('item.notSet')}
+              onPress={() => setActiveField('season')}
+            />
+            <EditableChip
+              label={t('item.occasion')}
+              value={occasionValue || null}
+              placeholder={t('item.notSet')}
+              onPress={() => setActiveField('occasion')}
+            />
+            <EditableChip
+              label={t('item.fit')}
+              value={fitIntent ? tEnum('fitIntent', fitIntent) : null}
+              placeholder={t('item.notSet')}
+              onPress={() => setActiveField('fit')}
+            />
+          </View>
+          {suggestionApplied ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, paddingHorizontal: 4 }}>
+              <SystemIcon name="sparkle" size={12} color={T.accent} strokeWidth={1.9} />
+              <Text style={{ fontSize: 11, color: T.ink3 }}>{t('item.suggest.applied')}</Text>
             </View>
-          ))}
+          ) : null}
         </View>
 
         {/* Name edit */}
@@ -241,31 +405,6 @@ export function ItemDetailScreen({ navigation, route }: Props) {
             onChangeText={(name) => setDraft((c) => ({ ...c, name }))}
             style={{ fontSize: 15, color: T.ink }}
           />
-        </View>
-
-        {/* Category */}
-        <View style={{ marginTop: 12 }}>
-          <Text style={{ fontSize: 11, color: T.ink3, marginBottom: 8, paddingHorizontal: 4 }}>{t('item.category')}</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-            {CATEGORY_OPTIONS.map((cat) => (
-              <Pressable
-                key={cat.key}
-                onPress={() => setDraft((c) => ({ ...c, category: cat.key }))}
-                style={{
-                  paddingHorizontal: 14,
-                  paddingVertical: 7,
-                  borderRadius: 999,
-                  backgroundColor: draft.category === cat.key ? T.ink : 'transparent',
-                  borderWidth: 1,
-                  borderColor: draft.category === cat.key ? T.ink : T.divider,
-                }}
-              >
-                <Text style={{ fontSize: 12, color: draft.category === cat.key ? colors.inverse : T.ink2 }}>
-                  {cat.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
         </View>
 
         {/* Location edit */}
@@ -366,6 +505,65 @@ export function ItemDetailScreen({ navigation, route }: Props) {
           </>
         )}
       </View>
+
+      {/* Quick-edit pickers (FE#39) — one shared sheet shell per field. */}
+      <OptionPickerSheet
+        mode="single"
+        visible={activeField === 'category'}
+        onClose={() => setActiveField(null)}
+        title={t('item.editCategory')}
+        options={categoryOptions}
+        selected={draft.category ?? null}
+        onSelect={(value) => {
+          const category = value as ItemCategory;
+          setDraft((c) => ({ ...c, category }));
+          markReviewed('category');
+          applyCategorySuggestion(category);
+        }}
+      />
+      <OptionPickerSheet
+        mode="single"
+        visible={activeField === 'color'}
+        onClose={() => setActiveField(null)}
+        title={t('item.editColor')}
+        options={[]}
+        allowCustom
+        customPlaceholder={t('item.color.placeholder')}
+        selected={draft.color ?? null}
+        onSelect={(value) => {
+          setDraft((c) => ({ ...c, color: value }));
+          markReviewed('color');
+        }}
+      />
+      <OptionPickerSheet
+        mode="multi"
+        visible={activeField === 'season'}
+        onClose={() => setActiveField(null)}
+        title={t('item.editSeason')}
+        options={seasonOptions}
+        doneLabel={t('common.done')}
+        selected={draft.seasonTags ?? []}
+        onSelect={(values) => setDraft((c) => ({ ...c, seasonTags: values }))}
+      />
+      <OptionPickerSheet
+        mode="multi"
+        visible={activeField === 'occasion'}
+        onClose={() => setActiveField(null)}
+        title={t('item.editOccasion')}
+        options={occasionOptions}
+        doneLabel={t('common.done')}
+        selected={draft.styleTags ?? []}
+        onSelect={(values) => setDraft((c) => ({ ...c, styleTags: values }))}
+      />
+      <OptionPickerSheet
+        mode="single"
+        visible={activeField === 'fit'}
+        onClose={() => setActiveField(null)}
+        title={t('item.editFit')}
+        options={fitOptions}
+        selected={fitIntent}
+        onSelect={(value) => setFitIntent(value as FitIntent)}
+      />
     </View>
   );
 }

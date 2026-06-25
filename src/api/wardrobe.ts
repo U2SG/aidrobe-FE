@@ -45,6 +45,8 @@ export function toWardrobeItem(item: ServerWardrobeItem): WardrobeItem {
     comfortScore: item.comfort_score ?? null,
     lastWorn: item.last_worn ?? null,
     purchaseDate: item.purchase_date ?? null,
+    categoryConfidence: item.category_confidence ?? null,
+    colorConfidence: item.color_confidence ?? null,
   };
 }
 
