@@ -109,6 +109,13 @@ export interface WardrobeItem {
   comfortScore?: number | null;
   lastWorn?: string | null;
   purchaseDate?: string | null;
+  // FE#39 seam: AI-detection confidence for low-confidence review affordances.
+  // Persisted WardrobeItem rows don't carry these today (confidence lives on the
+  // import/recognition flow); fields are optional so the item-detail review UI
+  // lights up automatically once the server starts returning them. Until then
+  // they stay undefined and the badge simply doesn't render — no fabricated score.
+  categoryConfidence?: number | null;
+  colorConfidence?: number | null;
 }
 
 export interface ServerWardrobeItem {
@@ -142,6 +149,9 @@ export interface ServerWardrobeItem {
   wear_count?: number;
   last_worn?: string | null;
   purchase_date?: string | null;
+  // FE#39 seam — optional, older deployments omit these.
+  category_confidence?: number | null;
+  color_confidence?: number | null;
 }
 
 export interface ListWardrobeItemsQuery {

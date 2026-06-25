@@ -5,10 +5,14 @@
 // New primitives
 export { Badge, type BadgeTone } from './Badge';
 export { BottomSheet } from './BottomSheet';
+export { BulkActionBar, type BulkAction } from './BulkActionBar';
 export { Card, type CardVariant } from './Card';
+export { ConfidenceBadge, confidenceTone, isLowConfidence } from './ConfidenceBadge';
+export { EditableChip } from './EditableChip';
 export { GradientSurface } from './GradientSurface';
 export { Input } from './Input';
 export { Modal } from './Modal';
+export { OptionPickerSheet, type PickerOption } from './OptionPickerSheet';
 export { Skeleton } from './Skeleton';
 export { Typography, type TypographyVariant } from './Typography';
 
