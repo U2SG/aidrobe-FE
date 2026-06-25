@@ -45,6 +45,14 @@ const THUMB = 44;
 function HistoryThumb({ imageUrl }: { imageUrl: string | null }) {
   const [errored, setErrored] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  // A history row keeps the same `h.id` (and thus the same React key) across
+  // refetches, so a fresh/refreshed `imageUrl` reuses this component instance.
+  // Without resetting, a prior `onError` leaves `errored` true and the new URL
+  // never gets a chance to load. Reset load/error state whenever the URL changes.
+  useEffect(() => {
+    setErrored(false);
+    setLoaded(false);
+  }, [imageUrl]);
   const state = historyThumbState(imageUrl, errored);
 
   return (
