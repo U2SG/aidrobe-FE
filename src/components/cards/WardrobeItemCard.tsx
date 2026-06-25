@@ -16,6 +16,7 @@ export function WardrobeItemCard({ item, onPress }: Props) {
   return (
     <Card
       onPress={onPress}
+      variant="flat"
       radius={16}
       bordered
       padding={0}

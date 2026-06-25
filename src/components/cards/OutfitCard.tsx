@@ -25,6 +25,7 @@ export function OutfitCard({ outfit, selected, onPress, onWear }: Props) {
   return (
     <Card
       onPress={onPress}
+      variant="flat"
       radius={16}
       bordered
       style={{ marginBottom: 16, borderColor: selected ? colors.accent : colors.borderSubtle }}
