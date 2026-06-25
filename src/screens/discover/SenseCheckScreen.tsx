@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { getSenseCheckHistory, senseCheck } from '@/api/shopping';
+import { historyThumbState } from '@/screens/discover/senseCheckHistory';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { Tag } from '@/components/ui/Tag';
@@ -33,6 +34,66 @@ const VERDICT: Record<string, { label: string; color: string; bg: string }> = {
   consider: { label: '再考虑', color: colors.warning, bg: colors.warningBg },
   skip: { label: '别买了', color: colors.danger, bg: colors.dangerBg },
 };
+
+const THUMB = 44;
+
+// History row thumbnail with a deterministic fallback. The box keeps a fixed
+// 44×44 footprint regardless of load/error state so the row never jumps; the
+// <Image> overlays it and on failure (or no URL) we keep the box + a 'photo'
+// glyph. `testID`s make loading/error states QA-visible. This is the actual P0
+// fix: the old row drew a bare placeholder <View> and never mounted an Image.
+function HistoryThumb({ imageUrl }: { imageUrl: string | null }) {
+  const [errored, setErrored] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  // A history row keeps the same `h.id` (and thus the same React key) across
+  // refetches, so a fresh/refreshed `imageUrl` reuses this component instance.
+  // Without resetting, a prior `onError` leaves `errored` true and the new URL
+  // never gets a chance to load. Reset load/error state whenever the URL changes.
+  useEffect(() => {
+    setErrored(false);
+    setLoaded(false);
+  }, [imageUrl]);
+  const state = historyThumbState(imageUrl, errored);
+
+  return (
+    <View
+      style={{ width: THUMB, height: THUMB, borderRadius: radius.sm, backgroundColor: T.cardSoft, overflow: 'hidden' }}
+    >
+      {state === 'fallback' ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} testID="sense-history-thumb-fallback">
+          <SystemIcon name="photo" size={20} color={T.ink3} />
+        </View>
+      ) : (
+        <>
+          <Image
+            source={{ uri: imageUrl as string }}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="cover"
+            onLoad={() => setLoaded(true)}
+            onError={() => setErrored(true)}
+            testID="sense-history-thumb-image"
+          />
+          {!loaded ? (
+            <View
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              testID="sense-history-thumb-loading"
+            >
+              <ActivityIndicator size="small" color={T.ink3} />
+            </View>
+          ) : null}
+        </>
+      )}
+    </View>
+  );
+}
 
 function ResultCard({ result }: { result: SenseCheckResult }) {
   const v = VERDICT[result.verdict] ?? { label: result.verdict, color: T.ink, bg: T.cardSoft };
@@ -261,7 +322,7 @@ export function SenseCheckScreen({ navigation }: Props) {
                       ...shadow.soft,
                     }}
                   >
-                    <View style={{ width: 44, height: 44, borderRadius: radius.sm, backgroundColor: T.cardSoft }} />
+                    <HistoryThumb imageUrl={h.imageUrl} />
                     <View style={{ flex: 1 }}>
                       <Text style={{ ...type.body, color: T.ink }} numberOfLines={1}>
                         {h.sourceUrl || '商品图'}
