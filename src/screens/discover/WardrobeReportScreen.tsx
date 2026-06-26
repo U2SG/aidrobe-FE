@@ -119,7 +119,7 @@ export function WardrobeReportScreen({ navigation, route }: Props) {
       if (report.shareAssetUrl) {
         await Share.share({ message: shareMessage, url: report.shareAssetUrl });
       } else {
-        // API_GAP[BE#xx]: wardrobe report has no shareable poster/asset URL.
+        // API_GAP[untracked]: wardrobe report has no shareable poster/asset URL.
         // Fallback: share a text recap through the native share sheet. See docs/api-gaps.md.
         await Share.share({ message: shareMessage });
       }
