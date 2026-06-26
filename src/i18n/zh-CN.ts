@@ -166,6 +166,13 @@ export const zhCN = {
   'ask.emptyHint': '比如「明天通勤穿什么」「这件配什么鞋」',
   'ask.focusedChip': '围绕「{name}」搭配',
   'ask.focusedFallback': '这件单品',
+  'ask.history.open': '查看历史问答',
+  'ask.history.title': '历史问答',
+  'ask.history.sessionTitle': '历史问答详情',
+  'ask.history.loading': '正在加载历史…',
+  'ask.history.empty': '还没有历史问答',
+  'ask.history.error': '历史问答加载失败，请重试',
+  'ask.history.answerFallback': '这次问答还没有保存答案',
   'ask.error.unavailable': '问答功能正在接入中，稍后再试。',
   'ask.error.generic': '出错了，请稍后再试。',
 
