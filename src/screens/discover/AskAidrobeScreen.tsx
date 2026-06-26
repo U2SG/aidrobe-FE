@@ -136,14 +136,12 @@ function TurnView({ turn, onRetry, retryBusy }: { turn: Turn; onRetry: () => voi
 
 function AskHistoryRow({
   entry,
-  locale,
   onPress,
 }: {
   entry: AskHistoryEntry;
-  locale: string;
   onPress: () => void;
 }) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const answer = entry.answer ?? t('ask.history.answerFallback');
   const date = formatHistoryDate(entry.createdAt, locale);
 
@@ -189,7 +187,6 @@ function AskHistorySheet({
   entries,
   loading,
   error,
-  locale,
   onClose,
   onRetry,
 }: {
@@ -197,7 +194,6 @@ function AskHistorySheet({
   entries: AskHistoryEntry[];
   loading: boolean;
   error: boolean;
-  locale: string;
   onClose: () => void;
   onRetry: () => void;
 }) {
@@ -272,7 +268,6 @@ function AskHistorySheet({
             <AskHistoryRow
               key={entry.askSessionId}
               entry={entry}
-              locale={locale}
               onPress={() => setSelected(entry)}
             />
           ))}
@@ -313,6 +308,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         scope: focusedItemId ? 'item' : scope === 'global' ? undefined : scope,
         entrypoint: focusedItemId ? 'item_detail' : undefined,
       }),
+    enabled: historyVisible,
     retry: 1,
   });
 
@@ -414,7 +410,6 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   };
   const openHistory = () => {
     setHistoryVisible(true);
-    void historyQuery.refetch();
   };
 
   return (
@@ -545,7 +540,6 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         entries={historyQuery.data ?? []}
         loading={historyQuery.isLoading || (historyVisible && historyQuery.isFetching && !historyQuery.data)}
         error={historyQuery.isError && !historyQuery.isFetching}
-        locale={locale}
         onClose={() => setHistoryVisible(false)}
         onRetry={() => void historyQuery.refetch()}
       />
