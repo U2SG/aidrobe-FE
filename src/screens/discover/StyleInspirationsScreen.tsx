@@ -217,6 +217,7 @@ export function StyleInspirationsScreen({ navigation }: Props) {
         )
       ) : items.length === 0 ? (
         <EmptyState
+          align="top"
           title={t('discover.inspirations.empty.title')}
           subtitle={t('discover.inspirations.empty.subtitle')}
           primaryAction={{

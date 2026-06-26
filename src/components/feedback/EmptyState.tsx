@@ -10,10 +10,12 @@ interface Props {
   icon?: ReactNode;
   primaryAction?: { label: string; onPress: () => void };
   secondaryAction?: { label: string; onPress: () => void };
-  // Back-compat for existing callers.
+  // 'center' (default) fills the column and vertically centers — the historical
+  // behavior every existing caller relies on. 'top' hugs the header with natural
+  // top spacing (FE#53: fixes the over-empty "floating in the middle" look).
+  align?: 'center' | 'top';
+  // Back-compat alias for `subtitle` — still used by un-migrated callers.
   description?: string;
-  ctaLabel?: string;
-  onCtaPress?: () => void;
 }
 
 export function EmptyState({
@@ -22,22 +24,21 @@ export function EmptyState({
   icon,
   primaryAction,
   secondaryAction,
+  align = 'center',
   description,
-  ctaLabel,
-  onCtaPress,
 }: Props) {
   const resolvedSubtitle = subtitle ?? description;
-  const resolvedPrimaryAction =
-    primaryAction ??
-    (ctaLabel && onCtaPress ? { label: ctaLabel, onPress: onCtaPress } : undefined);
+  const layout =
+    align === 'top'
+      ? { paddingTop: 40, paddingBottom: 32 }
+      : { flex: 1, justifyContent: 'center' as const, paddingVertical: 48 };
 
   return (
     <View
       style={{
         alignItems: 'center',
         paddingHorizontal: spacing.screen,
-        paddingTop: 40,
-        paddingBottom: 32,
+        ...layout,
       }}
     >
       {icon ? <View style={{ marginBottom: 16 }}>{icon}</View> : null}

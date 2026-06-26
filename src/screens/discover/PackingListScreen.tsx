@@ -89,6 +89,7 @@ export function PackingListScreen({ navigation }: Props) {
         )
       ) : (query.data ?? []).length === 0 ? (
         <EmptyState
+          align="top"
           title={t('discover.packing.empty.title')}
           subtitle={t('discover.packing.empty.subtitle')}
           primaryAction={{
