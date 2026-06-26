@@ -218,7 +218,6 @@ export const zhCN = {
     '我的{label}衣橱回顾 · Aidrobe\n穿着 {totalWears} 次，推荐采纳率 {adoptionRate}%',
   'wardrobeReport.shareTopItem': '本命单品：{title}（穿了 {count} 次）',
   'wardrobeReport.shareKeywords': '风格关键词：{keywords}',
-  'wardrobeReport.shareFailed': '分享失败，请稍后重试',
 
   // --- Today ---------------------------------------------------------------
   'today.wearThis': '穿这套',

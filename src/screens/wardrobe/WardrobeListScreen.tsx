@@ -276,16 +276,12 @@ export function WardrobeListScreen({ navigation }: Props) {
     });
   }, [filters, items]);
 
-  const activeFilterCount =
-    (category !== 'all' ? 1 : 0) +
-    (filters.status !== 'all' ? 1 : 0) +
-    (filters.season !== 'all' ? 1 : 0) +
-    (filters.color !== 'all' ? 1 : 0);
-  const hasActiveFilters = activeFilterCount > 0;
   const clientFilterCount =
     (filters.status !== 'all' ? 1 : 0) +
     (filters.season !== 'all' ? 1 : 0) +
     (filters.color !== 'all' ? 1 : 0);
+  const activeFilterCount = clientFilterCount + (category !== 'all' ? 1 : 0);
+  const hasActiveFilters = activeFilterCount > 0;
   const hasClientFilters = clientFilterCount > 0;
   const displayedTotal = hasClientFilters ? filteredItems.length : (query.data?.total ?? 0);
   const insightChips = [

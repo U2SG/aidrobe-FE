@@ -2,7 +2,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { createOotdPoster } from '@/api/ootdPosters';
 import { getOutfitVisualAsset } from '@/api/outfitVisual';
@@ -16,6 +16,7 @@ import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { OotdPosterTemplate } from '@/types/api';
 import type { TodayStackParamList } from '@/types/navigation';
 import { compressImage, MAX_UPLOAD_BYTES } from '@/utils/image';
+import { shareWithAsset } from '@/utils/share';
 
 type Props = NativeStackScreenProps<TodayStackParamList, 'OotdPoster'>;
 
@@ -138,12 +139,8 @@ export function OotdPosterScreen({ navigation, route }: Props) {
   // need expo-media-library, deferred.
   const handleShare = async () => {
     if (!posterUrl) return;
-    try {
-      await Share.share({ message: `我的今日穿搭 · Aidrobe\n${posterUrl}`, url: posterUrl });
-      track('ootd_poster_shared', {});
-    } catch {
-      // user dismissed the share sheet — no-op
-    }
+    await shareWithAsset('我的今日穿搭 · Aidrobe', posterUrl);
+    track('ootd_poster_shared', {});
   };
 
   return (
