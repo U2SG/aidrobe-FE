@@ -82,7 +82,11 @@ export async function getCostPerWear(): Promise<CostPerWearItem[]> {
 // stable codes + numeric metrics only; the FE localizes (see wardrobeHealth.ts).
 // The wire shape already matches the client type, so it passes through as-is.
 export async function getWardrobeHealth(): Promise<WardrobeHealth> {
-  return apiGet<WardrobeHealth>('/v1/insights/wardrobe-health');
+  // Optional card: the screen omits it on 503 (flag off) / any error, so
+  // suppress the global error toast for this request.
+  return apiGet<WardrobeHealth>('/v1/insights/wardrobe-health', undefined, {
+    silentErrorToast: true,
+  });
 }
 
 // V4 M21 — "wardrobe wrapped" report. Gated by ENABLE_WARDROBE_REPORT (503
