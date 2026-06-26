@@ -56,13 +56,13 @@ export function EmptyState({
           {resolvedSubtitle}
         </Text>
       ) : null}
-      {resolvedPrimaryAction || secondaryAction ? (
+      {primaryAction || secondaryAction ? (
         <View style={{ marginTop: 24, width: '100%', maxWidth: 320, gap: 10 }}>
-          {resolvedPrimaryAction ? (
+          {primaryAction ? (
             <Button
               variant="primary"
-              label={resolvedPrimaryAction.label}
-              onPress={resolvedPrimaryAction.onPress}
+              label={primaryAction.label}
+              onPress={primaryAction.onPress}
             />
           ) : null}
           {secondaryAction ? (
