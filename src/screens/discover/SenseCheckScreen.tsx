@@ -40,6 +40,15 @@ const VERDICT: Record<string, { labelKey: I18nKey; color: string; bg: string }> 
 
 const THUMB = 44;
 
+function verdictStyle(key: string, t: UseT): { label: string; color: string; bg: string } {
+  const verdict = VERDICT[key] ?? null;
+  return {
+    label: verdict ? t.t(verdict.labelKey) : key,
+    color: verdict?.color ?? T.ink,
+    bg: verdict?.bg ?? T.cardSoft,
+  };
+}
+
 const SENSE_REASON_KEYS = [
   'sense_check.skip.duplicate',
   'sense_check.buy.gap',
@@ -85,7 +94,7 @@ function displayReason(result: SenseCheckResult, t: UseT): string {
   }
   if (message?.fallbackText) return message.fallbackText;
   if (result.fallbackText) return result.fallbackText;
-  // API_GAP[BE]: sense-check display_reason missing on older payloads.
+  // API_GAP[BE#60]: sense-check display_reason missing on older payloads.
   return t.locale === 'en-US' && result.reason ? result.reason : t.t('sense_check.reason.pending');
 }
 
@@ -116,10 +125,7 @@ function similarFallback(item: WardrobeItem | undefined, t: UseT): string {
 }
 
 function ResultCard({ result, t }: { result: SenseCheckResult; t: UseT }) {
-  const verdict = VERDICT[result.verdict] ?? null;
-  const label = verdict ? t.t(verdict.labelKey) : result.verdict;
-  const color = verdict?.color ?? T.ink;
-  const bg = verdict?.bg ?? T.cardSoft;
+  const { label, color, bg } = verdictStyle(result.verdict, t);
   const ids = useMemo(() => result.similarItems.map((s) => s.itemId), [result.similarItems]);
   const itemQueries = useQueries({
     queries: ids.map((id) => ({
@@ -356,8 +362,7 @@ export function SenseCheckScreen({ navigation }: Props) {
             <Text style={{ ...type.headline, color: T.ink, marginBottom: 12 }}>最近检查</Text>
             <View style={{ gap: 10 }}>
               {historyQuery.data.map((h) => {
-                const v = VERDICT[h.verdict] ?? null;
-                const label = v ? t.t(v.labelKey) : h.verdict;
+                const { label, color, bg } = verdictStyle(h.verdict, t);
                 return (
                   <Pressable
                     key={h.id}
@@ -386,8 +391,8 @@ export function SenseCheckScreen({ navigation }: Props) {
                         {displayReason(h, t)}
                       </Text>
                     </View>
-                    <View style={{ backgroundColor: v?.bg ?? T.cardSoft, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}>
-                      <Text style={{ ...type.caption, color: v?.color ?? T.ink, fontWeight: '700' }}>{label}</Text>
+                    <View style={{ backgroundColor: bg, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}>
+                      <Text style={{ ...type.caption, color, fontWeight: '700' }}>{label}</Text>
                     </View>
                   </Pressable>
                 );

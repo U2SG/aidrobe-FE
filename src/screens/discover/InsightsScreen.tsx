@@ -103,7 +103,7 @@ export function InsightsScreen({ navigation }: Props) {
   const topWearTotal = topQuery.data
     ? topQuery.data.reduce((sum, item) => sum + item.wearCount, 0)
     : null;
-  // API_GAP[BE]: insights summary missing wear_history_count/sufficiency on older payloads.
+  // API_GAP[untracked]: insights summary missing wear_history_count/sufficiency on older payloads.
   const wearHistoryCount = summaryQuery.data?.wearHistoryCount ?? topWearTotal;
   const hasSufficientWearHistory =
     summaryQuery.data?.hasSufficientWearHistory ??
@@ -202,39 +202,43 @@ export function InsightsScreen({ navigation }: Props) {
           {/* Summary */}
           {summaryQuery.data ? (
             <Card title="概览">
-              {hasNoWearHistory ? (
-                <View style={{ gap: 10 }}>
-                  <View style={{ flexDirection: 'row' }}>
-                    <Stat value={String(summaryQuery.data.totalItems)} label="总件数" />
-                    <Stat value="0" label="穿搭记录" />
+              {(() => {
+                const summary = hasNoWearHistory
+                  ? {
+                      stats: [
+                        { value: String(summaryQuery.data.totalItems), label: '总件数' },
+                        { value: '0', label: '穿搭记录' },
+                      ],
+                      note: '开始记录穿搭后，这里会显示最常穿单品、活跃率和闲置情况。',
+                    }
+                  : isAccumulating
+                    ? {
+                        stats: [
+                          { value: String(summaryQuery.data.totalItems), label: '总件数' },
+                          { value: wearHistoryCount == null ? '—' : String(wearHistoryCount), label: '穿搭记录' },
+                          { value: '积累中', label: '状态' },
+                        ],
+                        note: `记录满 ${WEAR_HISTORY_SUFFICIENT_THRESHOLD} 次后，再展示强结论指标，避免把早期数据当成真实偏好。`,
+                      }
+                    : {
+                        stats: [
+                          { value: String(summaryQuery.data.totalItems), label: '总件数' },
+                          { value: `${Math.round(summaryQuery.data.activeRate * 100)}%`, label: '活跃率' },
+                          { value: String(summaryQuery.data.idleCount), label: '闲置' },
+                        ],
+                        note: `活跃率：近 ${summaryQuery.data.idleThresholdDays} 天有穿着记录的单品占比；闲置：超过 ${summaryQuery.data.idleThresholdDays} 天未穿的单品。`,
+                      };
+                return (
+                  <View style={{ gap: 10 }}>
+                    <View style={{ flexDirection: 'row' }}>
+                      {summary.stats.map((stat) => (
+                        <Stat key={stat.label} value={stat.value} label={stat.label} />
+                      ))}
+                    </View>
+                    <Text style={{ ...type.footnote, color: T.ink3, lineHeight: 19 }}>{summary.note}</Text>
                   </View>
-                  <Text style={{ ...type.footnote, color: T.ink3, lineHeight: 19 }}>
-                    开始记录穿搭后，这里会显示最常穿单品、活跃率和闲置情况。
-                  </Text>
-                </View>
-              ) : isAccumulating ? (
-                <View style={{ gap: 10 }}>
-                  <View style={{ flexDirection: 'row' }}>
-                    <Stat value={String(summaryQuery.data.totalItems)} label="总件数" />
-                    <Stat value={wearHistoryCount == null ? '—' : String(wearHistoryCount)} label="穿搭记录" />
-                    <Stat value="积累中" label="状态" />
-                  </View>
-                  <Text style={{ ...type.footnote, color: T.ink3, lineHeight: 19 }}>
-                    记录满 {WEAR_HISTORY_SUFFICIENT_THRESHOLD} 次后，再展示强结论指标，避免把早期数据当成真实偏好。
-                  </Text>
-                </View>
-              ) : (
-                <View style={{ gap: 10 }}>
-                  <View style={{ flexDirection: 'row' }}>
-                    <Stat value={String(summaryQuery.data.totalItems)} label="总件数" />
-                    <Stat value={`${Math.round(summaryQuery.data.activeRate * 100)}%`} label="活跃率" />
-                    <Stat value={String(summaryQuery.data.idleCount)} label="闲置" />
-                  </View>
-                  <Text style={{ ...type.footnote, color: T.ink3, lineHeight: 19 }}>
-                    活跃率：近 {summaryQuery.data.idleThresholdDays} 天有穿着记录的单品占比；闲置：超过 {summaryQuery.data.idleThresholdDays} 天未穿的单品。
-                  </Text>
-                </View>
-              )}
+                );
+              })()}
             </Card>
           ) : null}
 
