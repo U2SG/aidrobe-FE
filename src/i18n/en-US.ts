@@ -172,6 +172,25 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'ask.error.unavailable': 'Q&A is still being set up, please try later.',
   'ask.error.generic': 'Something went wrong, please try again later.',
 
+  // --- Shopping sense-check ------------------------------------------------
+  'sense_check.skip.duplicate':
+    'You already have {count} similar {color} {category} pieces, so this may duplicate your wardrobe.',
+  'sense_check.buy.gap': 'Your wardrobe is missing a versatile {category}.',
+  'sense_check.buy.versatile': 'This {category} can make about {count} outfits with what you own.',
+  'sense_check.consider.some': 'This {category} can make about {count} outfits, but confirm you would wear it often.',
+  'sense_check.verdict.buy': 'Buy',
+  'sense_check.verdict.consider': 'Consider',
+  'sense_check.verdict.skip': 'Skip',
+  'sense_check.section.decision': 'Decision',
+  'sense_check.section.reason': 'Core reason',
+  'sense_check.potential.buy': 'Expected to pair into {count} outfits and fill this wardrobe gap.',
+  'sense_check.potential.consider': 'Expected to pair into {count} outfits; compare it with what you own first.',
+  'sense_check.potential.skip': 'It can pair into {count} outfits, but it would duplicate your wardrobe.',
+  'sense_check.potential.skipWithSimilar':
+    'It can pair into {count} outfits, but overlaps with {similar} items you already own.',
+  'sense_check.reason.pending':
+    'The backend has not returned a localized reason yet, so use similarity and outfit potential for now.',
+
   // --- Today ---------------------------------------------------------------
   'today.wearThis': 'Wear this',
   'today.candidates': 'Candidates',

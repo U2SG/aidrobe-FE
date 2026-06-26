@@ -169,6 +169,22 @@ export const zhCN = {
   'ask.error.unavailable': '问答功能正在接入中，稍后再试。',
   'ask.error.generic': '出错了，请稍后再试。',
 
+  // --- Shopping sense-check ------------------------------------------------
+  'sense_check.skip.duplicate': '衣橱里已有 {count} 件相近的{color}{category}，容易重复。',
+  'sense_check.buy.gap': '你的衣橱正缺一件好搭的{category}。',
+  'sense_check.buy.versatile': '这件{category}可以和现有单品搭出约 {count} 套。',
+  'sense_check.consider.some': '这件{category}能搭约 {count} 套，但先确认是否真的常穿。',
+  'sense_check.verdict.buy': '建议入手',
+  'sense_check.verdict.consider': '先观望',
+  'sense_check.verdict.skip': '别买了',
+  'sense_check.section.decision': '决策',
+  'sense_check.section.reason': '核心原因',
+  'sense_check.potential.buy': '预计可搭 {count} 套，可以补上这个衣橱缺口。',
+  'sense_check.potential.consider': '预计可搭 {count} 套，建议先和已有单品对照再决定。',
+  'sense_check.potential.skip': '虽然能搭 {count} 套，但会重复你的衣橱。',
+  'sense_check.potential.skipWithSimilar': '虽然能搭 {count} 套，但会重复衣橱里已有的 {similar} 件。',
+  'sense_check.reason.pending': '当前后端还没有返回本地化原因，先根据相似度和搭配潜力判断。',
+
   // --- Today ---------------------------------------------------------------
   'today.wearThis': '穿这套',
   'today.candidates': '候选',

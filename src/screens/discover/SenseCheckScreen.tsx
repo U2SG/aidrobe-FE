@@ -1,18 +1,21 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { getSenseCheckHistory, senseCheck } from '@/api/shopping';
-import { historyThumbState } from '@/screens/discover/senseCheckHistory';
+import { getWardrobeItem } from '@/api/wardrobe';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
+import { ImageThumb } from '@/components/ui/ImageThumb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { Tag } from '@/components/ui/Tag';
+import { useT, type UseT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
-import { useWardrobeItemNames } from '@/hooks/useWardrobeItemNames';
+import type { I18nKey } from '@/i18n';
+import { resolveItemDisplayName } from '@/i18n/domainLabels';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
-import type { SenseCheckBody, SenseCheckResult } from '@/types/api';
+import type { I18nMessage, SenseCheckBody, SenseCheckResult, WardrobeItem } from '@/types/api';
 import type { DiscoverStackParamList } from '@/types/navigation';
 import { httpStatus } from '@/utils/http';
 import { pickAndUploadImage, uploadErrorMessage } from '@/utils/imageUpload';
@@ -29,103 +32,153 @@ const T = {
   accent: colors.accent,
 };
 
-const VERDICT: Record<string, { label: string; color: string; bg: string }> = {
-  buy: { label: '建议入手', color: colors.success, bg: colors.successBg },
-  consider: { label: '再考虑', color: colors.warning, bg: colors.warningBg },
-  skip: { label: '别买了', color: colors.danger, bg: colors.dangerBg },
+const VERDICT: Record<string, { labelKey: I18nKey; color: string; bg: string }> = {
+  buy: { labelKey: 'sense_check.verdict.buy', color: colors.success, bg: colors.successBg },
+  consider: { labelKey: 'sense_check.verdict.consider', color: colors.warning, bg: colors.warningBg },
+  skip: { labelKey: 'sense_check.verdict.skip', color: colors.danger, bg: colors.dangerBg },
 };
 
 const THUMB = 44;
 
-// History row thumbnail with a deterministic fallback. The box keeps a fixed
-// 44×44 footprint regardless of load/error state so the row never jumps; the
-// <Image> overlays it and on failure (or no URL) we keep the box + a 'photo'
-// glyph. `testID`s make loading/error states QA-visible. This is the actual P0
-// fix: the old row drew a bare placeholder <View> and never mounted an Image.
-function HistoryThumb({ imageUrl }: { imageUrl: string | null }) {
-  const [errored, setErrored] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  // A history row keeps the same `h.id` (and thus the same React key) across
-  // refetches, so a fresh/refreshed `imageUrl` reuses this component instance.
-  // Without resetting, a prior `onError` leaves `errored` true and the new URL
-  // never gets a chance to load. Reset load/error state whenever the URL changes.
-  useEffect(() => {
-    setErrored(false);
-    setLoaded(false);
-  }, [imageUrl]);
-  const state = historyThumbState(imageUrl, errored);
+function verdictStyle(key: string, t: UseT): { label: string; color: string; bg: string } {
+  const verdict = VERDICT[key] ?? null;
+  return {
+    label: verdict ? t.t(verdict.labelKey) : key,
+    color: verdict?.color ?? T.ink,
+    bg: verdict?.bg ?? T.cardSoft,
+  };
+}
 
+const SENSE_REASON_KEYS = [
+  'sense_check.skip.duplicate',
+  'sense_check.buy.gap',
+  'sense_check.buy.versatile',
+  'sense_check.consider.some',
+] as const satisfies readonly I18nKey[];
+
+type SenseReasonKey = (typeof SENSE_REASON_KEYS)[number];
+
+function isSenseReasonKey(key: string): key is SenseReasonKey {
+  return (SENSE_REASON_KEYS as readonly string[]).includes(key);
+}
+
+function stringParam(message: I18nMessage | null | undefined, key: string): string | null {
+  const value = message?.params?.[key];
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  return null;
+}
+
+function numberParam(message: I18nMessage | null | undefined, key: string): number | null {
+  const value = message?.params?.[key];
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function displayReason(result: SenseCheckResult, t: UseT): string {
+  const message = result.displayReason;
+  if (message?.key && isSenseReasonKey(message.key)) {
+    return t.t(message.key, {
+      count:
+        numberParam(message, 'count') ??
+        result.similarItemCount ??
+        result.pairableCount ??
+        result.outfitPotential,
+      category: t.tEnum('category', stringParam(message, 'category')),
+      color: t.tEnum('color', stringParam(message, 'color')),
+    });
+  }
+  if (message?.fallbackText) return message.fallbackText;
+  if (result.fallbackText) return result.fallbackText;
+  // API_GAP[BE#60]: sense-check display_reason missing on older payloads.
+  return t.locale === 'en-US' && result.reason ? result.reason : t.t('sense_check.reason.pending');
+}
+
+function outfitPotentialCopy(result: SenseCheckResult, t: UseT): string {
+  const count = result.pairableCount ?? result.outfitPotential;
+  const similar = result.similarItemCount ?? result.similarItems.length;
+  if (result.verdict === 'skip') {
+    return similar > 0
+      ? t.t('sense_check.potential.skipWithSimilar', { count, similar })
+      : t.t('sense_check.potential.skip', { count });
+  }
+  if (result.verdict === 'buy') return t.t('sense_check.potential.buy', { count });
+  return t.t('sense_check.potential.consider', { count });
+}
+
+function similarFallback(item: WardrobeItem | undefined, t: UseT): string {
+  if (!item) return t.t('ask.itemFallback');
   return (
-    <View
-      style={{ width: THUMB, height: THUMB, borderRadius: radius.sm, backgroundColor: T.cardSoft, overflow: 'hidden' }}
-    >
-      {state === 'fallback' ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} testID="sense-history-thumb-fallback">
-          <SystemIcon name="photo" size={20} color={T.ink3} />
-        </View>
-      ) : (
-        <>
-          <Image
-            source={{ uri: imageUrl as string }}
-            style={{ width: '100%', height: '100%' }}
-            resizeMode="cover"
-            onLoad={() => setLoaded(true)}
-            onError={() => setErrored(true)}
-            testID="sense-history-thumb-image"
-          />
-          {!loaded ? (
-            <View
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              testID="sense-history-thumb-loading"
-            >
-              <ActivityIndicator size="small" color={T.ink3} />
-            </View>
-          ) : null}
-        </>
-      )}
-    </View>
+    resolveItemDisplayName(t.locale, {
+      name: item.name,
+      nameSource: item.nameSource,
+      displayName: item.displayName,
+      localizedNames: item.localizedNames,
+    }) ||
+    [t.tEnum('category', item.category), t.tEnum('color', item.color)].filter(Boolean).join(' · ') ||
+    t.t('ask.itemFallback')
   );
 }
 
-function ResultCard({ result }: { result: SenseCheckResult }) {
-  const v = VERDICT[result.verdict] ?? { label: result.verdict, color: T.ink, bg: T.cardSoft };
-  const nameById = useWardrobeItemNames(result.similarItems.map((s) => s.itemId));
+function ResultCard({ result, t }: { result: SenseCheckResult; t: UseT }) {
+  const { label, color, bg } = verdictStyle(result.verdict, t);
+  const ids = useMemo(() => result.similarItems.map((s) => s.itemId), [result.similarItems]);
+  const itemQueries = useQueries({
+    queries: ids.map((id) => ({
+      queryKey: ['wardrobeItem', id],
+      queryFn: () => getWardrobeItem(id),
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
 
   return (
     <View style={{ backgroundColor: T.card, borderRadius: radius.xl, padding: 16, gap: 14, ...shadow.soft }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <View style={{ backgroundColor: v.bg, borderRadius: radius.sm, paddingHorizontal: 12, paddingVertical: 6 }}>
-          <Text style={{ ...type.title2, color: v.color }}>{v.label}</Text>
-        </View>
-        <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{ ...type.title2, color: T.ink }}>{result.outfitPotential}</Text>
-          <Text style={{ ...type.caption, color: T.ink3 }}>可搭套数</Text>
+      <View style={{ gap: 8 }}>
+        <Text style={{ ...type.caption, color: T.ink3 }}>{t.t('sense_check.section.decision')}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <View style={{ backgroundColor: bg, borderRadius: radius.sm, paddingHorizontal: 12, paddingVertical: 6 }}>
+            <Text style={{ ...type.title2, color }}>{label}</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={{ ...type.title2, color: T.ink }}>{result.pairableCount ?? result.outfitPotential}</Text>
+            <Text style={{ ...type.caption, color: T.ink3 }}>可搭套数</Text>
+          </View>
         </View>
       </View>
 
-      <Text style={{ ...type.body, color: T.ink2, lineHeight: 22 }}>{result.reason}</Text>
+      <View style={{ gap: 6 }}>
+        <Text style={{ ...type.caption, color: T.ink3 }}>{t.t('sense_check.section.reason')}</Text>
+        <Text style={{ ...type.body, color: T.ink2, lineHeight: 22 }}>{displayReason(result, t)}</Text>
+        <Text style={{ ...type.footnote, color: T.ink3, lineHeight: 19 }}>{outfitPotentialCopy(result, t)}</Text>
+      </View>
 
       {result.similarItems.length > 0 ? (
         <View>
           <Text style={{ ...type.footnote, color: T.ink3, marginBottom: 8 }}>衣橱里的相似单品</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-            {result.similarItems.map((s) => (
-              <View key={s.itemId} style={{ width: 72 }}>
-                <View style={{ width: 72, height: 72, borderRadius: radius.md, backgroundColor: T.cardSoft }} />
-                <Text style={{ ...type.caption, color: T.ink2, marginTop: 6 }} numberOfLines={1}>
-                  {nameById.get(s.itemId) ?? '衣橱单品'}
-                </Text>
-                <Text style={{ ...type.caption, color: T.accent }}>{Math.round(s.similarity * 100)}% 相似</Text>
-              </View>
-            ))}
+            {result.similarItems.map((s, index) => {
+              const item = itemQueries[index]?.data;
+              const fallbackLabel = similarFallback(item, t);
+              return (
+                <View key={s.itemId} style={{ width: 72 }}>
+                  <ImageThumb
+                    uri={item?.imageUrl ?? null}
+                    size={72}
+                    cornerRadius={radius.md}
+                    fallbackLabel={fallbackLabel}
+                    accessibilityLabel={fallbackLabel}
+                  />
+                  <Text style={{ ...type.caption, color: T.ink2, marginTop: 6 }} numberOfLines={1}>
+                    {fallbackLabel}
+                  </Text>
+                  <Text style={{ ...type.caption, color: T.accent }}>{Math.round(s.similarity * 100)}% 相似</Text>
+                </View>
+              );
+            })}
           </ScrollView>
         </View>
       ) : null}
@@ -135,7 +188,7 @@ function ResultCard({ result }: { result: SenseCheckResult }) {
           <Text style={{ ...type.footnote, color: T.ink3, marginBottom: 8 }}>衣橱真正缺的</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {result.wardrobeGap.map((g) => (
-              <Tag key={g}>{g}</Tag>
+              <Tag key={g}>{t.tEnum('category', g) || g}</Tag>
             ))}
           </View>
         </View>
@@ -146,6 +199,7 @@ function ResultCard({ result }: { result: SenseCheckResult }) {
 
 export function SenseCheckScreen({ navigation }: Props) {
   const qc = useQueryClient();
+  const t = useT();
   const track = useTrack();
   const showToast = useToastStore((s) => s.show);
   const [url, setUrl] = useState('');
@@ -217,10 +271,11 @@ export function SenseCheckScreen({ navigation }: Props) {
         <View style={{ backgroundColor: T.card, borderRadius: radius.xl, padding: 16, gap: 12, ...shadow.soft }}>
           {imageUri ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Image
-                source={{ uri: imageUri }}
-                style={{ width: 56, height: 56, borderRadius: radius.sm }}
-                resizeMode="cover"
+              <ImageThumb
+                uri={imageUri}
+                size={56}
+                cornerRadius={radius.sm}
+                fallbackLabel="商品图"
               />
               <Text style={{ ...type.footnote, color: T.ink2, flex: 1 }}>已选商品图</Text>
               <Pressable
@@ -299,7 +354,7 @@ export function SenseCheckScreen({ navigation }: Props) {
         </View>
 
         {/* Current result */}
-        {current ? <ResultCard result={current} /> : null}
+        {current ? <ResultCard result={current} t={t} /> : null}
 
         {/* History */}
         {historyQuery.data && historyQuery.data.length > 0 ? (
@@ -307,7 +362,7 @@ export function SenseCheckScreen({ navigation }: Props) {
             <Text style={{ ...type.headline, color: T.ink, marginBottom: 12 }}>最近检查</Text>
             <View style={{ gap: 10 }}>
               {historyQuery.data.map((h) => {
-                const v = VERDICT[h.verdict] ?? { label: h.verdict, color: T.ink, bg: T.cardSoft };
+                const { label, color, bg } = verdictStyle(h.verdict, t);
                 return (
                   <Pressable
                     key={h.id}
@@ -322,17 +377,22 @@ export function SenseCheckScreen({ navigation }: Props) {
                       ...shadow.soft,
                     }}
                   >
-                    <HistoryThumb imageUrl={h.imageUrl} />
+                    <ImageThumb
+                      uri={h.imageUrl}
+                      size={THUMB}
+                      cornerRadius={radius.sm}
+                      fallbackLabel={h.sourceUrl ? '链接' : '商品图'}
+                    />
                     <View style={{ flex: 1 }}>
                       <Text style={{ ...type.body, color: T.ink }} numberOfLines={1}>
                         {h.sourceUrl || '商品图'}
                       </Text>
                       <Text style={{ ...type.caption, color: T.ink3, marginTop: 2 }} numberOfLines={1}>
-                        {h.reason}
+                        {displayReason(h, t)}
                       </Text>
                     </View>
-                    <View style={{ backgroundColor: v.bg, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}>
-                      <Text style={{ ...type.caption, color: v.color, fontWeight: '700' }}>{v.label}</Text>
+                    <View style={{ backgroundColor: bg, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}>
+                      <Text style={{ ...type.caption, color, fontWeight: '700' }}>{label}</Text>
                     </View>
                   </Pressable>
                 );

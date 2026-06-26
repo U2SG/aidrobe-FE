@@ -3,6 +3,7 @@ import { useCallback, useMemo } from 'react';
 import { translate, type I18nKey, type TParams } from '@/i18n';
 import {
   tCategory,
+  tColor,
   tFitIntent,
   tFitStatus,
   tOccasion,
@@ -19,7 +20,7 @@ export interface UseT {
   locale: AppLocale;
   /** Translate a UI string key, interpolating `{name}` params. */
   t: (key: I18nKey, params?: TParams) => string;
-  /** Localize a domain enum value (category/status/fitStatus/variant). */
+  /** Localize a domain enum/free-form display value (category/status/color/etc.). */
   tEnum: (kind: EnumLabelKind, value: string | null | undefined) => string;
 }
 
@@ -52,6 +53,8 @@ export function useT(): UseT {
           return tSeason(locale, value);
         case 'occasion':
           return tOccasion(locale, value);
+        case 'color':
+          return tColor(locale, value);
         default:
           return value ?? '';
       }

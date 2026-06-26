@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
+import { ImageThumb } from '@/components/ui/ImageThumb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { Tag } from '@/components/ui/Tag';
 import { useTrack } from '@/hooks/useTrack';
@@ -27,6 +28,8 @@ const T = {
   ink3: colors.tertiaryLabel,
   accent: colors.accent,
 };
+
+const WEAR_HISTORY_SUFFICIENT_THRESHOLD = 5;
 
 function currentPeriod(): string {
   const now = new Date();
@@ -53,10 +56,23 @@ export function WardrobeReportScreen({ navigation, route }: Props) {
     if (!report) return null;
     if (report.highestCostPerWear) {
       const h = report.highestCostPerWear;
-      return { title: h.title, sub: `穿了 ${h.wearCount} 次 · 每次成本 ¥${Math.round(h.costPerWear)}` };
+      const topMatch = report.topItems.find((item) => item.itemId === h.itemId);
+      return {
+        title: h.title,
+        sub: `穿了 ${h.wearCount} 次 · 每次成本 ¥${Math.round(h.costPerWear)}`,
+        imageUrl: topMatch?.coverImageUrl ?? null,
+        category: topMatch?.category ?? null,
+      };
     }
     const top = report.topItems[0];
-    return top ? { title: top.title, sub: `穿了 ${top.wearCount} 次` } : null;
+    return top
+      ? {
+          title: top.title,
+          sub: `穿了 ${top.wearCount} 次`,
+          imageUrl: top.coverImageUrl,
+          category: top.category,
+        }
+      : null;
   }, [report]);
 
   return (
@@ -71,7 +87,7 @@ export function WardrobeReportScreen({ navigation, route }: Props) {
         ) : (
           <ErrorState onRetry={() => reportQuery.refetch()} />
         )
-      ) : report && report.isEmpty ? (
+      ) : report && (report.isEmpty || report.totalWears < WEAR_HISTORY_SUFFICIENT_THRESHOLD) ? (
         <EmptyState title={`${report.label} 还没有足够数据`} description="多穿几天，回顾就会精彩起来。" />
       ) : report ? (
         <ScrollView
@@ -115,7 +131,13 @@ export function WardrobeReportScreen({ navigation, route }: Props) {
             <View style={{ backgroundColor: T.card, borderRadius: radius.xl, padding: 16, ...shadow.soft }}>
               <Text style={{ ...type.caption, color: T.accent, fontWeight: '700' }}>你的本命单品</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10 }}>
-                <View style={{ width: 56, height: 56, borderRadius: radius.md, backgroundColor: T.cardSoft }} />
+                <ImageThumb
+                  uri={hero.imageUrl}
+                  size={56}
+                  cornerRadius={radius.md}
+                  fallbackLabel={hero.category ?? hero.title}
+                  accessibilityLabel={hero.title}
+                />
                 <View style={{ flex: 1 }}>
                   <Text style={{ ...type.headline, color: T.ink }} numberOfLines={1}>
                     {hero.title}

@@ -13,6 +13,7 @@ import {
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
+import { ImageThumb } from '@/components/ui/ImageThumb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
@@ -39,6 +40,11 @@ const T = {
 };
 
 const SWATCHES = [colors.accent, '#D9C7A6', colors.label, '#8C6F4A', colors.tertiaryLabel, '#C9A876'];
+const WEAR_HISTORY_SUFFICIENT_THRESHOLD = 5;
+
+function swatchAt(index: number): string {
+  return SWATCHES[index % SWATCHES.length] ?? colors.fill;
+}
 
 // Severity -> visual emphasis. `high` reads as a focal accent bar, `medium` a
 // warm hint, `low` a quiet neutral — never alarming (supportive, non-judgmental).
@@ -89,6 +95,23 @@ export function InsightsScreen({ navigation }: Props) {
     const entries = Object.entries(paletteQuery.data?.palette ?? {}).sort((a, b) => b[1] - a[1]);
     return { paletteEntries: entries, paletteTotal: entries.reduce((sum, [, n]) => sum + n, 0) };
   }, [paletteQuery.data]);
+
+  const topWearItems = useMemo(
+    () => (topQuery.data ?? []).filter((item) => item.wearCount > 0),
+    [topQuery.data],
+  );
+  const topWearTotal = topQuery.data
+    ? topQuery.data.reduce((sum, item) => sum + item.wearCount, 0)
+    : null;
+  // API_GAP[untracked]: insights summary missing wear_history_count/sufficiency on older payloads.
+  const wearHistoryCount = summaryQuery.data?.wearHistoryCount ?? topWearTotal;
+  const hasSufficientWearHistory =
+    summaryQuery.data?.hasSufficientWearHistory ??
+    (wearHistoryCount != null ? wearHistoryCount >= WEAR_HISTORY_SUFFICIENT_THRESHOLD : false);
+  const hasNoWearHistory = wearHistoryCount === 0;
+  const isAccumulating = !hasSufficientWearHistory && !hasNoWearHistory;
+  const canOpenReport =
+    (summaryQuery.data?.reportAvailable ?? hasSufficientWearHistory) && hasSufficientWearHistory;
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -179,27 +202,58 @@ export function InsightsScreen({ navigation }: Props) {
           {/* Summary */}
           {summaryQuery.data ? (
             <Card title="概览">
-              <View style={{ flexDirection: 'row' }}>
-                <Stat value={String(summaryQuery.data.totalItems)} label="总件数" />
-                <Stat value={`${Math.round(summaryQuery.data.activeRate * 100)}%`} label="活跃率" />
-                <Stat value={String(summaryQuery.data.idleCount)} label="闲置" />
-              </View>
+              {(() => {
+                const summary = hasNoWearHistory
+                  ? {
+                      stats: [
+                        { value: String(summaryQuery.data.totalItems), label: '总件数' },
+                        { value: '0', label: '穿搭记录' },
+                      ],
+                      note: '开始记录穿搭后，这里会显示最常穿单品、活跃率和闲置情况。',
+                    }
+                  : isAccumulating
+                    ? {
+                        stats: [
+                          { value: String(summaryQuery.data.totalItems), label: '总件数' },
+                          { value: wearHistoryCount == null ? '—' : String(wearHistoryCount), label: '穿搭记录' },
+                          { value: '积累中', label: '状态' },
+                        ],
+                        note: `记录满 ${WEAR_HISTORY_SUFFICIENT_THRESHOLD} 次后，再展示强结论指标，避免把早期数据当成真实偏好。`,
+                      }
+                    : {
+                        stats: [
+                          { value: String(summaryQuery.data.totalItems), label: '总件数' },
+                          { value: `${Math.round(summaryQuery.data.activeRate * 100)}%`, label: '活跃率' },
+                          { value: String(summaryQuery.data.idleCount), label: '闲置' },
+                        ],
+                        note: `活跃率：近 ${summaryQuery.data.idleThresholdDays} 天有穿着记录的单品占比；闲置：超过 ${summaryQuery.data.idleThresholdDays} 天未穿的单品。`,
+                      };
+                return (
+                  <View style={{ gap: 10 }}>
+                    <View style={{ flexDirection: 'row' }}>
+                      {summary.stats.map((stat) => (
+                        <Stat key={stat.label} value={stat.value} label={stat.label} />
+                      ))}
+                    </View>
+                    <Text style={{ ...type.footnote, color: T.ink3, lineHeight: 19 }}>{summary.note}</Text>
+                  </View>
+                );
+              })()}
             </Card>
           ) : null}
 
           {/* Top items */}
-          {topQuery.data && topQuery.data.length > 0 ? (
+          {hasSufficientWearHistory && topWearItems.length > 0 ? (
             <Card title="最常穿">
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-                {topQuery.data.map((item) => (
+                {topWearItems.map((item) => (
                   <View key={item.id} style={{ width: 72 }}>
-                    <View
-                      style={{
-                        width: 72,
-                        height: 72,
-                        borderRadius: radius.md,
-                        backgroundColor: T.cardSoft,
-                      }}
+                    <ImageThumb
+                      uri={item.imageUrl}
+                      size={72}
+                      cornerRadius={radius.md}
+                      fallbackLabel={item.name || tEnum('category', item.category)}
+                      accessibilityLabel={item.name}
                     />
                     <Text style={{ ...type.caption, color: T.ink2, marginTop: 6 }} numberOfLines={1}>
                       {item.name}
@@ -208,6 +262,18 @@ export function InsightsScreen({ navigation }: Props) {
                   </View>
                 ))}
               </ScrollView>
+            </Card>
+          ) : hasNoWearHistory ? (
+            <Card title="开始记录穿搭">
+              <Text style={{ ...type.footnote, color: T.ink3, lineHeight: 19 }}>
+                开始记录穿搭后，这里会显示最常穿单品。
+              </Text>
+            </Card>
+          ) : isAccumulating ? (
+            <Card title="数据积累中">
+              <Text style={{ ...type.footnote, color: T.ink3, lineHeight: 19 }}>
+                当前记录还少，暂不展示“最常穿”这类强结论。
+              </Text>
             </Card>
           ) : null}
 
@@ -220,7 +286,7 @@ export function InsightsScreen({ navigation }: Props) {
                     key={name}
                     style={{
                       width: `${(count / paletteTotal) * 100}%`,
-                      backgroundColor: SWATCHES[i % SWATCHES.length],
+                      backgroundColor: swatchAt(i),
                     }}
                   />
                 ))}
@@ -233,10 +299,10 @@ export function InsightsScreen({ navigation }: Props) {
                         width: 10,
                         height: 10,
                         borderRadius: 5,
-                        backgroundColor: SWATCHES[i % SWATCHES.length],
+                        backgroundColor: swatchAt(i),
                       }}
                     />
-                    <Text style={{ ...type.footnote, color: T.ink2, flex: 1 }}>{name}</Text>
+                    <Text style={{ ...type.footnote, color: T.ink2, flex: 1 }}>{tEnum('color', name)}</Text>
                     <Text style={{ ...type.footnote, color: T.ink3 }}>
                       {Math.round((count / paletteTotal) * 100)}%
                     </Text>
@@ -247,7 +313,7 @@ export function InsightsScreen({ navigation }: Props) {
           ) : null}
 
           {/* Style trend */}
-          {trendQuery.data && trendQuery.data.length > 0 ? (
+          {hasSufficientWearHistory && trendQuery.data && trendQuery.data.length > 0 ? (
             <Card title="风格趋势">
               <View style={{ gap: 8 }}>
                 {trendQuery.data.slice(-6).map((entry) => {
@@ -269,21 +335,37 @@ export function InsightsScreen({ navigation }: Props) {
           ) : null}
 
           {/* Report entry */}
-          <Pressable
-            onPress={() => navigation.navigate('WardrobeReport')}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              backgroundColor: T.card,
-              borderRadius: radius.lg,
-              padding: 16,
-              ...shadow.soft,
-            }}
-          >
-            <Text style={{ ...type.headline, color: T.ink }}>查看上半年完整报告</Text>
-            <SystemIcon name="chevronRight" size={18} color={T.ink3} />
-          </Pressable>
+          {canOpenReport ? (
+            <Pressable
+              onPress={() => navigation.navigate('WardrobeReport')}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: T.card,
+                borderRadius: radius.lg,
+                padding: 16,
+                ...shadow.soft,
+              }}
+            >
+              <Text style={{ ...type.headline, color: T.ink }}>查看上半年完整报告</Text>
+              <SystemIcon name="chevronRight" size={18} color={T.ink3} />
+            </Pressable>
+          ) : (
+            <View
+              style={{
+                backgroundColor: T.card,
+                borderRadius: radius.lg,
+                padding: 16,
+                ...shadow.soft,
+              }}
+            >
+              <Text style={{ ...type.headline, color: T.ink }}>数据积累中</Text>
+              <Text style={{ ...type.footnote, color: T.ink3, marginTop: 4 }}>
+                穿搭记录足够后，再生成完整报告。
+              </Text>
+            </View>
+          )}
         </ScrollView>
       )}
     </View>

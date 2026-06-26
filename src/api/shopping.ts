@@ -7,12 +7,22 @@ import type {
   ServerSenseCheckHistoryResponse,
   ServerSenseCheckResponse,
   ServerSimilarItem,
+  ServerI18nMessage,
   SimilarItem,
 } from '@/types/api';
 
 // V4 M17 — "should I buy this?" check against the existing wardrobe.
 function toSimilar(s: ServerSimilarItem): SimilarItem {
   return { itemId: s.item_id, similarity: s.similarity };
+}
+
+function toI18nMessage(message: ServerI18nMessage | null | undefined) {
+  if (!message) return null;
+  return {
+    key: message.key,
+    params: message.params,
+    fallbackText: message.fallback_text,
+  };
 }
 
 export async function senseCheck(body: SenseCheckBody): Promise<SenseCheckResult> {
@@ -23,9 +33,13 @@ export async function senseCheck(body: SenseCheckBody): Promise<SenseCheckResult
   return {
     verdict: data.verdict,
     reason: data.reason,
+    displayReason: toI18nMessage(data.display_reason),
+    fallbackText: data.fallback_text ?? data.display_reason?.fallback_text ?? null,
     similarItems: data.similar_items.map(toSimilar),
+    similarItemCount: data.similar_item_count ?? null,
     wardrobeGap: data.wardrobe_gap,
     outfitPotential: data.outfit_potential,
+    pairableCount: data.pairable_count ?? null,
   };
 }
 
@@ -34,11 +48,15 @@ function toHistoryEntry(item: ServerSenseCheckHistoryItem): SenseCheckHistoryEnt
     id: item.sense_check_id,
     verdict: item.verdict,
     reason: item.reason,
+    displayReason: toI18nMessage(item.display_reason),
+    fallbackText: item.fallback_text ?? item.display_reason?.fallback_text ?? null,
     imageUrl: item.image_url ?? null,
     sourceUrl: item.source_url ?? null,
     similarItems: item.similar_items.map(toSimilar),
+    similarItemCount: item.similar_item_count ?? null,
     wardrobeGap: item.wardrobe_gap,
     outfitPotential: item.outfit_potential,
+    pairableCount: item.pairable_count ?? null,
     createdAt: item.created_at,
   };
 }
