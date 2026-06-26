@@ -37,6 +37,7 @@ BE issue 关闭、真实接口接入后，**必须删除对应 fallback 与标�
 | 限流 retry_after | `src/api/recommendations.ts` | 429 响应含 `retry_after_at: ISO8601` | 文案硬编码"明天再来" | — | P5 |
 | 错误响应结构化 | `src/api/client.ts` | 错误体含 `display_message` / `retryable` / `retry_after` | 按 error_code 本地映射文案 | — | P5 |
 | Sense Check 本地化原因 | `src/screens/discover/SenseCheckScreen.tsx` | `/v1/shopping/sense-check` 与 `/v1/shopping/history` 返回 `display_reason: I18nMessage{key, params, fallback_text}`（旧部署可能缺失） | 有 `fallback_text` 则展示；否则 zh-CN 展示本地兜底，不直接展示英文 `reason` | BE#60 | P0 |
+| 衣橱列表状态/季节/颜色筛选 | `src/screens/wardrobe/WardrobeListScreen.tsx` | `GET /v1/wardrobe-items` 支持 `status` / `season` / `color` 查询参数 | `category` 使用现有服务端筛选；`status` / `season` / `color` 在当前拉取页客户端过滤 | untracked | P1 |
 | 洞察数据充分性 | `src/screens/discover/InsightsScreen.tsx` | `/v1/insights/summary` 返回 `wear_history_count` / `has_sufficient_wear_history` / `report_available` | 从当前 top-items 的 wear_count 合计保守推导；不足时隐藏强结论和报告入口 | untracked | P0 |
 
 ### 说明
