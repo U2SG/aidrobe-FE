@@ -16,6 +16,15 @@ assert.equal(
   'insufficient_items must force the empty/insufficient board even with an outfit',
 );
 
+// Candidate-card guard: the SAME helper gates the compact candidate cards, so an
+// insufficient wardrobe with a variant outfit still riding along must resolve to
+// a non-'real' (empty) candidate — never a normal recommendation card.
+assert.notEqual(
+  todayBoardMode({ state: 'insufficient_items', hasApiOutfit: true }),
+  'real',
+  'a candidate must be empty (non-real) under insufficient_items even with an outfit',
+);
+
 // No real outfit (new/empty wardrobe, or active variant absent) → honest empty.
 assert.equal(
   todayBoardMode({ state: null, hasApiOutfit: false }),
@@ -33,4 +42,4 @@ assert.equal(
 // Guard: missing state + no outfit is still empty (not actionable).
 assert.equal(todayBoardMode({ hasApiOutfit: false }), 'empty', 'missing state + no outfit → empty');
 
-console.log('todayBoard: 4/4 cases passed');
+console.log('todayBoard: 5/5 cases passed');

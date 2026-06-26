@@ -765,7 +765,12 @@ export function TodayScreen({ navigation }: Props) {
                 strategyKey={key}
                 pieces={resolveOutfitPieces(outfitsByKey.get(key), PRESETS[key], itemById)}
                 selected={key === strategy}
-                empty={!outfitsByKey.has(key)}
+                empty={
+                  todayBoardMode({
+                    state: todayQuery.data?.state,
+                    hasApiOutfit: Boolean(outfitsByKey.get(key)?.id),
+                  }) !== 'real'
+                }
                 onPress={() => setStrategy(key)}
                 t={t}
               />
