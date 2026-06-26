@@ -1,20 +1,22 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 
 import { loginWithApple } from '@/api/auth';
 import { APP_ENV } from '@/api/client';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useTrack } from '@/hooks/useTrack';
+import { useT } from '@/hooks/useT';
 import { useAuthStore } from '@/store/auth';
-import { useOnboardingStore } from '@/store/onboarding';
 import { useToastStore } from '@/store/toast';
 import { colors, shadow } from '@/theme/design';
 import type { OnboardingStackParamList } from '@/types/navigation';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Welcome'>;
+
+const PRIVACY_POLICY_URL = 'https://aidrobe.app/privacy';
 
 const T = {
   bg: colors.groupedBackground,
@@ -54,9 +56,9 @@ const BENEFITS: {
 
 export function WelcomeScreen({ navigation }: Props) {
   const [signingIn, setSigningIn] = useState(false);
-  const setCompleted = useOnboardingStore((state) => state.setCompleted);
   const setTokens = useAuthStore((state) => state.setTokens);
   const showToast = useToastStore((state) => state.show);
+  const { t } = useT();
   const track = useTrack();
 
   useEffect(() => {
@@ -86,6 +88,14 @@ export function WelcomeScreen({ navigation }: Props) {
       }
     } finally {
       setSigningIn(false);
+    }
+  };
+
+  const openPrivacyPolicy = async () => {
+    try {
+      await Linking.openURL(PRIVACY_POLICY_URL);
+    } catch {
+      showToast({ message: t('onboarding.privacyPolicyOpenFailed'), kind: 'error' });
     }
   };
 
@@ -238,10 +248,10 @@ export function WelcomeScreen({ navigation }: Props) {
             </Pressable>
           )}
           <Pressable
-            onPress={() => setCompleted(true)}
+            onPress={openPrivacyPolicy}
             style={{ height: 44, alignItems: 'center', justifyContent: 'center' }}
           >
-            <Text style={{ fontSize: 12, color: T.ink3 }}>了解隐私政策</Text>
+            <Text style={{ fontSize: 12, color: T.ink3 }}>{t('onboarding.privacyPolicy')}</Text>
           </Pressable>
         </View>
       </View>

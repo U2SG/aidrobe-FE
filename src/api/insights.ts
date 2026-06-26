@@ -148,5 +148,6 @@ export async function getWardrobeReport(period: string): Promise<WardrobeReport>
         }
       : null,
     recommendationAdoptionRate: data.recommendation_adoption_rate,
+    shareAssetUrl: data.share_asset_url ?? data.poster_url ?? null,
   };
 }

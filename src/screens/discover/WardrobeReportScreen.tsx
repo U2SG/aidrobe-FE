@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Share, Text, View } from 'react-native';
 
 import { getWardrobeReport } from '@/api/insights';
 import { EmptyState } from '@/components/feedback/EmptyState';
@@ -12,8 +12,10 @@ import { ImageThumb } from '@/components/ui/ImageThumb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { Tag } from '@/components/ui/Tag';
 import { useTrack } from '@/hooks/useTrack';
+import { useT, type UseT } from '@/hooks/useT';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
+import type { WardrobeReport } from '@/types/api';
 import type { DiscoverStackParamList } from '@/types/navigation';
 import { httpStatus } from '@/utils/http';
 
@@ -36,9 +38,38 @@ function currentPeriod(): string {
   return `${now.getFullYear()}-${now.getMonth() < 6 ? 'H1' : 'H2'}`;
 }
 
+function buildShareMessage(
+  report: WardrobeReport,
+  t: UseT['t'],
+  keywordSeparator: string,
+): string {
+  const adoptionRate = Math.round(report.recommendationAdoptionRate * 100);
+  const topItem = report.topItems[0];
+  const topItemLine = topItem
+    ? t('wardrobeReport.shareTopItem', { title: topItem.title, count: topItem.wearCount })
+    : '';
+  const keywordText = report.styleKeywords.slice(0, 5).join(keywordSeparator);
+  const keywordLine = keywordText
+    ? t('wardrobeReport.shareKeywords', { keywords: keywordText })
+    : '';
+
+  return [
+    t('wardrobeReport.shareMessage', {
+      label: report.label,
+      totalWears: report.totalWears,
+      adoptionRate,
+    }),
+    topItemLine,
+    keywordLine,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
 export function WardrobeReportScreen({ navigation, route }: Props) {
   const period = route.params?.period ?? currentPeriod();
   const track = useTrack();
+  const { locale, t } = useT();
   const showToast = useToastStore((s) => s.show);
 
   useEffect(() => {
@@ -74,6 +105,34 @@ export function WardrobeReportScreen({ navigation, route }: Props) {
         }
       : null;
   }, [report]);
+  const shareMessage = useMemo(
+    () =>
+      report
+        ? buildShareMessage(report, t, locale === 'zh-CN' ? '、' : ', ')
+        : '',
+    [locale, report, t],
+  );
+
+  const handleShare = async () => {
+    if (!report) return;
+    try {
+      if (report.shareAssetUrl) {
+        // Mirror the OOTD poster share flow: append the asset URL to the message
+        // so Android (where Share.share's `url` field is iOS-only and dropped)
+        // still carries it, while `url` drives the iOS rich-preview.
+        await Share.share({
+          message: `${shareMessage}\n${report.shareAssetUrl}`,
+          url: report.shareAssetUrl,
+        });
+      } else {
+        // API_GAP[untracked]: wardrobe report has no shareable poster/asset URL.
+        // Fallback: share a text recap through the native share sheet. See docs/api-gaps.md.
+        await Share.share({ message: shareMessage });
+      }
+    } catch {
+      showToast({ message: t('wardrobeReport.shareFailed'), kind: 'error' });
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -162,7 +221,7 @@ export function WardrobeReportScreen({ navigation, route }: Props) {
 
           {/* Share */}
           <Pressable
-            onPress={() => showToast({ message: '分享即将上线', kind: 'info' })}
+            onPress={handleShare}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
