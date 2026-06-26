@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
   favoriteOutfit,
@@ -33,6 +33,7 @@ import type {
 } from '@/types/api';
 import type { TodayStackParamList } from '@/types/navigation';
 import { renderI18n } from '@/utils/i18n';
+import { shareWithAsset } from '@/utils/share';
 
 type Props = NativeStackScreenProps<TodayStackParamList, 'OutfitDetail'>;
 
@@ -180,10 +181,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
       return { previous };
     },
     onSuccess: (_data, nextFavorited) => {
-      // Toggle is ack-only — the resulting state is the input we just sent.
-      qc.setQueryData<OutfitDetail>(['outfitDetail', outfitId], (old) =>
-        old ? { ...old, isFavorited: nextFavorited } : old,
-      );
+      // Toggle is ack-only — onMutate already set the optimistic state.
       showToast({
         message: nextFavorited
           ? t('outfitDetail.favorite.added')
@@ -194,9 +192,6 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
     onError: (_error, _nextFavorited, context) => {
       if (context?.previous) qc.setQueryData(['outfitDetail', outfitId], context.previous);
       showToast({ message: t('outfitDetail.favorite.failed'), kind: 'error' });
-    },
-    onSettled: () => {
-      void qc.invalidateQueries({ queryKey: ['outfitDetail', outfitId] });
     },
   });
 
@@ -262,11 +257,6 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
     // API_GAP[BE#62]: no persist-replacement endpoint; swap is local-only.
     // Fallback: replace the displayed slot in this screen session only. See docs/api-gaps.md.
     setLocalReplacements((prev) => ({ ...prev, [slotItemId]: candidate }));
-    setIgnoredObstacleItemIds((prev) => {
-      const next = new Set(prev);
-      next.add(slotItemId);
-      return next;
-    });
     showToast({ message: t('outfitDetail.replacementApplied', { name: candidate.title }), kind: 'success' });
     track('outfit_item_replaced', {
       outfitId,
@@ -286,12 +276,8 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
 
   const shareOutfitSummary = async (source: 'download' | 'overflow') => {
     const items = displayItems.map((item) => item.name).filter(Boolean).join(' / ') || t('outfitDetail.noItems');
-    try {
-      await Share.share({ message: t('outfitDetail.shareMessage', { title: heroTitle, items }) });
-      track('outfit_shared', { outfitId, source });
-    } catch {
-      // user dismissed the share sheet — no-op
-    }
+    await shareWithAsset(t('outfitDetail.shareMessage', { title: heroTitle, items }));
+    track('outfit_shared', { outfitId, source });
   };
 
   const handleDownload = async () => {

@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
-import { Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { getWardrobeReport } from '@/api/insights';
 import { EmptyState } from '@/components/feedback/EmptyState';
@@ -13,11 +13,11 @@ import { SystemIcon } from '@/components/ui/SystemIcon';
 import { Tag } from '@/components/ui/Tag';
 import { useTrack } from '@/hooks/useTrack';
 import { useT, type UseT } from '@/hooks/useT';
-import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { WardrobeReport } from '@/types/api';
 import type { DiscoverStackParamList } from '@/types/navigation';
 import { httpStatus } from '@/utils/http';
+import { shareWithAsset } from '@/utils/share';
 
 type Props = NativeStackScreenProps<DiscoverStackParamList, 'WardrobeReport'>;
 
@@ -70,7 +70,6 @@ export function WardrobeReportScreen({ navigation, route }: Props) {
   const period = route.params?.period ?? currentPeriod();
   const track = useTrack();
   const { locale, t } = useT();
-  const showToast = useToastStore((s) => s.show);
 
   useEffect(() => {
     track('wardrobe_report_viewed', { period });
@@ -115,23 +114,9 @@ export function WardrobeReportScreen({ navigation, route }: Props) {
 
   const handleShare = async () => {
     if (!report) return;
-    try {
-      if (report.shareAssetUrl) {
-        // Mirror the OOTD poster share flow: append the asset URL to the message
-        // so Android (where Share.share's `url` field is iOS-only and dropped)
-        // still carries it, while `url` drives the iOS rich-preview.
-        await Share.share({
-          message: `${shareMessage}\n${report.shareAssetUrl}`,
-          url: report.shareAssetUrl,
-        });
-      } else {
-        // API_GAP[untracked]: wardrobe report has no shareable poster/asset URL.
-        // Fallback: share a text recap through the native share sheet. See docs/api-gaps.md.
-        await Share.share({ message: shareMessage });
-      }
-    } catch {
-      showToast({ message: t('wardrobeReport.shareFailed'), kind: 'error' });
-    }
+    // API_GAP[untracked]: wardrobe report may have no shareable poster/asset URL.
+    // Fallback: share a text recap through the native share sheet. See docs/api-gaps.md.
+    await shareWithAsset(shareMessage, report.shareAssetUrl);
   };
 
   return (

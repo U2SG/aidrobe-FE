@@ -10,7 +10,6 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
-  Share,
   Text,
   useWindowDimensions,
   View,
@@ -39,6 +38,7 @@ import { colors, radius, shadow } from '@/theme/design';
 import { motion } from '@/theme/motion';
 import type { ItemCategory, OutfitSummary, OutfitVariant, WardrobeItem, WeatherContext } from '@/types/api';
 import type { MainTabsParamList, TodayStackParamList } from '@/types/navigation';
+import { shareWithAsset } from '@/utils/share';
 
 type TFn = (key: I18nKey, params?: TParams) => string;
 
@@ -554,12 +554,8 @@ export function TodayScreen({ navigation }: Props) {
   const canShare = boardIsReal && Boolean(apiOutfit?.id);
   const handleShare = async () => {
     if (!canShare || !apiOutfit?.id) return;
-    try {
-      await Share.share({ message: t('today.shareMessage', { title }) });
-      track('outfit_shared', { strategy, outfitId: apiOutfit.id });
-    } catch {
-      // user dismissed the share sheet — no-op
-    }
+    await shareWithAsset(t('today.shareMessage', { title }));
+    track('outfit_shared', { strategy, outfitId: apiOutfit.id });
   };
 
   return (

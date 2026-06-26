@@ -224,7 +224,6 @@ export const enUS: Record<keyof typeof zhCN, string> = {
     'My {label} wardrobe recap · Aidrobe\n{totalWears} wears, {adoptionRate}% recommendation adoption',
   'wardrobeReport.shareTopItem': 'Signature item: {title} ({count} wears)',
   'wardrobeReport.shareKeywords': 'Style keywords: {keywords}',
-  'wardrobeReport.shareFailed': "Couldn't share. Please try again later.",
 
   // --- Today ---------------------------------------------------------------
   'today.wearThis': 'Wear this',
