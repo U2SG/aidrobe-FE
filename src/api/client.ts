@@ -148,7 +148,7 @@ export async function apiPatch<T>(url: string, body?: unknown) {
   return res.data;
 }
 
-export async function apiDelete<T>(url: string) {
-  const res = await apiClient.delete<T>(url);
+export async function apiDelete<T>(url: string, config?: AxiosRequestConfig) {
+  const res = await apiClient.delete<T>(url, config);
   return res.data;
 }

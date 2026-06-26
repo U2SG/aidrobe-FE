@@ -37,6 +37,8 @@ export const ANALYTICS_EVENTS = {
   ootd_poster_started: 'ootd_poster_started',
   ootd_poster_generated: 'ootd_poster_generated',
   ootd_poster_shared: 'ootd_poster_shared',
+  outfit_item_replaced: 'outfit_item_replaced',
+  outfit_obstacle_ignored: 'outfit_obstacle_ignored',
 } as const;
 
 export type AnalyticsEvent = keyof typeof ANALYTICS_EVENTS;
