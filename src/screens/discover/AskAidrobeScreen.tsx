@@ -1,7 +1,8 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View, type LayoutChangeEvent } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { askAidrobe, getAskHistory } from '@/api/ask';
 import { InlineRetry } from '@/components/feedback/InlineRetry';
@@ -29,6 +30,8 @@ type Turn = {
   failed?: boolean;
 };
 
+const FALLBACK_COMPOSER_HEIGHT = 112;
+
 const T = {
   bg: colors.groupedBackground,
   card: colors.elevated,
@@ -41,13 +44,23 @@ const T = {
 
 function TurnView({ turn, onRetry, retryBusy }: { turn: Turn; onRetry: () => void; retryBusy: boolean }) {
   return (
-    <View style={{ gap: 10 }}>
+    <View style={{ gap: 10, flexShrink: 1 }}>
       {/* Question bubble */}
       <View style={{ alignSelf: 'flex-end', maxWidth: '82%', backgroundColor: colors.label, borderRadius: radius.lg, paddingHorizontal: 14, paddingVertical: 10 }}>
         <Text style={{ ...type.body, color: colors.inverse }}>{turn.question}</Text>
       </View>
       {/* Answer card */}
-      <View style={{ alignSelf: 'flex-start', maxWidth: '92%', backgroundColor: T.card, borderRadius: radius.lg, padding: 14, ...shadow.soft }}>
+      <View
+        style={{
+          alignSelf: 'flex-start',
+          maxWidth: '92%',
+          minHeight: 0,
+          backgroundColor: T.card,
+          borderRadius: radius.lg,
+          padding: 14,
+          ...shadow.soft,
+        }}
+      >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: turn.pending ? 0 : 8 }}>
           <SystemIcon name="sparkle" size={14} color={T.accent} strokeWidth={1.9} />
           <Text style={{ ...type.caption, color: T.accent, fontWeight: '700', letterSpacing: 0.5 }}>AIDROBE</Text>
@@ -80,6 +93,7 @@ function TurnView({ turn, onRetry, retryBusy }: { turn: Turn; onRetry: () => voi
 export function AskAidrobeScreen({ navigation, route }: Props) {
   const { t, locale } = useT();
   const track = useTrack();
+  const insets = useSafeAreaInsets();
   const focusedItemId = route.params?.focusedItemId;
   // Scope derives from the entrypoint: focused item → 'item', explicit today
   // param → 'today', otherwise global discover. No forced scene anymore.
@@ -88,6 +102,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   const focusedName = focusedItemId ? focusedNames.get(focusedItemId) : undefined;
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState('');
+  const [composerHeight, setComposerHeight] = useState(0);
   const seededRef = useRef(false);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -216,6 +231,13 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   };
 
   const isEmpty = turns.length === 0;
+  // Header sits in normal flow (repo standard — see SenseCheckScreen / ItemDetailScreen;
+  // ScreenHeader owns its notch inset). Only the absolutely-positioned composer needs
+  // measuring, because its height varies (focused-item chip + multiline input).
+  const resolvedComposerHeight = composerHeight || FALLBACK_COMPOSER_HEIGHT;
+  const handleComposerLayout = (event: LayoutChangeEvent) => {
+    setComposerHeight(Math.ceil(event.nativeEvent.layout.height));
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -224,8 +246,14 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: spacing.screen, paddingTop: 8, paddingBottom: 16, gap: 16 }}
+        contentContainerStyle={{
+          paddingHorizontal: spacing.screen,
+          paddingTop: 8,
+          paddingBottom: resolvedComposerHeight + spacing.section,
+          gap: 16,
+        }}
         showsVerticalScrollIndicator={false}
+        scrollIndicatorInsets={{ bottom: resolvedComposerHeight }}
         onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
         keyboardShouldPersistTaps="handled"
       >
@@ -253,10 +281,16 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
 
       {/* Input bar */}
       <View
+        onLayout={handleComposerLayout}
         style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 2,
           paddingHorizontal: spacing.screen,
           paddingTop: 10,
-          paddingBottom: 28,
+          paddingBottom: Math.max(insets.bottom, spacing.row),
           backgroundColor: T.bg,
           borderTopWidth: 1,
           borderTopColor: colors.separatorSoft,
