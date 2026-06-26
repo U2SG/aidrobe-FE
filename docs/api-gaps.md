@@ -26,7 +26,7 @@ BE issue 关闭、真实接口接入后，**必须删除对应 fallback 与标�
 | Gap | FE file | Needed API | Current fallback | BE issue | Priority |
 |---|---|---|---|---|---|
 | 出门搭配分享板（无自拍的真实 board 渲染） | `src/screens/today/TodayScreen.tsx` | `POST /v1/outfits/{outfit_id}/share-asset`（服务端渲染可分享图）或客户端原生图片导出 | `Share.share({ message })` 纯文本分享，无视觉资产 | untracked | P0 |
-| 衣橱报告分享海报 / 资产 URL | `src/screens/discover/WardrobeReportScreen.tsx` | `GET /v1/insights/reports/{period}` 返回 P0 | P0 |
+| 衣橱报告分享海报 / 资产 URL | `src/screens/discover/WardrobeReportScreen.tsx` | `GET /v1/insights/reports/{period}` 返回可分享海报 URL，或新增报告分享资产生成端点 | `Share.share({ message })` 纯文本回顾，无视觉资产 | untracked | P0 |
 | OOTD 海报支持 outfit_id | `src/screens/today/OotdPosterScreen.tsx`、`src/types/navigation.ts` | `POST /v1/ootd-posters { outfit_id }` 变体 | 海报仅基于自拍；`outfitId` 只用于埋点，不进生成 | FE#15 | P1 |
 | 倒计时分钟数 | `src/api/recommendations.ts` | TodayRecommendation 返回 `countdown_minutes` | 硬编码 `countdownMinutes: null`，Today 不渲染 | untracked | P2 |
 | I18nMessage key 查表 | `src/utils/i18n.ts` | 发布 `I18nMessage.key` 的翻译目录（catalog） | `renderI18n` 只返回 `fallback_text`，忽略 key | untracked | P2 |
