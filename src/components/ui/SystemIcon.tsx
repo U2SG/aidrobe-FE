@@ -40,6 +40,7 @@ interface Props {
   size?: number;
   color?: string;
   strokeWidth?: number;
+  fill?: string;
 }
 
 export function SystemIcon({
@@ -47,13 +48,14 @@ export function SystemIcon({
   size = 22,
   color = colors.label,
   strokeWidth = 1.8,
+  fill = 'none',
 }: Props) {
   const common = {
     stroke: color,
     strokeWidth,
     strokeLinecap: 'round' as const,
     strokeLinejoin: 'round' as const,
-    fill: 'none',
+    fill,
   };
 
   return (

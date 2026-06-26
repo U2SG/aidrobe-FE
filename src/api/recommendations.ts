@@ -1,16 +1,19 @@
-import { apiGet, apiPost } from './client';
+import { apiDelete, apiGet, apiPost } from './client';
 import type {
   FeedbackBundleBody,
   FeedbackBundleResult,
   FeedbackTagsResponse,
   OutfitDetail,
   OutfitObstacle,
+  OutfitReplacementCandidate,
   OutfitScores,
   OutfitSummary,
   SendFeedbackBody,
   ServerFeedbackTagsResponse,
+  ServerFavoriteOutfitResponse,
   ServerOutfitObstacle,
   ServerOutfitResponse,
+  ServerOutfitReplacementsResponse,
   ServerOutfitScores,
   ServerTodayContext,
   ServerTodayRecommendation,
@@ -70,6 +73,7 @@ function toOutfit(outfit: ServerOutfitResponse): OutfitSummary {
     title: outfit.title,
     reason: outfit.reason,
     timeSensitivity: outfit.time_sensitivity ?? 'standard',
+    isFavorited: outfit.is_favorited ?? false,
     items: outfit.items.map((item) => ({
       id: item.item_id,
       name: item.title,
@@ -126,6 +130,43 @@ export async function getOutfitDetail(outfitId: string) {
   return toOutfit(
     await apiGet<ServerOutfitResponse>(`/v1/recommendations/outfits/${outfitId}`),
   ) satisfies OutfitDetail;
+}
+
+// Ack-only: the BE returns `{ success }`; the caller already knows the target
+// favorite state from the request, so these resolve to void.
+export async function favoriteOutfit(outfitId: string): Promise<void> {
+  await apiPost<ServerFavoriteOutfitResponse>(
+    `/v1/recommendations/outfits/${outfitId}/favorite`,
+    null,
+    undefined,
+    { silentErrorToast: true },
+  );
+}
+
+export async function unfavoriteOutfit(outfitId: string): Promise<void> {
+  await apiDelete<ServerFavoriteOutfitResponse>(
+    `/v1/recommendations/outfits/${outfitId}/favorite`,
+    { silentErrorToast: true },
+  );
+}
+
+export async function getOutfitItemReplacements(
+  outfitId: string,
+  itemId: string,
+): Promise<OutfitReplacementCandidate[]> {
+  const data = await apiGet<ServerOutfitReplacementsResponse>(
+    `/v1/recommendations/outfits/${outfitId}/items/${itemId}/replacements`,
+    undefined,
+    { silentErrorToast: true },
+  );
+  return data.replacements.map((item) => ({
+    itemId: item.item_id,
+    title: item.title,
+    category: item.category,
+    colorMain: item.color_main,
+    thumbnailUrl: item.thumbnail_url ?? null,
+    similarity: item.similarity,
+  }));
 }
 
 export function markOutfitWorn(outfitId: string, wornDate?: string) {

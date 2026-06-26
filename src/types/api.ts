@@ -210,6 +210,28 @@ export interface OutfitItemBrief {
   thumbUrl?: string | null;
 }
 
+export interface OutfitReplacementCandidate {
+  itemId: string;
+  title: string;
+  category: ItemCategory;
+  colorMain: string;
+  thumbnailUrl: string | null;
+  similarity: number;
+}
+
+export interface ServerOutfitReplacementCandidate {
+  item_id: string;
+  title: string;
+  category: ItemCategory;
+  color_main: string;
+  thumbnail_url?: string | null;
+  similarity: number;
+}
+
+export interface ServerOutfitReplacementsResponse {
+  replacements: ServerOutfitReplacementCandidate[];
+}
+
 // V3+ explainability — flag-gated. Field is null when the corresponding feature
 // flag is off; client renders empty rather than asserting presence.
 export interface OutfitScores {
@@ -267,6 +289,7 @@ export interface OutfitSummary {
   title: string;
   reason: string;
   timeSensitivity: TimeSensitivity;
+  isFavorited: boolean;
   items: OutfitItemBrief[];
   scores?: OutfitScores | null;
   obstacles?: OutfitObstacle[] | null;
@@ -343,11 +366,18 @@ export interface ServerOutfitResponse {
   title: string;
   reason: string;
   time_sensitivity?: TimeSensitivity;
+  is_favorited?: boolean;
   items: ServerOutfitItemBrief[];
   scores?: ServerOutfitScores | null;
   obstacles?: ServerOutfitObstacle[] | null;
   prep_steps?: ServerI18nMessage[] | null;
   prep_notes?: ServerI18nMessage[] | null;
+}
+
+// Favorite/unfavorite is an ack-only endpoint (BE returns `{ success }`); the
+// resulting favorite state is the mutation's input, so the client derives it.
+export interface ServerFavoriteOutfitResponse {
+  success: boolean;
 }
 
 export interface ServerStyleContext {

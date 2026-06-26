@@ -271,6 +271,38 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'today.advice.lightJacket': 'Light jacket',
   'today.defaultLocation': 'Main closet',
 
+  // --- Outfit detail -------------------------------------------------------
+  'outfitDetail.download': 'Download / share',
+  'outfitDetail.moreActions': 'More actions',
+  'outfitDetail.favorite': 'Favorite this look',
+  'outfitDetail.unfavorite': 'Unfavorite',
+  'outfitDetail.favorite.added': 'Saved to favorites',
+  'outfitDetail.favorite.removed': 'Removed from favorites',
+  'outfitDetail.favorite.failed': "Couldn't update favorite status. Try again later.",
+  'outfitDetail.favorite.unavailable': "Showcase looks can't be favorited yet.",
+  'outfitDetail.autoReplace': 'Auto replace',
+  'outfitDetail.ignoreObstacle': 'Wear it anyway',
+  'outfitDetail.obstacleIgnored': 'Reminder hidden for this item',
+  'outfitDetail.replacementHint':
+    'Aidrobe can look for similar items. If the service is not available yet, this look stays unchanged.',
+  'outfitDetail.replacementLoading': 'Searching',
+  'outfitDetail.replacementApplied': 'Previewing "{name}" (not saved)',
+  'outfitDetail.replacementUnavailable': 'Replacement service is not available yet. Try again later.',
+  'outfitDetail.replacementNone': 'No replacement items found yet',
+  'outfitDetail.replace': 'Replace',
+  'outfitDetail.replaceItem': 'Replace {name}',
+  'outfitDetail.replacementsTitle': 'Replace {name}',
+  'outfitDetail.selectReplacement': 'Choose {name}',
+  'outfitDetail.replacementSimilarity': '{pct}% similar',
+  'outfitDetail.downloadNoAsset': 'No downloadable image yet; sharing a text summary instead',
+  'outfitDetail.shareMessage': 'My look today "{title}" · Aidrobe\n{items}',
+  'outfitDetail.noItems': 'No items',
+  'outfitDetail.itemCount': '{count} items in this look',
+  'outfitDetail.fitGood': 'Fits well',
+  'outfitDetail.overflowTitle': 'More actions',
+  'outfitDetail.overflowShare': 'Share this look',
+  'outfitDetail.overflowFeedback': 'Wear and give feedback',
+
   // --- OOTD poster (AI, selfie-based) --------------------------------------
   'ootd.fromOutfit': 'From the look "{title}"',
   'ootd.selfieBased':

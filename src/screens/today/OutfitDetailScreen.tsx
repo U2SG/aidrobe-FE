@@ -1,17 +1,36 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useQueries, useQuery } from '@tanstack/react-query';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { Image, Pressable, ScrollView, Share, Text, View } from 'react-native';
 
-import { getOutfitDetail, markOutfitWorn } from '@/api/recommendations';
+import {
+  favoriteOutfit,
+  getOutfitDetail,
+  getOutfitItemReplacements,
+  markOutfitWorn,
+  unfavoriteOutfit,
+} from '@/api/recommendations';
 import { getWardrobeItem } from '@/api/wardrobe';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Button } from '@/components/ui/Button';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
+import { ImageThumb } from '@/components/ui/ImageThumb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { Tag } from '@/components/ui/Tag';
+import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
+import { useToastStore } from '@/store/toast';
 import { colors, shadow } from '@/theme/design';
-import type { ItemCategory, OutfitObstacle, OutfitScores, WardrobeItem } from '@/types/api';
+import type {
+  ItemCategory,
+  OutfitDetail,
+  OutfitObstacle,
+  OutfitReplacementCandidate,
+  OutfitScores,
+  WardrobeItem,
+} from '@/types/api';
 import type { TodayStackParamList } from '@/types/navigation';
 import { renderI18n } from '@/utils/i18n';
 
@@ -70,6 +89,26 @@ const HERO_LAYOUT: { x: number; y: number; scale: number }[] = [
 
 type ScoreCell = { label: string; value: string; max?: string; warn?: boolean };
 
+type DisplayItem = {
+  id: string;
+  slotItemId: string;
+  name: string;
+  category: ItemCategory | null;
+  color: string;
+  imageUrl: string | null;
+  status: WardrobeItem['status'];
+  location?: string | null;
+  sizeLabel?: string | null;
+  fitIntent?: string | null;
+  fitStatus?: WardrobeItem['fitStatus'];
+};
+
+type ReplacementTarget = {
+  slotItemId: string;
+  itemId: string;
+  name: string;
+};
+
 // Score row from server (V3+ B). Falls back to a static placeholder when the
 // ENABLE_OUTFIT_SCORES flag is off (server returns null).
 function scoreCells(scores: OutfitScores | null | undefined): ScoreCell[] {
@@ -94,6 +133,14 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
   const { outfitId } = route.params;
   const isLocal = outfitId === 'local-showcase';
   const track = useTrack();
+  const qc = useQueryClient();
+  const { t, tEnum } = useT();
+  const showToast = useToastStore((state) => state.show);
+  const [localReplacements, setLocalReplacements] = useState<Record<string, OutfitReplacementCandidate>>({});
+  const [ignoredObstacleItemIds, setIgnoredObstacleItemIds] = useState<Set<string>>(() => new Set());
+  const [replacementTarget, setReplacementTarget] = useState<ReplacementTarget | null>(null);
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const [autoReplacingItemId, setAutoReplacingItemId] = useState<string | null>(null);
 
   const outfitQuery = useQuery({
     queryKey: ['outfitDetail', outfitId],
@@ -114,6 +161,87 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
     .map((q) => q.data)
     .filter((x): x is WardrobeItem => Boolean(x));
 
+  const replacementQuery = useQuery({
+    queryKey: ['outfitReplacements', outfitId, replacementTarget?.itemId],
+    queryFn: () => getOutfitItemReplacements(outfitId, replacementTarget!.itemId),
+    enabled: !isLocal && Boolean(replacementTarget),
+    retry: 1,
+  });
+
+  const favoriteMutation = useMutation({
+    mutationFn: (nextFavorited: boolean) =>
+      nextFavorited ? favoriteOutfit(outfitId) : unfavoriteOutfit(outfitId),
+    onMutate: async (nextFavorited) => {
+      await qc.cancelQueries({ queryKey: ['outfitDetail', outfitId] });
+      const previous = qc.getQueryData<OutfitDetail>(['outfitDetail', outfitId]);
+      qc.setQueryData<OutfitDetail>(['outfitDetail', outfitId], (old) =>
+        old ? { ...old, isFavorited: nextFavorited } : old,
+      );
+      return { previous };
+    },
+    onSuccess: (_data, nextFavorited) => {
+      // Toggle is ack-only — the resulting state is the input we just sent.
+      qc.setQueryData<OutfitDetail>(['outfitDetail', outfitId], (old) =>
+        old ? { ...old, isFavorited: nextFavorited } : old,
+      );
+      showToast({
+        message: nextFavorited
+          ? t('outfitDetail.favorite.added')
+          : t('outfitDetail.favorite.removed'),
+        kind: 'success',
+      });
+    },
+    onError: (_error, _nextFavorited, context) => {
+      if (context?.previous) qc.setQueryData(['outfitDetail', outfitId], context.previous);
+      showToast({ message: t('outfitDetail.favorite.failed'), kind: 'error' });
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ['outfitDetail', outfitId] });
+    },
+  });
+
+  const fullItemById = useMemo(() => {
+    const map = new Map<string, WardrobeItem>();
+    for (const item of fullItems) map.set(item.id, item);
+    return map;
+  }, [fullItems]);
+
+  const displayItems = useMemo<DisplayItem[]>(() => {
+    return itemBriefs.map((brief) => {
+      const replacement = localReplacements[brief.id];
+      if (replacement) {
+        return {
+          id: replacement.itemId,
+          slotItemId: brief.id,
+          name: replacement.title,
+          category: replacement.category,
+          color: replacement.colorMain,
+          imageUrl: replacement.thumbnailUrl,
+          status: 'wearable',
+          location: null,
+          sizeLabel: null,
+          fitIntent: null,
+          fitStatus: 'unknown',
+        };
+      }
+
+      const fullItem = fullItemById.get(brief.id);
+      return {
+        id: brief.id,
+        slotItemId: brief.id,
+        name: fullItem?.name ?? brief.name ?? '—',
+        category: fullItem?.category ?? brief.category ?? null,
+        color: fullItem?.color ?? brief.color ?? '',
+        imageUrl: fullItem?.imageUrl ?? brief.thumbUrl ?? null,
+        status: fullItem?.status ?? 'wearable',
+        location: fullItem?.location ?? null,
+        sizeLabel: fullItem?.sizeLabel ?? null,
+        fitIntent: fullItem?.fitIntent ?? null,
+        fitStatus: fullItem?.fitStatus ?? 'unknown',
+      };
+    });
+  }, [fullItemById, itemBriefs, localReplacements]);
+
   const handleWear = async () => {
     if (!isLocal) {
       try {
@@ -124,6 +252,101 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
     }
     track('outfit_worn', { outfitId });
     navigation.navigate('FeedbackSheet', { outfitId });
+  };
+
+  function applyLocalReplacement(
+    slotItemId: string,
+    candidate: OutfitReplacementCandidate,
+    source: 'auto' | 'sheet',
+  ) {
+    // API_GAP[BE#62]: no persist-replacement endpoint; swap is local-only.
+    // Fallback: replace the displayed slot in this screen session only. See docs/api-gaps.md.
+    setLocalReplacements((prev) => ({ ...prev, [slotItemId]: candidate }));
+    setIgnoredObstacleItemIds((prev) => {
+      const next = new Set(prev);
+      next.add(slotItemId);
+      return next;
+    });
+    showToast({ message: t('outfitDetail.replacementApplied', { name: candidate.title }), kind: 'success' });
+    track('outfit_item_replaced', {
+      outfitId,
+      source,
+      originalItemId: slotItemId,
+      replacementItemId: candidate.itemId,
+    });
+  }
+
+  const handleFavorite = () => {
+    if (isLocal) {
+      showToast({ message: t('outfitDetail.favorite.unavailable'), kind: 'info' });
+      return;
+    }
+    favoriteMutation.mutate(!isFavorited);
+  };
+
+  const shareOutfitSummary = async (source: 'download' | 'overflow') => {
+    const items = displayItems.map((item) => item.name).filter(Boolean).join(' / ') || t('outfitDetail.noItems');
+    try {
+      await Share.share({ message: t('outfitDetail.shareMessage', { title: heroTitle, items }) });
+      track('outfit_shared', { outfitId, source });
+    } catch {
+      // user dismissed the share sheet — no-op
+    }
+  };
+
+  const handleDownload = async () => {
+    // API_GAP[untracked]: plain outfit details do not expose a poster/share image asset.
+    // Fallback: share a localized text summary through the native share sheet. See docs/api-gaps.md.
+    showToast({ message: t('outfitDetail.downloadNoAsset'), kind: 'info' });
+    await shareOutfitSummary('download');
+  };
+
+  const openReplacementSheet = (item: DisplayItem) => {
+    if (isLocal) {
+      showToast({ message: t('outfitDetail.replacementUnavailable'), kind: 'info' });
+      return;
+    }
+    setReplacementTarget({ slotItemId: item.slotItemId, itemId: item.id, name: item.name });
+  };
+
+  const handleAutoReplace = async (obstacle: OutfitObstacle) => {
+    if (isLocal || autoReplacingItemId) {
+      showToast({ message: t('outfitDetail.replacementUnavailable'), kind: 'info' });
+      return;
+    }
+    setAutoReplacingItemId(obstacle.itemId);
+    try {
+      const replacements = await qc.fetchQuery({
+        queryKey: ['outfitReplacements', outfitId, obstacle.itemId],
+        queryFn: () => getOutfitItemReplacements(outfitId, obstacle.itemId),
+      });
+      const top = replacements[0];
+      if (!top) {
+        showToast({ message: t('outfitDetail.replacementNone'), kind: 'info' });
+        return;
+      }
+      applyLocalReplacement(obstacle.itemId, top, 'auto');
+    } catch {
+      showToast({ message: t('outfitDetail.replacementUnavailable'), kind: 'error' });
+    } finally {
+      setAutoReplacingItemId(null);
+    }
+  };
+
+  const handleIgnoreObstacle = (obstacle: OutfitObstacle) => {
+    setIgnoredObstacleItemIds((prev) => {
+      const next = new Set(prev);
+      next.add(obstacle.itemId);
+      return next;
+    });
+    showToast({ message: t('outfitDetail.obstacleIgnored'), kind: 'success' });
+    track('outfit_obstacle_ignored', { outfitId, itemId: obstacle.itemId, kind: obstacle.kind });
+  };
+
+  const handleSelectReplacement = (candidate: OutfitReplacementCandidate) => {
+    if (!replacementTarget) return;
+    applyLocalReplacement(replacementTarget.slotItemId, candidate, 'sheet');
+    setReplacementTarget(null);
   };
 
   if (!isLocal && outfitQuery.isLoading) {
@@ -146,6 +369,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
   const heroReason =
     outfitQuery.data?.reason ?? '延续了你常穿的黑白通勤风格。所有单品都在主衣柜，无需熨烫。';
   const variantLabel = String(variant).toUpperCase();
+  const isFavorited = outfitQuery.data?.isFavorited ?? false;
 
   // V3+ B — server-provided. Null when flags off.
   const apiScores = outfitQuery.data?.scores ?? null;
@@ -154,21 +378,14 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
   const apiPrepNotes = outfitQuery.data?.prepNotes ?? null;
   const scores = scoreCells(apiScores);
 
-  // Resolve replacement candidate to a real item (first wearable wins).
-  function findReplacement(o: OutfitObstacle): WardrobeItem | null {
-    for (const id of o.replacementCandidateIds) {
-      const candidate = fullItems.find((it) => it.id === id);
-      if (candidate && candidate.status === 'wearable') return candidate;
-    }
-    return null;
-  }
-
   // Pick the most severe obstacle for the top banner.
-  const primaryObstacle = apiObstacles?.find((o) => o.severity === 'blocking')
-    ?? apiObstacles?.find((o) => o.severity === 'warning')
-    ?? apiObstacles?.[0]
+  const activeObstacles = apiObstacles?.filter(
+    (o) => !ignoredObstacleItemIds.has(o.itemId) && !localReplacements[o.itemId],
+  ) ?? [];
+  const primaryObstacle = activeObstacles.find((o) => o.severity === 'blocking')
+    ?? activeObstacles.find((o) => o.severity === 'warning')
+    ?? activeObstacles[0]
     ?? null;
-  const replacement = primaryObstacle ? findReplacement(primaryObstacle) : null;
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -198,6 +415,9 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
         </Pressable>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <Pressable
+            onPress={handleDownload}
+            accessibilityRole="button"
+            accessibilityLabel={t('outfitDetail.download')}
             style={{
               width: 40,
               height: 40,
@@ -211,6 +431,9 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
             <SystemIcon name="download" size={18} color={T.ink2} />
           </Pressable>
           <Pressable
+            onPress={() => setOverflowOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t('outfitDetail.moreActions')}
             style={{
               width: 40,
               height: 40,
@@ -265,41 +488,47 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
               <Text style={{ fontSize: 13, fontWeight: '600', color: '#5C4F3F', marginBottom: 4 }}>
                 {renderI18n(primaryObstacle.title)}
               </Text>
-              {replacement ? (
-                <Text style={{ fontSize: 11, color: '#7A6A55', lineHeight: 17, marginBottom: 8 }}>
-                  推荐替换为「{replacement.name}」
-                  {replacement.location ? `（${replacement.location}）` : ''} — 整体造型不变。
-                </Text>
-              ) : (
-                <Text style={{ fontSize: 11, color: '#7A6A55', lineHeight: 17 }}>
-                  当前没有合适的替代单品，建议手动调整。
-                </Text>
-              )}
-              {replacement && (
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <Pressable
-                    style={{
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      backgroundColor: T.ink,
-                      borderRadius: 8,
-                    }}
-                  >
-                    <Text style={{ color: colors.inverse, fontSize: 11, fontWeight: '600' }}>自动替换</Text>
-                  </Pressable>
-                  <Pressable
-                    style={{
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      borderRadius: 8,
-                      borderWidth: 1,
-                      borderColor: '#D4B687',
-                    }}
-                  >
-                    <Text style={{ color: '#7A6A55', fontSize: 11 }}>仍然穿这件</Text>
-                  </Pressable>
-                </View>
-              )}
+              {/* Neutral hint only — the actual swap is resolved by the
+                  replacements endpoint (handleAutoReplace), so we don't preview
+                  a specific item the swap might not match. */}
+              <Text style={{ fontSize: 11, color: '#7A6A55', lineHeight: 17, marginBottom: 8 }}>
+                {t('outfitDetail.replacementHint')}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Pressable
+                  onPress={() => handleAutoReplace(primaryObstacle)}
+                  disabled={autoReplacingItemId === primaryObstacle.itemId}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('outfitDetail.autoReplace')}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    backgroundColor: T.ink,
+                    borderRadius: 8,
+                    opacity: autoReplacingItemId === primaryObstacle.itemId ? 0.62 : 1,
+                  }}
+                >
+                  <Text style={{ color: colors.inverse, fontSize: 11, fontWeight: '600' }}>
+                    {autoReplacingItemId === primaryObstacle.itemId
+                      ? t('outfitDetail.replacementLoading')
+                      : t('outfitDetail.autoReplace')}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => handleIgnoreObstacle(primaryObstacle)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('outfitDetail.ignoreObstacle')}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: '#D4B687',
+                  }}
+                >
+                  <Text style={{ color: '#7A6A55', fontSize: 11 }}>{t('outfitDetail.ignoreObstacle')}</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         )}
@@ -351,13 +580,12 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
             overflow: 'hidden',
           }}
         >
-          {(fullItems.length ? fullItems : itemBriefs).map((it, i) => {
+          {displayItems.map((it, i) => {
             const layout = HERO_LAYOUT[i] ?? HERO_LAYOUT[0]!;
-            const fullItem = fullItems[i];
-            const imageUrl = fullItem?.imageUrl ?? null;
+            const imageUrl = it.imageUrl ?? null;
             return (
               <View
-                key={it.id}
+                key={it.slotItemId}
                 style={{ position: 'absolute', left: layout.x, top: layout.y, transform: [{ scale: layout.scale }] }}
               >
                 {imageUrl ? (
@@ -384,24 +612,14 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
         </View>
 
         <Text style={{ marginTop: 18, fontSize: 12, color: T.ink3, marginBottom: 8 }}>
-          这套包含 {itemBriefs.length} 件单品
+          {t('outfitDetail.itemCount', { count: displayItems.length })}
         </Text>
         <View style={{ gap: 8 }}>
-          {(fullItems.length ? fullItems : itemBriefs.map((b) => ({
-            id: b.id,
-            name: b.name ?? '—',
-            category: b.category ?? null,
-            color: b.color ?? '',
-            imageUrl: null,
-            status: 'wearable',
-            location: null,
-            sizeLabel: null,
-            fitStatus: 'unknown',
-          } as WardrobeItem))).map((it) => {
+          {displayItems.map((it) => {
             const isLaundry = it.status !== 'wearable';
             return (
               <Pressable
-                key={it.id}
+                key={it.slotItemId}
                 onPress={() => navigation.getParent()?.navigate('WardrobeTab', {
                   screen: 'ItemDetail',
                   params: { itemId: it.id },
@@ -477,7 +695,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                         </View>
                       ) : (
                         <Tag style={{ paddingHorizontal: 6, paddingVertical: 2 }}>
-                          {it.fitStatus === 'fits_well' ? '合身' : it.fitStatus ?? '合身'}
+                          {it.fitStatus ? tEnum('fitStatus', it.fitStatus) : t('outfitDetail.fitGood')}
                         </Tag>
                       )}
                       {it.location ? (
@@ -486,6 +704,12 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                     </View>
                   </View>
                   <Pressable
+                    onPress={(event) => {
+                      event.stopPropagation();
+                      openReplacementSheet(it);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('outfitDetail.replaceItem', { name: it.name })}
                     style={{
                       paddingHorizontal: 10,
                       paddingVertical: 6,
@@ -493,7 +717,9 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                       borderRadius: 8,
                     }}
                   >
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: isLaundry ? colors.inverse : T.ink2 }}>替换</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: isLaundry ? colors.inverse : T.ink2 }}>
+                      {t('outfitDetail.replace')}
+                    </Text>
                   </Pressable>
                 </View>
               </Pressable>
@@ -569,6 +795,12 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
       >
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <Pressable
+            onPress={handleFavorite}
+            disabled={favoriteMutation.isPending}
+            accessibilityRole="button"
+            accessibilityLabel={
+              isFavorited ? t('outfitDetail.unfavorite') : t('outfitDetail.favorite')
+            }
             style={{
               width: 54,
               height: 54,
@@ -577,9 +809,15 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
               ...T.shadowSm,
               alignItems: 'center',
               justifyContent: 'center',
+              opacity: favoriteMutation.isPending ? 0.62 : 1,
             }}
           >
-            <SystemIcon name="heart" size={21} color={T.ink2} />
+            <SystemIcon
+              name="heart"
+              size={21}
+              color={isFavorited ? T.red : T.ink2}
+              fill={isFavorited ? T.red : 'none'}
+            />
           </Pressable>
           <Pressable
             onPress={handleWear}
@@ -597,6 +835,124 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
           </Pressable>
         </View>
       </View>
+
+      <BottomSheet
+        visible={Boolean(replacementTarget)}
+        onClose={() => setReplacementTarget(null)}
+        title={t('outfitDetail.replacementsTitle', { name: replacementTarget?.name ?? '' })}
+      >
+        {replacementQuery.isLoading ? (
+          <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+            <LoadingBlock />
+          </View>
+        ) : replacementQuery.isError ? (
+          <View style={{ gap: 12 }}>
+            <Text style={{ fontSize: 13, color: T.ink2, textAlign: 'center', lineHeight: 19 }}>
+              {t('outfitDetail.replacementUnavailable')}
+            </Text>
+            <Button
+              label={t('common.retry')}
+              variant="secondary"
+              onPress={() => {
+                void replacementQuery.refetch();
+              }}
+            />
+          </View>
+        ) : replacementQuery.data?.length ? (
+          <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
+            <View style={{ gap: 10 }}>
+              {replacementQuery.data.map((candidate) => {
+                const meta = [
+                  tEnum('category', candidate.category),
+                  tEnum('color', candidate.colorMain),
+                  t('outfitDetail.replacementSimilarity', {
+                    pct: Math.round(candidate.similarity * 100),
+                  }),
+                ].filter(Boolean).join(' · ');
+                return (
+                  <Pressable
+                    key={candidate.itemId}
+                    onPress={() => handleSelectReplacement(candidate)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('outfitDetail.selectReplacement', { name: candidate.title })}
+                    style={({ pressed }) => ({
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: 10,
+                      borderRadius: 12,
+                      backgroundColor: pressed ? T.bgAlt : T.cardSoft,
+                    })}
+                  >
+                    <ImageThumb
+                      uri={candidate.thumbnailUrl}
+                      size={54}
+                      fallbackLabel={candidate.title || tEnum('category', candidate.category)}
+                    />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: '700', color: T.ink }}>
+                        {candidate.title}
+                      </Text>
+                      <Text numberOfLines={1} style={{ fontSize: 11, color: T.ink3, marginTop: 3 }}>
+                        {meta}
+                      </Text>
+                    </View>
+                    <SystemIcon name="chevronRight" size={16} color={T.ink3} />
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ScrollView>
+        ) : (
+          <Text style={{ fontSize: 13, color: T.ink2, textAlign: 'center', lineHeight: 19 }}>
+            {t('outfitDetail.replacementNone')}
+          </Text>
+        )}
+      </BottomSheet>
+
+      <BottomSheet
+        visible={overflowOpen}
+        onClose={() => setOverflowOpen(false)}
+        title={t('outfitDetail.overflowTitle')}
+      >
+        <View style={{ gap: 10 }}>
+          <Button
+            label={t('outfitDetail.overflowShare')}
+            variant="secondary"
+            icon={<SystemIcon name="share" size={17} color={T.ink2} />}
+            onPress={() => {
+              setOverflowOpen(false);
+              void shareOutfitSummary('overflow');
+            }}
+          />
+          <Button
+            label={isFavorited ? t('outfitDetail.unfavorite') : t('outfitDetail.favorite')}
+            variant="secondary"
+            loading={favoriteMutation.isPending}
+            icon={
+              <SystemIcon
+                name="heart"
+                size={17}
+                color={isFavorited ? T.red : T.ink2}
+                fill={isFavorited ? T.red : 'none'}
+              />
+            }
+            onPress={() => {
+              handleFavorite();
+              setOverflowOpen(false);
+            }}
+          />
+          <Button
+            label={t('outfitDetail.overflowFeedback')}
+            variant="primary"
+            icon={<SystemIcon name="check" size={17} color={colors.inverse} />}
+            onPress={() => {
+              setOverflowOpen(false);
+              void handleWear();
+            }}
+          />
+        </View>
+      </BottomSheet>
     </View>
   );
 }
