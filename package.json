@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "main": "index.ts",
   "private": true,
+  "engines": {
+    "node": ">=22.18.0"
+  },
   "scripts": {
     "start": "expo start --dev-client",
     "web": "expo start --web",
@@ -12,7 +15,8 @@
     "eas-build-post-install": "npx install-skia",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,json}\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/check-node.cjs && node scripts/run-regressions.ts"
   },
   "dependencies": {
     "@babel/runtime": "^7.29.7",
