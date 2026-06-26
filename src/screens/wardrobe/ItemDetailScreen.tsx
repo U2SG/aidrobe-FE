@@ -29,6 +29,7 @@ import {
   resolveItemDisplayName,
   SEASON_VALUES,
 } from '@/i18n/domainLabels';
+import { invalidateAfterWardrobeItemChange } from '@/state/invalidation';
 import { colors, shadow } from '@/theme/design';
 import type {
   FitIntent,
@@ -172,7 +173,7 @@ export function ItemDetailScreen({ navigation, route }: Props) {
     },
     onSuccess: (next: WardrobeItem) => {
       qc.setQueryData(['wardrobeItem', itemId], next);
-      qc.invalidateQueries({ queryKey: ['wardrobeItems'] });
+      invalidateAfterWardrobeItemChange(qc);
     },
     // Two-step save (metadata then fit): if fit fails after metadata persisted,
     // the server is half-updated. Refetch both queries so the screen reflects the
@@ -187,7 +188,7 @@ export function ItemDetailScreen({ navigation, route }: Props) {
   const remove = useMutation({
     mutationFn: () => deleteWardrobeItem(itemId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['wardrobeItems'] });
+      invalidateAfterWardrobeItemChange(qc);
       navigation.goBack();
     },
   });
