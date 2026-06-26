@@ -253,6 +253,28 @@ export function tColor(locale: AppLocale, value: string | null | undefined): str
   return humanize(raw);
 }
 
+// Filter-chip variant of tColor. The single-item `'其他颜色'` fallback collapses
+// every out-of-catalogue color (teal / burgundy / …) onto one indistinguishable
+// label, so a color filter would show multiple chips with the same text selecting
+// different raw values. Here each distinct raw color must read distinctly, so we
+// keep the localized name when the color is catalogued and otherwise disambiguate
+// with the raw value (zh-CN keeps the localized prefix, e.g. `其他颜色（teal）`).
+// en-US is byte-identical to tColor (it already humanizes the raw value).
+export function tColorFilterLabel(
+  locale: AppLocale,
+  value: string | null | undefined,
+): string {
+  if (!value) return '';
+  const raw = value.trim();
+  if (!raw) return '';
+  const key = normalizedFreeform(raw);
+  const table = COLOR[locale] as Record<string, string>;
+  const direct = table[key] ?? table[key.replace(/_/g, ' ')];
+  if (direct) return direct;
+  if (locale === 'zh-CN' && looksLikeEnglishToken(raw)) return `其他颜色（${raw}）`;
+  return humanize(raw);
+}
+
 // Item display-name fallback (BE#30): user custom name → server display_name →
 // localized_names[locale] → existing name/title. `name_source === 'user'` (or
 // 'custom') means the user named it, so prefer the stored name as-is.

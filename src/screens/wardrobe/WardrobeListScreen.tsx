@@ -25,7 +25,7 @@ import { SystemIcon } from '@/components/ui/SystemIcon';
 import { Tag } from '@/components/ui/Tag';
 import { WardrobeShowcaseEmpty } from '@/components/wardrobe/WardrobeShowcaseEmpty';
 import { useT, type UseT } from '@/hooks/useT';
-import { resolveItemDisplayName, SEASON_VALUES } from '@/i18n/domainLabels';
+import { resolveItemDisplayName, SEASON_VALUES, tColorFilterLabel } from '@/i18n/domainLabels';
 import { colors, radius, shadow } from '@/theme/design';
 import type { ItemCategory, ItemStatus, WardrobeItem } from '@/types/api';
 import type { MainTabsParamList, WardrobeStackParamList } from '@/types/navigation';
@@ -259,7 +259,7 @@ export function WardrobeListScreen({ navigation }: Props) {
       if (!byKey.has(key)) byKey.set(key, color);
     });
     return Array.from(byKey.values()).sort((a, b) =>
-      t.tEnum('color', a).localeCompare(t.tEnum('color', b)),
+      tColorFilterLabel(t.locale, a).localeCompare(tColorFilterLabel(t.locale, b)),
     );
   }, [items, t]);
 
@@ -607,7 +607,7 @@ export function WardrobeListScreen({ navigation }: Props) {
             allLabel={t.t('common.all')}
             options={colorOptions.map((color) => ({
               value: color,
-              label: t.tEnum('color', color),
+              label: tColorFilterLabel(t.locale, color),
             }))}
             selected={filters.color}
             onSelect={(value) => setFilters((cur) => ({ ...cur, color: value }))}
