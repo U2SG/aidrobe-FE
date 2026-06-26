@@ -8,14 +8,22 @@ import {
   getInsightsSummary,
   getStyleTrend,
   getTopItems,
+  getWardrobeHealth,
 } from '@/api/insights';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { SystemIcon } from '@/components/ui/SystemIcon';
+import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
+import {
+  isWardrobeHealthSparse,
+  wardrobeHealthHeadline,
+  wardrobeHealthInsightCopy,
+} from '@/screens/discover/wardrobeHealth';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { DiscoverStackParamList } from '@/types/navigation';
+import { httpStatus } from '@/utils/http';
 
 type Props = NativeStackScreenProps<DiscoverStackParamList, 'Insights'>;
 
@@ -31,6 +39,14 @@ const T = {
 };
 
 const SWATCHES = [colors.accent, '#D9C7A6', colors.label, '#8C6F4A', colors.tertiaryLabel, '#C9A876'];
+
+// Severity -> visual emphasis. `high` reads as a focal accent bar, `medium` a
+// warm hint, `low` a quiet neutral — never alarming (supportive, non-judgmental).
+const SEVERITY_COLOR: Record<'low' | 'medium' | 'high', string> = {
+  low: T.ink3,
+  medium: colors.warning,
+  high: colors.accent,
+};
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -51,6 +67,7 @@ function Stat({ value, label }: { value: string; label: string }) {
 }
 
 export function InsightsScreen({ navigation }: Props) {
+  const { t, tEnum } = useT();
   const track = useTrack();
   useEffect(() => {
     track('insights_viewed', {});
@@ -60,6 +77,13 @@ export function InsightsScreen({ navigation }: Props) {
   const topQuery = useQuery({ queryKey: ['insights', 'topItems'], queryFn: () => getTopItems(8), retry: 1 });
   const paletteQuery = useQuery({ queryKey: ['insights', 'palette'], queryFn: getColorPalette, retry: 1 });
   const trendQuery = useQuery({ queryKey: ['insights', 'styleTrend'], queryFn: getStyleTrend, retry: 1 });
+  // FE #46 — gated by ENABLE_WARDROBE_HEALTH server-side; on 503 (flag off) we
+  // simply omit the card (no retry storm) rather than surfacing an error.
+  const healthQuery = useQuery({
+    queryKey: ['insights', 'wardrobeHealth'],
+    queryFn: getWardrobeHealth,
+    retry: (count, err) => httpStatus(err) !== 503 && count < 1,
+  });
 
   const { paletteEntries, paletteTotal } = useMemo(() => {
     const entries = Object.entries(paletteQuery.data?.palette ?? {}).sort((a, b) => b[1] - a[1]);
@@ -80,6 +104,78 @@ export function InsightsScreen({ navigation }: Props) {
           contentContainerStyle={{ paddingHorizontal: spacing.screen, paddingBottom: 100, gap: 16 }}
           showsVerticalScrollIndicator={false}
         >
+          {/* Wardrobe health (FE #46) — omitted entirely when the flag is off
+              (503) or on any fetch error; severity drives per-row emphasis. */}
+          {healthQuery.data
+            ? (() => {
+                const health = healthQuery.data;
+                const sparse = isWardrobeHealthSparse(health.insights);
+                // Near-empty wardrobe: the score is not yet meaningful, so show
+                // only the encouraging empty state (skip the score + headline).
+                if (sparse) {
+                  return (
+                    <Card title={t('wardrobeHealth.title')}>
+                      <Text style={{ ...type.headline, color: T.ink }}>
+                        {t('wardrobeHealth.empty.title')}
+                      </Text>
+                      <Text style={{ ...type.footnote, color: T.ink2, marginTop: 4 }}>
+                        {t('wardrobeHealth.empty.description')}
+                      </Text>
+                    </Card>
+                  );
+                }
+                const { headline, summary } = wardrobeHealthHeadline(health.level, t);
+                return (
+                  <Card title={t('wardrobeHealth.title')}>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
+                      <Text style={{ ...type.title1, color: T.ink }}>
+                        {t('wardrobeHealth.score', { score: health.score })}
+                      </Text>
+                      <Text style={{ ...type.headline, color: T.ink2 }}>{headline}</Text>
+                    </View>
+                    <Text style={{ ...type.footnote, color: T.ink3, marginTop: 4 }}>{summary}</Text>
+
+                    <View style={{ marginTop: 14, gap: 14 }}>
+                        {health.insights.map((insight, i) => {
+                          const copy = wardrobeHealthInsightCopy(insight, t, tEnum);
+                          const accent = SEVERITY_COLOR[copy.severity];
+                          return (
+                            <View
+                              key={`${insight.type}-${i}`}
+                              style={{ flexDirection: 'row', gap: 10 }}
+                            >
+                              <View
+                                style={{
+                                  width: 3,
+                                  borderRadius: 2,
+                                  backgroundColor: accent,
+                                  alignSelf: 'stretch',
+                                }}
+                              />
+                              <View style={{ flex: 1 }}>
+                                <View
+                                  style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                                >
+                                  <Text style={{ ...type.callout, color: T.ink, flex: 1, fontWeight: '600' }}>
+                                    {copy.title}
+                                  </Text>
+                                  <Text style={{ ...type.caption, color: accent, fontWeight: '700' }}>
+                                    {copy.severityLabel}
+                                  </Text>
+                                </View>
+                                <Text style={{ ...type.footnote, color: T.ink2, marginTop: 2 }}>
+                                  {copy.suggestion}
+                                </Text>
+                              </View>
+                            </View>
+                          );
+                        })}
+                      </View>
+                  </Card>
+                );
+              })()
+            : null}
+
           {/* Summary */}
           {summaryQuery.data ? (
             <Card title="概览">
