@@ -10,6 +10,7 @@ export { Card, type CardVariant } from './Card';
 export { ConfidenceBadge, confidenceTone, isLowConfidence } from './ConfidenceBadge';
 export { EditableChip } from './EditableChip';
 export { GradientSurface } from './GradientSurface';
+export { ImageThumb, type ImageThumbProps, type ImageThumbState } from './ImageThumb';
 export { Input } from './Input';
 export { Modal } from './Modal';
 export { OptionPickerSheet, type PickerOption } from './OptionPickerSheet';

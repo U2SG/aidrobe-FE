@@ -39,6 +39,9 @@ export async function getInsightsSummary(): Promise<InsightsSummary> {
     idleThresholdDays: data.idle_threshold_days,
     mostWornCategory: data.most_worn_category ?? null,
     favoriteColor: data.favorite_color ?? null,
+    wearHistoryCount: data.wear_history_count ?? null,
+    hasSufficientWearHistory: data.has_sufficient_wear_history ?? null,
+    reportAvailable: data.report_available ?? null,
   };
 }
 

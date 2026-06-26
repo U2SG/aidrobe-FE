@@ -1,5 +1,6 @@
-import { Image, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
+import { ImageThumb } from '@/components/ui/ImageThumb';
 import { useT } from '@/hooks/useT';
 import { colors, radius, type } from '@/theme/design';
 
@@ -27,39 +28,21 @@ interface Props {
 export function ItemRefCard({ item, size = SIZE }: Props) {
   const { t, tEnum } = useT();
   const categoryLabel = item.category ? tEnum('category', item.category) : '';
+  const colorLabel = item.colorMain ? tEnum('color', item.colorMain) : '';
   const fallbackLabel =
     item.name?.trim() ||
-    [categoryLabel, item.colorMain].filter(Boolean).join(' · ') ||
+    [categoryLabel, colorLabel].filter(Boolean).join(' · ') ||
     t('ask.itemFallback');
 
   return (
     <View style={{ width: size }} accessibilityLabel={fallbackLabel}>
-      <View
-        style={{
-          width: size,
-          height: size,
-          borderRadius: radius.sm,
-          backgroundColor: colors.secondaryElevated,
-          overflow: 'hidden',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        {item.thumbnailUrl ? (
-          <Image
-            source={{ uri: item.thumbnailUrl }}
-            style={{ width: '100%', height: '100%' }}
-            resizeMode="cover"
-          />
-        ) : (
-          <Text
-            style={{ ...type.caption, color: colors.tertiaryLabel, paddingHorizontal: 4, textAlign: 'center' }}
-            numberOfLines={2}
-          >
-            {categoryLabel || t('ask.itemFallback')}
-          </Text>
-        )}
-      </View>
+      <ImageThumb
+        uri={item.thumbnailUrl}
+        size={size}
+        cornerRadius={radius.sm}
+        fallbackLabel={categoryLabel || colorLabel || t('ask.itemFallback')}
+        accessibilityLabel={fallbackLabel}
+      />
       <Text style={{ ...type.caption, color: colors.secondaryLabel, marginTop: 4 }} numberOfLines={1}>
         {fallbackLabel}
       </Text>

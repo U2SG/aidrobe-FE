@@ -472,6 +472,9 @@ export interface InsightsSummary {
   idleThresholdDays: number;
   mostWornCategory?: string | null;
   favoriteColor?: string | null;
+  wearHistoryCount?: number | null;
+  hasSufficientWearHistory?: boolean | null;
+  reportAvailable?: boolean | null;
 }
 
 export interface ServerInsightsSummary {
@@ -481,6 +484,9 @@ export interface ServerInsightsSummary {
   idle_threshold_days: number;
   most_worn_category?: string | null;
   favorite_color?: string | null;
+  wear_history_count?: number | null;
+  has_sufficient_wear_history?: boolean | null;
+  report_available?: boolean | null;
 }
 
 export interface TopItem {
@@ -998,17 +1004,25 @@ export interface ServerSimilarItem {
 export interface SenseCheckResult {
   verdict: SenseCheckVerdict;
   reason: string;
+  displayReason?: I18nMessage | null;
+  fallbackText?: string | null;
   similarItems: SimilarItem[];
+  similarItemCount?: number | null;
   wardrobeGap: string[];
   outfitPotential: number;
+  pairableCount?: number | null;
 }
 
 export interface ServerSenseCheckResponse {
   verdict: string;
   reason: string;
+  display_reason?: ServerI18nMessage | null;
+  fallback_text?: string | null;
   similar_items: ServerSimilarItem[];
+  similar_item_count?: number | null;
   wardrobe_gap: string[];
   outfit_potential: number;
+  pairable_count?: number | null;
 }
 
 export interface SenseCheckBody {
@@ -1027,11 +1041,15 @@ export interface ServerSenseCheckHistoryItem {
   sense_check_id: string;
   verdict: string;
   reason: string;
+  display_reason?: ServerI18nMessage | null;
+  fallback_text?: string | null;
   image_url: string | null;
   source_url: string | null;
   similar_items: ServerSimilarItem[];
+  similar_item_count?: number | null;
   wardrobe_gap: string[];
   outfit_potential: number;
+  pairable_count?: number | null;
   created_at: string;
 }
 

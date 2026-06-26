@@ -1,7 +1,8 @@
-import { Image, View } from 'react-native';
+import { View } from 'react-native';
 
-import { Badge, Card, Typography } from '@/components/ui';
-import { colors } from '@/theme/design';
+import { Badge, Card, ImageThumb, Typography } from '@/components/ui';
+import { useT } from '@/hooks/useT';
+import { radius } from '@/theme/design';
 import type { WardrobeItem } from '@/types/api';
 
 interface Props {
@@ -13,6 +14,10 @@ interface Props {
 // (Card/Badge/Typography). Image is flush, so the card uses padding=0 with an
 // inner padded block. Normalized colors; not pixel-verified — see PR.
 export function WardrobeItemCard({ item, onPress }: Props) {
+  const { tEnum } = useT();
+  const categoryLabel = tEnum('category', item.category);
+  const colorLabel = tEnum('color', item.color);
+
   return (
     <Card
       onPress={onPress}
@@ -22,10 +27,14 @@ export function WardrobeItemCard({ item, onPress }: Props) {
       padding={0}
       style={{ flex: 1, overflow: 'hidden', marginBottom: 12 }}
     >
-      <View style={{ width: '100%', aspectRatio: 1, backgroundColor: colors.fill }}>
-        {item.imageUrl ? (
-          <Image source={{ uri: item.imageUrl }} style={{ height: '100%', width: '100%' }} resizeMode="cover" />
-        ) : null}
+      <View style={{ width: '100%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ImageThumb
+          uri={item.imageUrl}
+          size={156}
+          cornerRadius={radius.md}
+          fallbackLabel={categoryLabel || colorLabel}
+          accessibilityLabel={item.name}
+        />
       </View>
       <View style={{ padding: 8 }}>
         <Typography variant="callout" color="label" numberOfLines={1} style={{ fontWeight: '500' }}>
@@ -40,7 +49,7 @@ export function WardrobeItemCard({ item, onPress }: Props) {
           }}
         >
           <Typography variant="caption" color="tertiaryLabel">
-            {item.color}
+            {colorLabel}
           </Typography>
           {item.status === 'unavailable' ? <Badge tone="neutral" label="暂不可用" /> : null}
         </View>

@@ -13,7 +13,8 @@ export type EnumLabelKind =
   | 'fitIntent'
   | 'variant'
   | 'season'
-  | 'occasion';
+  | 'occasion'
+  | 'color';
 
 // FE#39 quick-edit option sets. season → season_tags, occasion → style_tags on
 // the wire (both free-form string arrays server-side; we curate a stable set for
@@ -149,10 +150,55 @@ const VARIANT: Record<AppLocale, Record<'safe' | 'fast' | 'stylish', string>> = 
   'en-US': { safe: 'Safe', fast: 'Fast', stylish: 'Stylish' },
 };
 
+const COLOR: Record<AppLocale, Record<string, string>> = {
+  'zh-CN': {
+    white: '白色',
+    black: '黑色',
+    beige: '米色',
+    blue: '蓝色',
+    brown: '棕色',
+    gray: '灰色',
+    grey: '灰色',
+    green: '绿色',
+    red: '红色',
+    pink: '粉色',
+    purple: '紫色',
+    yellow: '黄色',
+    orange: '橙色',
+    navy: '藏青色',
+    cream: '奶油色',
+  },
+  'en-US': {
+    white: 'White',
+    black: 'Black',
+    beige: 'Beige',
+    blue: 'Blue',
+    brown: 'Brown',
+    gray: 'Gray',
+    grey: 'Grey',
+    green: 'Green',
+    red: 'Red',
+    pink: 'Pink',
+    purple: 'Purple',
+    yellow: 'Yellow',
+    orange: 'Orange',
+    navy: 'Navy',
+    cream: 'Cream',
+  },
+};
+
 // Humanize an unknown enum value so a raw `snake_case` token never reaches the
 // user verbatim.
 function humanize(value: string): string {
-  return value.replace(/_/g, ' ');
+  return value.replace(/[_-]/g, ' ');
+}
+
+function normalizedFreeform(value: string): string {
+  return value.trim().toLowerCase().replace(/[\s-]+/g, '_');
+}
+
+function looksLikeEnglishToken(value: string): boolean {
+  return /[a-z]/i.test(value) && /^[a-z0-9\s_-]+$/i.test(value);
 }
 
 function lookup<K extends string>(
@@ -193,6 +239,18 @@ export function tVariant(locale: AppLocale, value: string | null | undefined): s
   if (!value) return '';
   const table = VARIANT[locale] as Record<string, string>;
   return table[value] ?? humanize(value);
+}
+
+export function tColor(locale: AppLocale, value: string | null | undefined): string {
+  if (!value) return '';
+  const raw = value.trim();
+  if (!raw) return '';
+  const key = normalizedFreeform(raw);
+  const table = COLOR[locale] as Record<string, string>;
+  const direct = table[key] ?? table[key.replace(/_/g, ' ')];
+  if (direct) return direct;
+  if (locale === 'zh-CN' && looksLikeEnglishToken(raw)) return '其他颜色';
+  return humanize(raw);
 }
 
 // Item display-name fallback (BE#30): user custom name → server display_name →
