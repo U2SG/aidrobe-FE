@@ -176,6 +176,37 @@ function FilterChip({
   );
 }
 
+function FilterSection({
+  label,
+  allLabel,
+  options,
+  selected,
+  onSelect,
+}: {
+  label: string;
+  allLabel: string;
+  options: { value: string; label: string }[];
+  selected: string;
+  onSelect: (value: string) => void;
+}) {
+  return (
+    <View style={{ gap: 10 }}>
+      <Text style={{ fontSize: 13, fontWeight: '600', color: T.ink2 }}>{label}</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        <FilterChip label={allLabel} active={selected === 'all'} onPress={() => onSelect('all')} />
+        {options.map((option) => (
+          <FilterChip
+            key={option.value}
+            label={option.label}
+            active={selected === option.value}
+            onPress={() => onSelect(option.value)}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
 export function WardrobeListScreen({ navigation }: Props) {
   const t = useT();
   const [category, setCategory] = useState<ItemCategory | 'all'>('all');
@@ -251,8 +282,11 @@ export function WardrobeListScreen({ navigation }: Props) {
     (filters.season !== 'all' ? 1 : 0) +
     (filters.color !== 'all' ? 1 : 0);
   const hasActiveFilters = activeFilterCount > 0;
-  const hasClientFilters =
-    filters.status !== 'all' || filters.season !== 'all' || filters.color !== 'all';
+  const clientFilterCount =
+    (filters.status !== 'all' ? 1 : 0) +
+    (filters.season !== 'all' ? 1 : 0) +
+    (filters.color !== 'all' ? 1 : 0);
+  const hasClientFilters = clientFilterCount > 0;
   const displayedTotal = hasClientFilters ? filteredItems.length : (query.data?.total ?? 0);
   const insightChips = [
     {
@@ -391,7 +425,7 @@ export function WardrobeListScreen({ navigation }: Props) {
                 >
                   {t.t('wardrobe.filter')}
                 </Text>
-                {hasActiveFilters ? (
+                {hasClientFilters ? (
                   <View
                     style={{
                       minWidth: 18,
@@ -404,7 +438,7 @@ export function WardrobeListScreen({ navigation }: Props) {
                     }}
                   >
                     <Text style={{ fontSize: 11, fontWeight: '700', color: colors.inverse }}>
-                      {activeFilterCount}
+                      {clientFilterCount}
                     </Text>
                   </View>
                 ) : null}
@@ -544,80 +578,40 @@ export function WardrobeListScreen({ navigation }: Props) {
           contentContainerStyle={{ gap: 18 }}
           showsVerticalScrollIndicator={false}
         >
-          <View style={{ gap: 10 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: T.ink2 }}>{t.t('item.category')}</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {CATEGORIES.map((cat) => (
-                <FilterChip
-                  key={cat.key}
-                  label={cat.label}
-                  active={category === cat.key}
-                  onPress={() => setCategory(cat.key)}
-                />
-              ))}
-            </View>
-          </View>
+          <FilterSection
+            label={t.t('wardrobe.filter.status')}
+            allLabel={t.t('common.all')}
+            options={STATUS_KEYS.map((status) => ({
+              value: status,
+              label: t.tEnum('status', status),
+            }))}
+            selected={filters.status}
+            onSelect={(value) =>
+              setFilters((cur) => ({ ...cur, status: value as ItemStatus | 'all' }))
+            }
+          />
 
-          <View style={{ gap: 10 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: T.ink2 }}>
-              {t.t('wardrobe.filter.status')}
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              <FilterChip
-                label={t.t('common.all')}
-                active={filters.status === 'all'}
-                onPress={() => setFilters((cur) => ({ ...cur, status: 'all' }))}
-              />
-              {STATUS_KEYS.map((status) => (
-                <FilterChip
-                  key={status}
-                  label={t.tEnum('status', status)}
-                  active={filters.status === status}
-                  onPress={() => setFilters((cur) => ({ ...cur, status }))}
-                />
-              ))}
-            </View>
-          </View>
+          <FilterSection
+            label={t.t('wardrobe.filter.season')}
+            allLabel={t.t('common.all')}
+            options={SEASON_VALUES.map((season) => ({
+              value: season,
+              label: t.tEnum('season', season),
+            }))}
+            selected={filters.season}
+            onSelect={(value) => setFilters((cur) => ({ ...cur, season: value }))}
+          />
 
-          <View style={{ gap: 10 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: T.ink2 }}>
-              {t.t('wardrobe.filter.season')}
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              <FilterChip
-                label={t.t('common.all')}
-                active={filters.season === 'all'}
-                onPress={() => setFilters((cur) => ({ ...cur, season: 'all' }))}
-              />
-              {SEASON_VALUES.map((season) => (
-                <FilterChip
-                  key={season}
-                  label={t.tEnum('season', season)}
-                  active={filters.season === season}
-                  onPress={() => setFilters((cur) => ({ ...cur, season }))}
-                />
-              ))}
-            </View>
-          </View>
-
-          <View style={{ gap: 10 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: T.ink2 }}>{t.t('item.color')}</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              <FilterChip
-                label={t.t('common.all')}
-                active={filters.color === 'all'}
-                onPress={() => setFilters((cur) => ({ ...cur, color: 'all' }))}
-              />
-              {colorOptions.map((color) => (
-                <FilterChip
-                  key={color}
-                  label={t.tEnum('color', color)}
-                  active={filters.color === color}
-                  onPress={() => setFilters((cur) => ({ ...cur, color }))}
-                />
-              ))}
-            </View>
-          </View>
+          <FilterSection
+            label={t.t('item.color')}
+            allLabel={t.t('common.all')}
+            options={colorOptions.map((color) => ({
+              value: color,
+              label: t.tEnum('color', color),
+            }))}
+            selected={filters.color}
+            onSelect={(value) => setFilters((cur) => ({ ...cur, color: value }))}
+          />
         </ScrollView>
 
         <View style={{ flexDirection: 'row', gap: 10 }}>
