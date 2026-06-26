@@ -117,7 +117,13 @@ export function WardrobeReportScreen({ navigation, route }: Props) {
     if (!report) return;
     try {
       if (report.shareAssetUrl) {
-        await Share.share({ message: shareMessage, url: report.shareAssetUrl });
+        // Mirror the OOTD poster share flow: append the asset URL to the message
+        // so Android (where Share.share's `url` field is iOS-only and dropped)
+        // still carries it, while `url` drives the iOS rich-preview.
+        await Share.share({
+          message: `${shareMessage}\n${report.shareAssetUrl}`,
+          url: report.shareAssetUrl,
+        });
       } else {
         // API_GAP[untracked]: wardrobe report has no shareable poster/asset URL.
         // Fallback: share a text recap through the native share sheet. See docs/api-gaps.md.
