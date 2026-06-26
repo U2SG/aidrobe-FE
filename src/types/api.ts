@@ -374,14 +374,10 @@ export interface ServerOutfitResponse {
   prep_notes?: ServerI18nMessage[] | null;
 }
 
-export interface FavoriteOutfitResponse {
-  outfitId: string;
-  isFavorited: boolean;
-}
-
+// Favorite/unfavorite is an ack-only endpoint (BE returns `{ success }`); the
+// resulting favorite state is the mutation's input, so the client derives it.
 export interface ServerFavoriteOutfitResponse {
-  outfit_id: string;
-  is_favorited: boolean;
+  success: boolean;
 }
 
 export interface ServerStyleContext {

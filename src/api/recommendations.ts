@@ -3,7 +3,6 @@ import type {
   FeedbackBundleBody,
   FeedbackBundleResult,
   FeedbackTagsResponse,
-  FavoriteOutfitResponse,
   OutfitDetail,
   OutfitObstacle,
   OutfitReplacementCandidate,
@@ -133,30 +132,21 @@ export async function getOutfitDetail(outfitId: string) {
   ) satisfies OutfitDetail;
 }
 
-function toFavoriteOutfit(data: ServerFavoriteOutfitResponse): FavoriteOutfitResponse {
-  return {
-    outfitId: data.outfit_id,
-    isFavorited: data.is_favorited,
-  };
-}
-
-export async function favoriteOutfit(outfitId: string): Promise<FavoriteOutfitResponse> {
-  return toFavoriteOutfit(
-    await apiPost<ServerFavoriteOutfitResponse>(
-      `/v1/recommendations/outfits/${outfitId}/favorite`,
-      null,
-      undefined,
-      { silentErrorToast: true },
-    ),
+// Ack-only: the BE returns `{ success }`; the caller already knows the target
+// favorite state from the request, so these resolve to void.
+export async function favoriteOutfit(outfitId: string): Promise<void> {
+  await apiPost<ServerFavoriteOutfitResponse>(
+    `/v1/recommendations/outfits/${outfitId}/favorite`,
+    null,
+    undefined,
+    { silentErrorToast: true },
   );
 }
 
-export async function unfavoriteOutfit(outfitId: string): Promise<FavoriteOutfitResponse> {
-  return toFavoriteOutfit(
-    await apiDelete<ServerFavoriteOutfitResponse>(
-      `/v1/recommendations/outfits/${outfitId}/favorite`,
-      { silentErrorToast: true },
-    ),
+export async function unfavoriteOutfit(outfitId: string): Promise<void> {
+  await apiDelete<ServerFavoriteOutfitResponse>(
+    `/v1/recommendations/outfits/${outfitId}/favorite`,
+    { silentErrorToast: true },
   );
 }
 

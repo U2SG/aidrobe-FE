@@ -179,12 +179,13 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
       );
       return { previous };
     },
-    onSuccess: (data) => {
+    onSuccess: (_data, nextFavorited) => {
+      // Toggle is ack-only — the resulting state is the input we just sent.
       qc.setQueryData<OutfitDetail>(['outfitDetail', outfitId], (old) =>
-        old ? { ...old, isFavorited: data.isFavorited } : old,
+        old ? { ...old, isFavorited: nextFavorited } : old,
       );
       showToast({
-        message: data.isFavorited
+        message: nextFavorited
           ? t('outfitDetail.favorite.added')
           : t('outfitDetail.favorite.removed'),
         kind: 'success',
