@@ -1326,3 +1326,41 @@ export interface ServerWardrobeReportResponse {
   longest_idle_item?: ServerReportIdleItem | null;
   recommendation_adoption_rate: number;
 }
+
+// --- Wardrobe health (FE #46 / BE #49) -----------------------------------
+// GET /v1/insights/wardrobe-health is a V3 endpoint: returns data DIRECTLY
+// (no {code,message,data} envelope), behind ENABLE_WARDROBE_HEALTH (503 off).
+// The server intentionally returns STABLE CODES + NUMERIC METRICS ONLY — no
+// copy — so the FE owns localization. The known codes (level: great|good|fair|
+// low; type: wear_coverage|unused_items|category_balance|data_sparsity;
+// severity: low|medium|high) live as runtime sets in the localizer helper; the
+// response fields below are typed `string` so an unknown server code never
+// breaks typing — it degrades to a generic localized fallback at render time,
+// like the enum localizers in domainLabels.ts.
+
+// Metrics are passed through verbatim — keys are already flat snake-free codes,
+// so there is no server/client name mapping. `counts` maps category -> count.
+export interface WardrobeHealthMetrics {
+  coverage_ratio?: number;
+  window_days?: number;
+  unused_60?: number;
+  unused_90?: number;
+  unused_180?: number;
+  dominant_ratio?: number;
+  counts?: Record<string, number>;
+  item_count?: number;
+}
+
+// `type` / `severity` are typed `string` (not the literal unions) so an unknown
+// server code is representable and degrades gracefully; the helper narrows them.
+export interface WardrobeHealthInsight {
+  type: string;
+  severity: string;
+  metrics: WardrobeHealthMetrics;
+}
+
+export interface WardrobeHealth {
+  score: number;
+  level: string;
+  insights: WardrobeHealthInsight[];
+}

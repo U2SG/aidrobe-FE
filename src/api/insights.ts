@@ -12,6 +12,7 @@ import type {
   ServerWardrobeReportResponse,
   StyleTrendEntry,
   TopItem,
+  WardrobeHealth,
   WardrobeReport,
 } from '@/types/api';
 
@@ -73,6 +74,19 @@ export async function getCostPerWear(): Promise<CostPerWearItem[]> {
     wearCount: it.wear_count,
     costPerWear: it.cost_per_wear != null ? Number(it.cost_per_wear) : null,
   }));
+}
+
+// FE #46 — wardrobe health score + coded insights. V3 endpoint: returns data
+// DIRECTLY (no envelope). Gated by ENABLE_WARDROBE_HEALTH (503 when off — the
+// consuming surface omits its card rather than erroring). The server returns
+// stable codes + numeric metrics only; the FE localizes (see wardrobeHealth.ts).
+// The wire shape already matches the client type, so it passes through as-is.
+export async function getWardrobeHealth(): Promise<WardrobeHealth> {
+  // Optional card: the screen omits it on 503 (flag off) / any error, so
+  // suppress the global error toast for this request.
+  return apiGet<WardrobeHealth>('/v1/insights/wardrobe-health', undefined, {
+    silentErrorToast: true,
+  });
 }
 
 // V4 M21 — "wardrobe wrapped" report. Gated by ENABLE_WARDROBE_REPORT (503

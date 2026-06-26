@@ -2,10 +2,20 @@ import axios from 'axios';
 import type { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import Constants from 'expo-constants';
 
+import { isErrorToastSilenced } from '@/api/errorToast';
 import { useAuthStore } from '@/store/auth';
 import { useDevUserStore } from '@/store/devUser';
 import { useToastStore } from '@/store/toast';
 import type { ApiEnvelope } from '@/types/api';
+
+// Per-request opt-out for the global error toast. Callers whose surface already
+// hides itself on error (optional / feature-flagged cards) set this so a 503
+// (flag off) or any failure fails quietly. Honored in `handleHttpError`.
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    silentErrorToast?: boolean;
+  }
+}
 
 const extra = Constants.expoConfig?.extra ?? {};
 
@@ -61,6 +71,12 @@ export class ApiBusinessError extends Error {
 }
 
 function handleHttpError(error: AxiosError<ApiEnvelope<unknown>>) {
+  // Opt-out: requests that handle their own absence (optional/flagged cards)
+  // suppress the global toast for every error, including the 503 flag-off case.
+  if (isErrorToastSilenced(error)) {
+    return;
+  }
+
   const status = error.response?.status;
   const message = error.response?.data?.message ?? '';
   const showToast = useToastStore.getState().show;
@@ -104,8 +120,14 @@ function handleHttpError(error: AxiosError<ApiEnvelope<unknown>>) {
   }
 }
 
-export async function apiGet<T>(url: string, params?: Record<string, unknown>) {
-  const res = await apiClient.get<T>(url, { params });
+export async function apiGet<T>(
+  url: string,
+  params?: Record<string, unknown>,
+  config?: AxiosRequestConfig,
+) {
+  // `config` lets a caller carry per-request options (e.g. `silentErrorToast`
+  // for optional cards) without changing the default request behavior.
+  const res = await apiClient.get<T>(url, { params, ...config });
   return res.data;
 }
 

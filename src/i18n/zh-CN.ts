@@ -217,6 +217,42 @@ export const zhCN = {
   // --- OOTD poster (AI, selfie-based) --------------------------------------
   'ootd.fromOutfit': '来自这套搭配「{title}」',
   'ootd.selfieBased': '海报基于你的自拍生成，背景由 AI 重绘，所选搭配仅作参考、不直接出现在图中。',
+
+  // --- Wardrobe health (FE #46) --------------------------------------------
+  // Server returns stable codes + numeric metrics only; all copy lives here.
+  // Tone is supportive and non-judgmental. `{score}` is 0–100; ratio metrics
+  // are pre-formatted to whole-percent by the helper before interpolation.
+  'wardrobeHealth.title': '衣橱健康',
+  'wardrobeHealth.score': '{score} 分',
+  // Headline + summary per level (great | good | fair | low) + generic fallback.
+  'wardrobeHealth.level.great.headline': '衣橱状态很棒',
+  'wardrobeHealth.level.great.summary': '搭配丰富、利用充分，继续保持。',
+  'wardrobeHealth.level.good.headline': '衣橱状态不错',
+  'wardrobeHealth.level.good.summary': '整体均衡，稍加调整会更好。',
+  'wardrobeHealth.level.fair.headline': '衣橱还有提升空间',
+  'wardrobeHealth.level.fair.summary': '有几处可以优化，慢慢来就好。',
+  'wardrobeHealth.level.low.headline': '一起把衣橱盘活吧',
+  'wardrobeHealth.level.low.summary': '从下面几条小建议开始，会越来越顺手。',
+  'wardrobeHealth.level.unknown.headline': '衣橱健康',
+  'wardrobeHealth.level.unknown.summary': '这是你衣橱当前的整体状态。',
+  // Severity label (drives visual emphasis; also a screen-reader hint).
+  'wardrobeHealth.severity.low': '提示',
+  'wardrobeHealth.severity.medium': '建议',
+  'wardrobeHealth.severity.high': '重点',
+  // Per-insight title + actionable suggestion, interpolating metrics.
+  'wardrobeHealth.insight.wear_coverage.title': '近 {windowDays} 天用到了 {coveragePct}% 的衣物',
+  'wardrobeHealth.insight.wear_coverage.suggestion': '试着把没穿过的几件搭进日常，让衣橱转起来。',
+  'wardrobeHealth.insight.unused_items.title': '{unused90} 件单品 90 天没穿了',
+  'wardrobeHealth.insight.unused_items.suggestion': '挑一件这周搭一套，或考虑送出闲置的几件。',
+  'wardrobeHealth.insight.category_balance.title': '{category}占了 {dominantPct}%，品类略集中',
+  'wardrobeHealth.insight.category_balance.suggestion': '下次添置时补一补其他品类，搭配会更灵活。',
+  'wardrobeHealth.insight.data_sparsity.title': '衣橱才刚开始',
+  'wardrobeHealth.insight.data_sparsity.suggestion': '多记录几件并穿上几天，健康洞察就会出现。',
+  'wardrobeHealth.insight.unknown.title': '衣橱小提示',
+  'wardrobeHealth.insight.unknown.suggestion': '留意一下这条洞察，让衣橱更好用。',
+  // Encouraging empty state shown when a data_sparsity insight is present.
+  'wardrobeHealth.empty.title': '衣橱才刚开始',
+  'wardrobeHealth.empty.description': '多录入几件、记录几次穿着，这里就会出现专属的健康洞察。',
 } as const;
 
 export type I18nKey = keyof typeof zhCN;
