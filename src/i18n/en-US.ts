@@ -286,7 +286,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'outfitDetail.replacementHint':
     'Aidrobe can look for similar items. If the service is not available yet, this look stays unchanged.',
   'outfitDetail.replacementLoading': 'Searching',
-  'outfitDetail.replacementApplied': 'Swapped in "{name}"',
+  'outfitDetail.replacementApplied': 'Previewing "{name}" (not saved)',
   'outfitDetail.replacementUnavailable': 'Replacement service is not available yet. Try again later.',
   'outfitDetail.replacementNone': 'No replacement items found yet',
   'outfitDetail.replace': 'Replace',

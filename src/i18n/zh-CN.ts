@@ -279,7 +279,7 @@ export const zhCN = {
   'outfitDetail.obstacleIgnored': '已忽略这条提醒',
   'outfitDetail.replacementHint': '可以自动查找相近单品；若服务暂未开放，会保留当前穿搭。',
   'outfitDetail.replacementLoading': '查找中',
-  'outfitDetail.replacementApplied': '已替换为「{name}」',
+  'outfitDetail.replacementApplied': '本次预览已替换为「{name}」',
   'outfitDetail.replacementUnavailable': '替换服务暂不可用，请稍后重试',
   'outfitDetail.replacementNone': '暂时没有可替换的单品',
   'outfitDetail.replace': '替换',

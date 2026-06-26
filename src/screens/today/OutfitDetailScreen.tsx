@@ -377,15 +377,6 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
   const apiPrepNotes = outfitQuery.data?.prepNotes ?? null;
   const scores = scoreCells(apiScores);
 
-  // Resolve replacement candidate to a real item (first wearable wins).
-  function findReplacement(o: OutfitObstacle): WardrobeItem | null {
-    for (const id of o.replacementCandidateIds) {
-      const candidate = fullItems.find((it) => it.id === id);
-      if (candidate && candidate.status === 'wearable') return candidate;
-    }
-    return null;
-  }
-
   // Pick the most severe obstacle for the top banner.
   const activeObstacles = apiObstacles?.filter(
     (o) => !ignoredObstacleItemIds.has(o.itemId) && !localReplacements[o.itemId],
@@ -394,7 +385,6 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
     ?? activeObstacles.find((o) => o.severity === 'warning')
     ?? activeObstacles[0]
     ?? null;
-  const replacement = primaryObstacle ? findReplacement(primaryObstacle) : null;
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -497,16 +487,12 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
               <Text style={{ fontSize: 13, fontWeight: '600', color: '#5C4F3F', marginBottom: 4 }}>
                 {renderI18n(primaryObstacle.title)}
               </Text>
-              {replacement ? (
-                <Text style={{ fontSize: 11, color: '#7A6A55', lineHeight: 17, marginBottom: 8 }}>
-                  推荐替换为「{replacement.name}」
-                  {replacement.location ? `（${replacement.location}）` : ''} — 整体造型不变。
-                </Text>
-              ) : (
-                <Text style={{ fontSize: 11, color: '#7A6A55', lineHeight: 17, marginBottom: 8 }}>
-                  {t('outfitDetail.replacementHint')}
-                </Text>
-              )}
+              {/* Neutral hint only — the actual swap is resolved by the
+                  replacements endpoint (handleAutoReplace), so we don't preview
+                  a specific item the swap might not match. */}
+              <Text style={{ fontSize: 11, color: '#7A6A55', lineHeight: 17, marginBottom: 8 }}>
+                {t('outfitDetail.replacementHint')}
+              </Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <Pressable
                   onPress={() => handleAutoReplace(primaryObstacle)}
