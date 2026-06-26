@@ -9,6 +9,7 @@ import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { HeaderIconButton, ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Tag } from '@/components/ui/Tag';
+import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { PackingList } from '@/types/api';
@@ -60,6 +61,7 @@ function ListCard({ list, onPress }: { list: PackingList; onPress: () => void })
 }
 
 export function PackingListScreen({ navigation }: Props) {
+  const { t } = useT();
   const track = useTrack();
   useEffect(() => {
     track('packing_list_viewed', {});
@@ -87,10 +89,13 @@ export function PackingListScreen({ navigation }: Props) {
         )
       ) : (query.data ?? []).length === 0 ? (
         <EmptyState
-          title="还没有打包清单"
-          description="按天数和场景，从衣橱快速生成一份"
-          ctaLabel="新建打包清单"
-          onCtaPress={() => navigation.navigate('CreatePackingList')}
+          align="top"
+          title={t('discover.packing.empty.title')}
+          subtitle={t('discover.packing.empty.subtitle')}
+          primaryAction={{
+            label: t('discover.packing.empty.cta'),
+            onPress: () => navigation.navigate('CreatePackingList'),
+          }}
         />
       ) : (
         <ScrollView

@@ -184,6 +184,15 @@ export const zhCN = {
   'sense_check.potential.skip': '虽然能搭 {count} 套，但会重复你的衣橱。',
   'sense_check.potential.skipWithSimilar': '虽然能搭 {count} 套，但会重复衣橱里已有的 {similar} 件。',
   'sense_check.reason.pending': '当前后端还没有返回本地化原因，先根据相似度和搭配潜力判断。',
+  // --- Discover empty states ----------------------------------------------
+  'discover.inspirations.empty.title': '还没有风格灵感',
+  'discover.inspirations.empty.subtitle':
+    '收藏喜欢的穿搭图、杂志截图或小红书灵感，Aidrobe 会学习你的风格',
+  'discover.inspirations.empty.cta': '添加第一张灵感',
+  'discover.packing.empty.title': '还没有打包清单',
+  'discover.packing.empty.subtitle':
+    '选择出行天数和场景，Aidrobe 会从你的衣橱生成一份清单',
+  'discover.packing.empty.cta': '新建打包清单',
 
   // --- Today ---------------------------------------------------------------
   'today.wearThis': '穿这套',
