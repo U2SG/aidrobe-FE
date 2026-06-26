@@ -10,8 +10,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint-typecheck:
-    name: Lint & type-check
+  check:
+    name: Lint, type-check & tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -20,7 +20,9 @@ jobs:
           version: 9
       - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          # Node 24 so the regression scripts (scripts/*.test.ts) run directly
+          # via built-in TypeScript type-stripping (no jest/ts-node stack).
+          node-version: 24
           cache: pnpm
       - name: Install deps
         run: pnpm install --frozen-lockfile
@@ -28,3 +30,5 @@ jobs:
         run: pnpm lint
       - name: Type-check
         run: pnpm typecheck
+      - name: Tests
+        run: pnpm test
