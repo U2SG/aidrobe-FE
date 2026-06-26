@@ -30,6 +30,7 @@ import {
 import { AIOrb } from '@/components/ui/AIOrb';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
 import { SystemIcon } from '@/components/ui/SystemIcon';
+import { todayBoardMode } from '@/screens/today/todayBoard';
 import { useT, type UseT } from '@/hooks/useT';
 import type { I18nKey, TParams } from '@/i18n';
 import { useTrack } from '@/hooks/useTrack';
@@ -504,18 +505,22 @@ export function TodayScreen({ navigation }: Props) {
     : scene;
   const preset = PRESETS[strategy];
   const apiOutfit = outfitsByKey.get(strategy);
-  // Three states, so a missing variant is never dressed up in mock images:
-  //  - no real outfits at all (new / empty wardrobe) → keep the showcase presets
-  //  - some real outfits but THIS variant is absent → honest empty placeholder
-  //  - real outfit present → render it
-  const hasAnyReal = outfitsByKey.size > 0;
-  const activeIsEmpty = hasAnyReal && !apiOutfit;
+  // Single source of truth for the board's honest state (see todayBoard.ts):
+  //  - 'insufficient' — backend signalled insufficient_items → forced empty UI
+  //  - 'empty'        — no real outfit for this variant (incl. new/empty wardrobe)
+  //  - 'real'         — a real API outfit is present → render + enable actions
+  // Only 'real' is actionable; 'insufficient'/'empty' never render showcase
+  // pieces as a recommendation and never navigate with a non-real id.
+  const boardMode = todayBoardMode({
+    state: todayQuery.data?.state,
+    hasApiOutfit: Boolean(apiOutfit?.id),
+  });
+  const boardIsReal = boardMode === 'real';
   const guidanceText = todayQuery.data?.guidanceText ?? null;
   const visualPieces = resolveOutfitPieces(apiOutfit, preset, itemById);
-  const title = activeIsEmpty
-    ? t('today.noVariant')
-    : apiOutfit?.title || t(`today.preset.${strategy}.title`);
-  const outfitId = apiOutfit?.id ?? 'local-showcase';
+  const title = boardIsReal
+    ? apiOutfit?.title || t(`today.preset.${strategy}.title`)
+    : t('today.noVariant');
   const timeHint = remaining > 0 ? t('today.minutesLeft', { count: remaining }) : t('today.leaveNow');
 
   const riseAnim = useRef(new Animated.Value(0)).current;
@@ -529,8 +534,9 @@ export function TodayScreen({ navigation }: Props) {
   }, [strategy, track]);
 
   const handleWear = () => {
-    track('outfit_worn', { strategy, outfitId });
-    navigation.navigate('OutfitDetail', { outfitId });
+    if (!boardIsReal || !apiOutfit?.id) return;
+    track('outfit_worn', { strategy, outfitId: apiOutfit.id });
+    navigation.navigate('OutfitDetail', { outfitId: apiOutfit.id });
   };
 
   const handleRefresh = () => {
@@ -543,13 +549,14 @@ export function TodayScreen({ navigation }: Props) {
   // an outfit_id), and rasterizing the React view would need a native
   // image-export dep that's out of scope. Until that lands, hand a plain
   // text+title to the native share sheet — no fake permanent artifact.
-  // Disabled for the local mock showcase and empty variants (nothing real).
-  const canShare = !activeIsEmpty && outfitId !== 'local-showcase';
+  // Disabled for the local mock showcase and empty/insufficient variants
+  // (nothing real to share).
+  const canShare = boardIsReal && Boolean(apiOutfit?.id);
   const handleShare = async () => {
-    if (!canShare) return;
+    if (!canShare || !apiOutfit?.id) return;
     try {
       await Share.share({ message: t('today.shareMessage', { title }) });
-      track('outfit_shared', { strategy, outfitId });
+      track('outfit_shared', { strategy, outfitId: apiOutfit.id });
     } catch {
       // user dismissed the share sheet — no-op
     }
@@ -609,7 +616,7 @@ export function TodayScreen({ navigation }: Props) {
             {weather && wxTheme ? <WeatherRibbon weather={weather} theme={wxTheme} t={t} /> : null}
 
             <View style={{ flex: 1 }}>
-              {activeIsEmpty ? <EmptyCanvas t={t} /> : <OutfitBoard pieces={visualPieces} />}
+              {boardIsReal ? <OutfitBoard pieces={visualPieces} /> : <EmptyCanvas t={t} />}
             </View>
           </View>
 
@@ -630,18 +637,18 @@ export function TodayScreen({ navigation }: Props) {
                   {title}
                 </Text>
                 <Text numberOfLines={2} style={{ color: P.muted, fontSize: 12, lineHeight: 17, marginTop: 4 }}>
-                  {activeIsEmpty
-                    ? t('today.needMoreItems')
-                    : [
+                  {boardIsReal
+                    ? [
                         weather ? climateAdvice(t, weather) : null,
                         t(`today.preset.${strategy}.signal`),
                         timeHint,
                       ]
                         .filter(Boolean)
-                        .join(' · ')}
+                        .join(' · ')
+                    : t('today.needMoreItems')}
                 </Text>
               </View>
-              {activeIsEmpty ? null : (
+              {boardIsReal ? (
                 <View
                   style={{
                     minWidth: 48,
@@ -657,24 +664,24 @@ export function TodayScreen({ navigation }: Props) {
                     {t('today.prepMinutes', { minutes: preset.prepMinutes })}
                   </Text>
                 </View>
-              )}
+              ) : null}
             </View>
 
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
               <Pressable
-                onPress={activeIsEmpty ? undefined : handleWear}
-                disabled={activeIsEmpty}
+                onPress={boardIsReal ? handleWear : undefined}
+                disabled={!boardIsReal}
                 style={({ pressed }) => ({
                   flex: 1,
                   height: 48,
                   borderRadius: 24,
-                  backgroundColor: activeIsEmpty ? P.line : P.ink,
+                  backgroundColor: boardIsReal ? P.ink : P.line,
                   alignItems: 'center',
                   justifyContent: 'center',
                   opacity: pressed ? 0.86 : 1,
                 })}
               >
-                <Text style={{ color: activeIsEmpty ? P.faint : colors.inverse, fontSize: 14, fontWeight: '800' }}>
+                <Text style={{ color: boardIsReal ? colors.inverse : P.faint, fontSize: 14, fontWeight: '800' }}>
                   {t('today.wearThis')}
                 </Text>
               </Pressable>
@@ -719,8 +726,12 @@ export function TodayScreen({ navigation }: Props) {
                 <SystemIcon name="share" size={18} color={P.sage} strokeWidth={2.1} />
               </Pressable>
               <Pressable
-                onPress={activeIsEmpty ? undefined : () => navigation.navigate('OutfitDetail', { outfitId })}
-                disabled={activeIsEmpty}
+                onPress={
+                  boardIsReal && apiOutfit?.id
+                    ? () => navigation.navigate('OutfitDetail', { outfitId: apiOutfit.id })
+                    : undefined
+                }
+                disabled={!boardIsReal}
                 accessibilityRole="button"
                 accessibilityLabel={t('today.viewDetail')}
                 style={{
@@ -730,7 +741,7 @@ export function TodayScreen({ navigation }: Props) {
                   backgroundColor: P.wash,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  opacity: activeIsEmpty ? 0.5 : 1,
+                  opacity: boardIsReal ? 1 : 0.5,
                 }}
               >
                 <SystemIcon name="chevronRight" size={18} color={P.ink} strokeWidth={2.1} />
@@ -754,7 +765,7 @@ export function TodayScreen({ navigation }: Props) {
                 strategyKey={key}
                 pieces={resolveOutfitPieces(outfitsByKey.get(key), PRESETS[key], itemById)}
                 selected={key === strategy}
-                empty={hasAnyReal && !outfitsByKey.has(key)}
+                empty={!outfitsByKey.has(key)}
                 onPress={() => setStrategy(key)}
                 t={t}
               />
