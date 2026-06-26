@@ -30,7 +30,6 @@ type Turn = {
   failed?: boolean;
 };
 
-const FALLBACK_HEADER_HEIGHT = 100;
 const FALLBACK_COMPOSER_HEIGHT = 112;
 
 const T = {
@@ -103,7 +102,6 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   const focusedName = focusedItemId ? focusedNames.get(focusedItemId) : undefined;
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState('');
-  const [headerHeight, setHeaderHeight] = useState(0);
   const [composerHeight, setComposerHeight] = useState(0);
   const seededRef = useRef(false);
   const scrollRef = useRef<ScrollView>(null);
@@ -233,48 +231,29 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   };
 
   const isEmpty = turns.length === 0;
-  const resolvedHeaderHeight = headerHeight || FALLBACK_HEADER_HEIGHT;
+  // Header sits in normal flow (repo standard — see SenseCheckScreen / ItemDetailScreen;
+  // ScreenHeader owns its notch inset). Only the absolutely-positioned composer needs
+  // measuring, because its height varies (focused-item chip + multiline input).
   const resolvedComposerHeight = composerHeight || FALLBACK_COMPOSER_HEIGHT;
-  const handleHeaderLayout = (event: LayoutChangeEvent) => {
-    const next = Math.ceil(event.nativeEvent.layout.height);
-    setHeaderHeight((current) => (current === next ? current : next));
-  };
   const handleComposerLayout = (event: LayoutChangeEvent) => {
-    const next = Math.ceil(event.nativeEvent.layout.height);
-    setComposerHeight((current) => (current === next ? current : next));
+    setComposerHeight(Math.ceil(event.nativeEvent.layout.height));
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
-      <View
-        onLayout={handleHeaderLayout}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 2,
-          backgroundColor: T.bg,
-        }}
-      >
-        <ScreenHeader title={t('ask.title')} onBack={() => navigation.goBack()} />
-      </View>
+      <ScreenHeader title={t('ask.title')} onBack={() => navigation.goBack()} />
 
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingHorizontal: spacing.screen,
-          paddingTop: resolvedHeaderHeight + spacing.control,
+          paddingTop: 8,
           paddingBottom: resolvedComposerHeight + spacing.section,
           gap: 16,
         }}
         showsVerticalScrollIndicator={false}
-        scrollIndicatorInsets={{
-          top: resolvedHeaderHeight,
-          bottom: resolvedComposerHeight,
-        }}
-        contentInsetAdjustmentBehavior="never"
+        scrollIndicatorInsets={{ bottom: resolvedComposerHeight }}
         onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
         keyboardShouldPersistTaps="handled"
       >
