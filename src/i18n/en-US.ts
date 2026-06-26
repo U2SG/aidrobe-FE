@@ -190,6 +190,15 @@ export const enUS: Record<keyof typeof zhCN, string> = {
     'It can pair into {count} outfits, but overlaps with {similar} items you already own.',
   'sense_check.reason.pending':
     'The backend has not returned a localized reason yet, so use similarity and outfit potential for now.',
+  // --- Discover empty states ----------------------------------------------
+  'discover.inspirations.empty.title': 'No style inspiration yet',
+  'discover.inspirations.empty.subtitle':
+    'Save outfits, magazine screenshots, or social inspiration you like so Aidrobe can learn your style.',
+  'discover.inspirations.empty.cta': 'Add first inspiration',
+  'discover.packing.empty.title': 'No packing lists yet',
+  'discover.packing.empty.subtitle':
+    'Choose trip length and scenes, and Aidrobe will generate a checklist from your wardrobe.',
+  'discover.packing.empty.cta': 'Create packing list',
 
   // --- Today ---------------------------------------------------------------
   'today.wearThis': 'Wear this',

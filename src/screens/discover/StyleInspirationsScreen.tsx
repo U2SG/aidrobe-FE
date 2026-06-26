@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/feedback/EmptyState';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { HeaderIconButton, ScreenHeader } from '@/components/layout/ScreenHeader';
+import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
@@ -166,6 +167,7 @@ function InspoCard({ item, onDelete }: { item: Inspiration; onDelete: () => void
 
 export function StyleInspirationsScreen({ navigation }: Props) {
   const qc = useQueryClient();
+  const { t } = useT();
   const track = useTrack();
   const showToast = useToastStore((s) => s.show);
 
@@ -215,10 +217,12 @@ export function StyleInspirationsScreen({ navigation }: Props) {
         )
       ) : items.length === 0 ? (
         <EmptyState
-          title="还没有风格灵感"
-          description="收藏喜欢的穿搭图或杂志，帮 Aidrobe 学你的风格"
-          ctaLabel="添加灵感"
-          onCtaPress={() => navigation.navigate('AddInspiration')}
+          title={t('discover.inspirations.empty.title')}
+          subtitle={t('discover.inspirations.empty.subtitle')}
+          primaryAction={{
+            label: t('discover.inspirations.empty.cta'),
+            onPress: () => navigation.navigate('AddInspiration'),
+          }}
         />
       ) : (
         <FlatList
