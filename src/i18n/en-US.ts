@@ -15,6 +15,10 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'common.all': 'All',
   'common.notSet': 'Not set',
 
+  // --- Onboarding ----------------------------------------------------------
+  'onboarding.privacyPolicy': 'View privacy policy',
+  'onboarding.privacyPolicyOpenFailed': "Couldn't open the privacy policy. Please try again later.",
+
   // --- Settings ------------------------------------------------------------
   'settings.title': 'Settings',
   'settings.subtitle':
@@ -214,6 +218,13 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'discover.packing.empty.subtitle':
     'Choose trip length and scenes, and Aidrobe will generate a checklist from your wardrobe.',
   'discover.packing.empty.cta': 'Create packing list',
+
+  // --- Wardrobe report -----------------------------------------------------
+  'wardrobeReport.shareMessage':
+    'My {label} wardrobe recap · Aidrobe\n{totalWears} wears, {adoptionRate}% recommendation adoption',
+  'wardrobeReport.shareTopItem': 'Signature item: {title} ({count} wears)',
+  'wardrobeReport.shareKeywords': 'Style keywords: {keywords}',
+  'wardrobeReport.shareFailed': "Couldn't share. Please try again later.",
 
   // --- Today ---------------------------------------------------------------
   'today.wearThis': 'Wear this',

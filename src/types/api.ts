@@ -1325,6 +1325,7 @@ export interface WardrobeReport {
   highestCostPerWear: ReportCostPerWear | null;
   longestIdleItem: ReportIdleItem | null;
   recommendationAdoptionRate: number;
+  shareAssetUrl: string | null;
 }
 
 export interface ServerWardrobeReportResponse {
@@ -1343,6 +1344,8 @@ export interface ServerWardrobeReportResponse {
   highest_cost_per_wear?: ServerReportCostPerWear | null;
   longest_idle_item?: ServerReportIdleItem | null;
   recommendation_adoption_rate: number;
+  share_asset_url?: string | null;
+  poster_url?: string | null;
 }
 
 // --- Wardrobe health (FE #46 / BE #49) -----------------------------------

@@ -15,6 +15,10 @@ export const zhCN = {
   'common.all': '全部',
   'common.notSet': '未设置',
 
+  // --- Onboarding ----------------------------------------------------------
+  'onboarding.privacyPolicy': '了解隐私政策',
+  'onboarding.privacyPolicyOpenFailed': '无法打开隐私政策，请稍后重试',
+
   // --- Settings ------------------------------------------------------------
   'settings.title': '设置',
   'settings.subtitle': 'Aidrobe 只保留 V1 Slim 必要设置：出门时间、数据说明和隐私信息。',
@@ -208,6 +212,13 @@ export const zhCN = {
   'discover.packing.empty.subtitle':
     '选择出行天数和场景，Aidrobe 会从你的衣橱生成一份清单',
   'discover.packing.empty.cta': '新建打包清单',
+
+  // --- Wardrobe report -----------------------------------------------------
+  'wardrobeReport.shareMessage':
+    '我的{label}衣橱回顾 · Aidrobe\n穿着 {totalWears} 次，推荐采纳率 {adoptionRate}%',
+  'wardrobeReport.shareTopItem': '本命单品：{title}（穿了 {count} 次）',
+  'wardrobeReport.shareKeywords': '风格关键词：{keywords}',
+  'wardrobeReport.shareFailed': '分享失败，请稍后重试',
 
   // --- Today ---------------------------------------------------------------
   'today.wearThis': '穿这套',
