@@ -1,26 +1,61 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useQuery } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
-import { FlatList, Image, Pressable, RefreshControl, Text, View } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import {
+  FlatList,
+  Image,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 
 import { getInsightsSummary, getTopItems } from '@/api/insights';
 import { listWardrobeItems } from '@/api/wardrobe';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Button } from '@/components/ui/Button';
 import { CutoutBadge } from '@/components/ui/CutoutBadge';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { SystemIcon } from '@/components/ui/SystemIcon';
+import { Tag } from '@/components/ui/Tag';
 import { WardrobeShowcaseEmpty } from '@/components/wardrobe/WardrobeShowcaseEmpty';
 import { useT, type UseT } from '@/hooks/useT';
-import { resolveItemDisplayName } from '@/i18n/domainLabels';
+import { resolveItemDisplayName, SEASON_VALUES, tColorFilterLabel } from '@/i18n/domainLabels';
 import { colors, radius, shadow } from '@/theme/design';
-import type { ItemCategory, WardrobeItem } from '@/types/api';
-import type { WardrobeStackParamList } from '@/types/navigation';
+import type { ItemCategory, ItemStatus, WardrobeItem } from '@/types/api';
+import type { MainTabsParamList, WardrobeStackParamList } from '@/types/navigation';
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'WardrobeList'>;
+type MainTabsNavigation = BottomTabNavigationProp<MainTabsParamList>;
 
-const CATEGORY_KEYS: (ItemCategory | 'all')[] = ['all', 'top', 'bottom', 'outerwear', 'shoes', 'accessory'];
+const CATEGORY_KEYS: (ItemCategory | 'all')[] = [
+  'all',
+  'top',
+  'bottom',
+  'outerwear',
+  'dress',
+  'shoes',
+  'accessory',
+  'other',
+];
+const STATUS_KEYS: ItemStatus[] = ['wearable', 'dirty', 'unavailable', 'lost', 'donated'];
+
+interface FilterValues {
+  status: ItemStatus | 'all';
+  season: string | 'all';
+  color: string | 'all';
+}
+
+const DEFAULT_FILTERS: FilterValues = {
+  status: 'all',
+  season: 'all',
+  color: 'all',
+};
 
 const T = {
   bg: colors.groupedBackground,
@@ -101,7 +136,7 @@ function ItemCard({
               kind={item.status === 'wearable' ? 'ok' : 'warn'}
               label={t.tEnum('status', item.status)}
             />
-            <Text style={{ fontSize: 10, color: T.ink4 }}>{item.color}</Text>
+            <Text style={{ fontSize: 10, color: T.ink4 }}>{t.tEnum('color', item.color)}</Text>
           </View>
         </View>
       </View>
@@ -109,9 +144,74 @@ function ItemCard({
   );
 }
 
+function FilterChip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      onPress={onPress}
+      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+    >
+      <Tag
+        dark={active}
+        style={{
+          minHeight: 44,
+          paddingHorizontal: 14,
+          borderWidth: active ? 0 : 1,
+          borderColor: T.divider,
+          backgroundColor: active ? T.ink : T.card,
+        }}
+      >
+        {label}
+      </Tag>
+    </Pressable>
+  );
+}
+
+function FilterSection({
+  label,
+  allLabel,
+  options,
+  selected,
+  onSelect,
+}: {
+  label: string;
+  allLabel: string;
+  options: { value: string; label: string }[];
+  selected: string;
+  onSelect: (value: string) => void;
+}) {
+  return (
+    <View style={{ gap: 10 }}>
+      <Text style={{ fontSize: 13, fontWeight: '600', color: T.ink2 }}>{label}</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        <FilterChip label={allLabel} active={selected === 'all'} onPress={() => onSelect('all')} />
+        {options.map((option) => (
+          <FilterChip
+            key={option.value}
+            label={option.label}
+            active={selected === option.value}
+            onPress={() => onSelect(option.value)}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
 export function WardrobeListScreen({ navigation }: Props) {
   const t = useT();
   const [category, setCategory] = useState<ItemCategory | 'all'>('all');
+  const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS);
+  const [filterSheetVisible, setFilterSheetVisible] = useState(false);
   const CATEGORIES = CATEGORY_KEYS.map((key) => ({
     key,
     label: key === 'all' ? t.t('common.all') : t.tEnum('category', key),
@@ -149,7 +249,45 @@ export function WardrobeListScreen({ navigation }: Props) {
     retry: 1,
   });
 
-  const total = query.data?.total ?? 0;
+  const items = query.data?.items ?? [];
+  const colorOptions = useMemo(() => {
+    const byKey = new Map<string, string>();
+    items.forEach((item) => {
+      const color = item.color.trim();
+      if (!color) return;
+      const key = color.toLowerCase();
+      if (!byKey.has(key)) byKey.set(key, color);
+    });
+    return Array.from(byKey.values()).sort((a, b) =>
+      tColorFilterLabel(t.locale, a).localeCompare(tColorFilterLabel(t.locale, b)),
+    );
+  }, [items, t]);
+
+  // API_GAP[untracked]: GET /v1/wardrobe-items lacks status/season/color filters.
+  // Fallback: category is still server-side; these fields filter the fetched page locally.
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      if (filters.status !== 'all' && item.status !== filters.status) return false;
+      if (filters.season !== 'all' && !(item.seasonTags ?? []).includes(filters.season)) return false;
+      if (filters.color !== 'all' && item.color.trim().toLowerCase() !== filters.color.toLowerCase()) {
+        return false;
+      }
+      return true;
+    });
+  }, [filters, items]);
+
+  const activeFilterCount =
+    (category !== 'all' ? 1 : 0) +
+    (filters.status !== 'all' ? 1 : 0) +
+    (filters.season !== 'all' ? 1 : 0) +
+    (filters.color !== 'all' ? 1 : 0);
+  const hasActiveFilters = activeFilterCount > 0;
+  const clientFilterCount =
+    (filters.status !== 'all' ? 1 : 0) +
+    (filters.season !== 'all' ? 1 : 0) +
+    (filters.color !== 'all' ? 1 : 0);
+  const hasClientFilters = clientFilterCount > 0;
+  const displayedTotal = hasClientFilters ? filteredItems.length : (query.data?.total ?? 0);
   const insightChips = [
     {
       label: t.t('wardrobe.insights.mainColor'),
@@ -180,6 +318,15 @@ export function WardrobeListScreen({ navigation }: Props) {
     />
   );
 
+  const resetFilters = () => {
+    setCategory('all');
+    setFilters(DEFAULT_FILTERS);
+  };
+
+  const openInsights = () => {
+    navigation.getParent<MainTabsNavigation>()?.navigate('DiscoverTab', { screen: 'Insights' });
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
       <FlatList
@@ -203,7 +350,7 @@ export function WardrobeListScreen({ navigation }: Props) {
                     <Text
                       style={{ fontSize: 18, fontWeight: '600', color: T.accent }}
                     >
-                      {total}
+                      {displayedTotal}
                     </Text>
                     <Text style={{ fontSize: 13, color: T.ink2 }}> {t.t('wardrobe.itemUnit')}</Text>
                   </View>
@@ -243,20 +390,58 @@ export function WardrobeListScreen({ navigation }: Props) {
                 <Text style={{ color: T.ink4, fontSize: 14 }}>{t.t('wardrobe.searchPlaceholder')}</Text>
               </View>
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  hasActiveFilters
+                    ? t.t('wardrobe.filter.active', { count: activeFilterCount })
+                    : t.t('wardrobe.filter')
+                }
+                accessibilityState={{ selected: hasActiveFilters }}
+                onPress={() => setFilterSheetVisible(true)}
                 style={{
-                  width: 80,
+                  minWidth: 80,
                   height: 44,
-                  backgroundColor: T.card,
+                  backgroundColor: hasActiveFilters ? T.ink : T.card,
                   borderRadius: radius.md,
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 7,
+                  paddingHorizontal: 12,
                   ...T.shadowSm,
                 }}
               >
-                <SystemIcon name="slider" size={16} color={T.ink2} />
-                <Text style={{ fontSize: 13, color: T.ink2, fontWeight: '600' }}>{t.t('wardrobe.filter')}</Text>
+                <SystemIcon
+                  name="slider"
+                  size={16}
+                  color={hasActiveFilters ? colors.inverse : T.ink2}
+                />
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: hasActiveFilters ? colors.inverse : T.ink2,
+                    fontWeight: '600',
+                  }}
+                >
+                  {t.t('wardrobe.filter')}
+                </Text>
+                {hasClientFilters ? (
+                  <View
+                    style={{
+                      minWidth: 18,
+                      height: 18,
+                      paddingHorizontal: 5,
+                      borderRadius: 9,
+                      backgroundColor: T.accent,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: colors.inverse }}>
+                      {clientFilterCount}
+                    </Text>
+                  </View>
+                ) : null}
               </Pressable>
             </View>
 
@@ -294,6 +479,7 @@ export function WardrobeListScreen({ navigation }: Props) {
 
             {/* Insight banner */}
             <Pressable
+              onPress={openInsights}
               style={{
                 marginHorizontal: 20,
                 marginTop: 14,
@@ -345,7 +531,7 @@ export function WardrobeListScreen({ navigation }: Props) {
             <View style={{ height: 14 }} />
           </View>
         }
-        data={query.data?.items ?? []}
+        data={filteredItems}
         keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperStyle={{ gap: 12, marginBottom: 12, paddingHorizontal: 20 }}
@@ -359,6 +545,21 @@ export function WardrobeListScreen({ navigation }: Props) {
             <LoadingBlock />
           ) : query.isError ? (
             <ErrorState onRetry={() => query.refetch()} />
+          ) : hasActiveFilters ? (
+            <View style={{ paddingHorizontal: 28, paddingTop: 36, gap: 14, alignItems: 'center' }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: T.ink }}>
+                {t.t('wardrobe.filter.empty')}
+              </Text>
+              <Text style={{ fontSize: 13, color: T.ink3, textAlign: 'center' }}>
+                {t.t('wardrobe.filter.emptyHint')}
+              </Text>
+              <Button
+                label={t.t('wardrobe.filter.clear')}
+                onPress={resetFilters}
+                variant="secondary"
+                size="sm"
+              />
+            </View>
           ) : (
             <WardrobeShowcaseEmpty
               onAddItem={() => navigation.navigate('AddItem')}
@@ -367,6 +568,67 @@ export function WardrobeListScreen({ navigation }: Props) {
           )
         }
       />
+      <BottomSheet
+        visible={filterSheetVisible}
+        onClose={() => setFilterSheetVisible(false)}
+        title={t.t('wardrobe.filter.title')}
+      >
+        <ScrollView
+          style={{ maxHeight: 420 }}
+          contentContainerStyle={{ gap: 18 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <FilterSection
+            label={t.t('wardrobe.filter.status')}
+            allLabel={t.t('common.all')}
+            options={STATUS_KEYS.map((status) => ({
+              value: status,
+              label: t.tEnum('status', status),
+            }))}
+            selected={filters.status}
+            onSelect={(value) =>
+              setFilters((cur) => ({ ...cur, status: value as ItemStatus | 'all' }))
+            }
+          />
+
+          <FilterSection
+            label={t.t('wardrobe.filter.season')}
+            allLabel={t.t('common.all')}
+            options={SEASON_VALUES.map((season) => ({
+              value: season,
+              label: t.tEnum('season', season),
+            }))}
+            selected={filters.season}
+            onSelect={(value) => setFilters((cur) => ({ ...cur, season: value }))}
+          />
+
+          <FilterSection
+            label={t.t('item.color')}
+            allLabel={t.t('common.all')}
+            options={colorOptions.map((color) => ({
+              value: color,
+              label: tColorFilterLabel(t.locale, color),
+            }))}
+            selected={filters.color}
+            onSelect={(value) => setFilters((cur) => ({ ...cur, color: value }))}
+          />
+        </ScrollView>
+
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <Button
+            label={t.t('wardrobe.filter.clear')}
+            onPress={resetFilters}
+            variant="secondary"
+            disabled={!hasActiveFilters}
+            style={{ flex: 1 }}
+          />
+          <Button
+            label={t.t('wardrobe.filter.apply')}
+            onPress={() => setFilterSheetVisible(false)}
+            style={{ flex: 1 }}
+          />
+        </View>
+      </BottomSheet>
     </View>
   );
 }
