@@ -1,20 +1,31 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View, type LayoutChangeEvent } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+  useWindowDimensions,
+  type LayoutChangeEvent,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { askAidrobe, getAskHistory } from '@/api/ask';
 import { InlineRetry } from '@/components/feedback/InlineRetry';
-import { ScreenHeader } from '@/components/layout/ScreenHeader';
+import { HeaderIconButton, ScreenHeader } from '@/components/layout/ScreenHeader';
 import { AIOrb } from '@/components/ui/AIOrb';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Button } from '@/components/ui/Button';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { ItemRefsRow } from '@/components/wardrobe/ItemRefsRow';
 import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { useWardrobeItemNames } from '@/hooks/useWardrobeItemNames';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
-import type { AskItemRefSnapshot, AskScope } from '@/types/api';
+import type { AskHistoryEntry, AskItemRefSnapshot, AskScope } from '@/types/api';
 import type { DiscoverStackParamList } from '@/types/navigation';
 import { httpStatus } from '@/utils/http';
 
@@ -31,6 +42,7 @@ type Turn = {
 };
 
 const FALLBACK_COMPOSER_HEIGHT = 112;
+const HISTORY_LIMIT = 20;
 
 const T = {
   bg: colors.groupedBackground,
@@ -42,18 +54,50 @@ const T = {
   accent: colors.accent,
 };
 
+function historyToTurn(entry: AskHistoryEntry, answerFallback: string): Turn {
+  return {
+    id: entry.askSessionId,
+    question: entry.question,
+    answer: entry.answer ?? answerFallback,
+    itemRefs: entry.itemRefs,
+    itemRefSnapshots: entry.itemRefSnapshots,
+    pending: false,
+  };
+}
+
+function formatHistoryDate(value: string, locale: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  if (locale.startsWith('zh')) {
+    return `${date.getMonth() + 1}月${date.getDate()}日 ${hours}:${minutes}`;
+  }
+  return `${date.getMonth() + 1}/${date.getDate()} ${hours}:${minutes}`;
+}
+
 function TurnView({ turn, onRetry, retryBusy }: { turn: Turn; onRetry: () => void; retryBusy: boolean }) {
   return (
-    <View style={{ gap: 10, flexShrink: 1 }}>
+    <View style={{ width: '100%', gap: 10, flexShrink: 0, marginBottom: 16 }}>
       {/* Question bubble */}
-      <View style={{ alignSelf: 'flex-end', maxWidth: '82%', backgroundColor: colors.label, borderRadius: radius.lg, paddingHorizontal: 14, paddingVertical: 10 }}>
+      <View
+        style={{
+          alignSelf: 'flex-end',
+          maxWidth: '82%',
+          backgroundColor: colors.label,
+          borderRadius: radius.lg,
+          paddingHorizontal: 14,
+          paddingVertical: 10,
+        }}
+      >
         <Text style={{ ...type.body, color: colors.inverse }}>{turn.question}</Text>
       </View>
       {/* Answer card */}
       <View
         style={{
           alignSelf: 'flex-start',
-          maxWidth: '92%',
+          width: '92%',
           minHeight: 0,
           backgroundColor: T.card,
           borderRadius: radius.lg,
@@ -90,6 +134,154 @@ function TurnView({ turn, onRetry, retryBusy }: { turn: Turn; onRetry: () => voi
   );
 }
 
+function AskHistoryRow({
+  entry,
+  locale,
+  onPress,
+}: {
+  entry: AskHistoryEntry;
+  locale: string;
+  onPress: () => void;
+}) {
+  const { t } = useT();
+  const answer = entry.answer ?? t('ask.history.answerFallback');
+  const date = formatHistoryDate(entry.createdAt, locale);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      android_ripple={{ color: colors.fill }}
+      style={({ pressed }) => ({
+        backgroundColor: colors.secondaryElevated,
+        borderRadius: radius.lg,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: colors.separatorSoft,
+        opacity: pressed ? 0.78 : 1,
+      })}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ ...type.body, color: colors.label, fontWeight: '600' }} numberOfLines={2}>
+            {entry.question}
+          </Text>
+          <Text
+            style={{ ...type.callout, color: colors.secondaryLabel, marginTop: 6, lineHeight: 20 }}
+            numberOfLines={3}
+          >
+            {answer}
+          </Text>
+        </View>
+        {date ? (
+          <Text style={{ ...type.caption, color: colors.tertiaryLabel, marginTop: 2 }} numberOfLines={1}>
+            {date}
+          </Text>
+        ) : null}
+      </View>
+      <ItemRefsRow snapshots={entry.itemRefSnapshots} ids={entry.itemRefs} />
+    </Pressable>
+  );
+}
+
+function AskHistorySheet({
+  visible,
+  entries,
+  loading,
+  error,
+  locale,
+  onClose,
+  onRetry,
+}: {
+  visible: boolean;
+  entries: AskHistoryEntry[];
+  loading: boolean;
+  error: boolean;
+  locale: string;
+  onClose: () => void;
+  onRetry: () => void;
+}) {
+  const { t } = useT();
+  const { height } = useWindowDimensions();
+  const [selected, setSelected] = useState<AskHistoryEntry | null>(null);
+  const maxHeight = Math.min(620, Math.max(280, height * 0.68));
+
+  useEffect(() => {
+    if (!visible) setSelected(null);
+  }, [visible]);
+
+  const selectedTurn = selected
+    ? historyToTurn(selected, t('ask.history.answerFallback'))
+    : null;
+
+  return (
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      title={selected ? t('ask.history.sessionTitle') : t('ask.history.title')}
+    >
+      {selectedTurn ? (
+        <View style={{ gap: 12 }}>
+          <Button
+            label={t('common.back')}
+            variant="ghost"
+            size="sm"
+            onPress={() => setSelected(null)}
+            icon={<SystemIcon name="chevronLeft" size={16} color={colors.secondaryLabel} />}
+            style={{ alignSelf: 'flex-start', minHeight: 40, paddingHorizontal: 8 }}
+          />
+          <ScrollView
+            style={{ maxHeight }}
+            contentContainerStyle={{ paddingBottom: 4 }}
+            showsVerticalScrollIndicator={false}
+          >
+            <TurnView turn={selectedTurn} onRetry={() => undefined} retryBusy={false} />
+          </ScrollView>
+        </View>
+      ) : loading ? (
+        <View style={{ minHeight: 160, alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+          <ActivityIndicator color={colors.accent} />
+          <Text style={{ ...type.callout, color: colors.tertiaryLabel }}>{t('ask.history.loading')}</Text>
+        </View>
+      ) : error ? (
+        <View style={{ minHeight: 160, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <Text style={{ ...type.callout, color: colors.tertiaryLabel, textAlign: 'center' }}>
+            {t('ask.history.error')}
+          </Text>
+          <Button
+            label={t('common.retry')}
+            variant="secondary"
+            size="sm"
+            onPress={onRetry}
+            icon={<SystemIcon name="refresh" size={16} color={colors.label} />}
+          />
+        </View>
+      ) : entries.length === 0 ? (
+        <View style={{ minHeight: 160, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ ...type.callout, color: colors.tertiaryLabel, textAlign: 'center' }}>
+            {t('ask.history.empty')}
+          </Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={{ maxHeight }}
+          contentContainerStyle={{ gap: 12, paddingBottom: 4 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {entries.map((entry) => (
+            <AskHistoryRow
+              key={entry.askSessionId}
+              entry={entry}
+              locale={locale}
+              onPress={() => setSelected(entry)}
+            />
+          ))}
+        </ScrollView>
+      )}
+    </BottomSheet>
+  );
+}
+
 export function AskAidrobeScreen({ navigation, route }: Props) {
   const { t, locale } = useT();
   const track = useTrack();
@@ -102,8 +294,8 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   const focusedName = focusedItemId ? focusedNames.get(focusedItemId) : undefined;
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState('');
+  const [historyVisible, setHistoryVisible] = useState(false);
   const [composerHeight, setComposerHeight] = useState(0);
-  const seededRef = useRef(false);
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -116,38 +308,20 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     queryKey: ['askHistory', scope, focusedItemId ?? null],
     queryFn: () =>
       getAskHistory({
-        limit: 20,
+        limit: HISTORY_LIMIT,
         focusedItemId,
-        scope: focusedItemId ? 'item' : undefined,
+        scope: focusedItemId ? 'item' : scope === 'global' ? undefined : scope,
         entrypoint: focusedItemId ? 'item_detail' : undefined,
       }),
     retry: 1,
   });
 
   // If the scope / focused item changes while the screen stays mounted (e.g.
-  // a global Ask tab, then opening Ask from an item-detail CTA), the history
-  // query refetches for the new key — re-arm the one-time seed guard and drop
-  // the previous scope's turns so they don't bleed into the new view.
+  // a global Ask tab, then opening Ask from an item-detail CTA), drop the
+  // previous scope's live turns so they don't bleed into the new visit.
   useEffect(() => {
-    seededRef.current = false;
     setTurns([]);
   }, [scope, focusedItemId]);
-
-  useEffect(() => {
-    if (!seededRef.current && historyQuery.data) {
-      seededRef.current = true;
-      setTurns(
-        [...historyQuery.data].reverse().map((h) => ({
-          id: h.askSessionId,
-          question: h.question,
-          answer: h.answer,
-          itemRefs: h.itemRefs,
-          itemRefSnapshots: h.itemRefSnapshots,
-          pending: false,
-        })),
-      );
-    }
-  }, [historyQuery.data]);
 
   const askMutation = useMutation({
     mutationFn: (vars: { tempId: string; question: string }) =>
@@ -238,10 +412,24 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   const handleComposerLayout = (event: LayoutChangeEvent) => {
     setComposerHeight(Math.ceil(event.nativeEvent.layout.height));
   };
+  const openHistory = () => {
+    setHistoryVisible(true);
+    void historyQuery.refetch();
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
-      <ScreenHeader title={t('ask.title')} onBack={() => navigation.goBack()} />
+      <ScreenHeader
+        title={t('ask.title')}
+        onBack={() => navigation.goBack()}
+        right={
+          <HeaderIconButton
+            icon="clock"
+            onPress={openHistory}
+            accessibilityLabel={t('ask.history.open')}
+          />
+        }
+      />
 
       <ScrollView
         ref={scrollRef}
@@ -249,8 +437,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         contentContainerStyle={{
           paddingHorizontal: spacing.screen,
           paddingTop: 8,
-          paddingBottom: resolvedComposerHeight + spacing.section,
-          gap: 16,
+          paddingBottom: resolvedComposerHeight + spacing.section + spacing.row,
         }}
         showsVerticalScrollIndicator={false}
         scrollIndicatorInsets={{ bottom: resolvedComposerHeight }}
@@ -352,6 +539,16 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
           </Pressable>
         </View>
       </View>
+
+      <AskHistorySheet
+        visible={historyVisible}
+        entries={historyQuery.data ?? []}
+        loading={historyQuery.isLoading || (historyVisible && historyQuery.isFetching && !historyQuery.data)}
+        error={historyQuery.isError && !historyQuery.isFetching}
+        locale={locale}
+        onClose={() => setHistoryVisible(false)}
+        onRetry={() => void historyQuery.refetch()}
+      />
     </View>
   );
 }

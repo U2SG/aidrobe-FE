@@ -13,15 +13,19 @@ export function HeaderIconButton({
   onPress,
   size = 40,
   dark = false,
+  accessibilityLabel,
 }: {
   icon: IconName;
   onPress: () => void;
   size?: number;
   dark?: boolean;
+  accessibilityLabel?: string;
 }) {
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       style={{
         width: size,
         height: size,

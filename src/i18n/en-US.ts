@@ -169,6 +169,13 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'ask.emptyHint': 'e.g. "What to wear commuting tomorrow", "What shoes go with this"',
   'ask.focusedChip': 'Styling around "{name}"',
   'ask.focusedFallback': 'this item',
+  'ask.history.open': 'View Ask history',
+  'ask.history.title': 'Ask history',
+  'ask.history.sessionTitle': 'Ask history detail',
+  'ask.history.loading': 'Loading history…',
+  'ask.history.empty': 'No Ask history yet',
+  'ask.history.error': "Couldn't load Ask history. Please retry.",
+  'ask.history.answerFallback': 'No answer was saved for this Ask.',
   'ask.error.unavailable': 'Q&A is still being set up, please try later.',
   'ask.error.generic': 'Something went wrong, please try again later.',
 
