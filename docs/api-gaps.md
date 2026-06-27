@@ -25,6 +25,8 @@ BE issue 关闭、真实接口接入后，**必须删除对应 fallback 与标�
 
 | Gap | FE file | Needed API | Current fallback | BE issue | Priority |
 |---|---|---|---|---|---|
+| 衣物详情：标记今天穿了 | `src/screens/wardrobe/ItemDetailScreen.tsx` | `POST /v1/wardrobe-items/{item_id}/wears`（或等价端点）记录今天穿着并刷新 wear history / wear_count | CTA 保持可见但禁用，不写本地假记录 | untracked | P1 |
+| 衣物详情：重新识别单品 | `src/screens/wardrobe/ItemDetailScreen.tsx` | `POST /v1/wardrobe-items/{item_id}/reidentify`（或等价端点）重新运行识别并返回更新后的 metadata/cutout 状态 | 更多菜单动作保持可见但禁用，不做本地 mock | untracked | P2 |
 | 出门搭配分享板（无自拍的真实 board 渲染） | `src/screens/today/TodayScreen.tsx`、`src/screens/today/OutfitDetailScreen.tsx` | `POST /v1/outfits/{outfit_id}/share-asset`（服务端渲染可分享图）或客户端原生图片导出 | `Share.share({ message })` 纯文本分享，无视觉资产 | untracked | P0 |
 | 衣橱报告分享海报 / 资产 URL | `src/screens/discover/WardrobeReportScreen.tsx` | `GET /v1/insights/reports/{period}` 返回可分享海报 URL，或新增报告分享资产生成端点 | `Share.share({ message })` 纯文本回顾，无视觉资产 | untracked | P0 |
 | 穿搭单品替换持久化 | `src/screens/today/OutfitDetailScreen.tsx` | `POST /v1/recommendations/outfits/{outfit_id}/items/{old_item_id}/replacement`（或等价批量替换端点） | 替换候选来自接口，但选择后仅本地替换当前页面展示，不写回穿搭 | BE#62 | P0 |

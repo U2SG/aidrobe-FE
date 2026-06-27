@@ -201,6 +201,19 @@ function looksLikeEnglishToken(value: string): boolean {
   return /[a-z]/i.test(value) && /^[a-z0-9\s_-]+$/i.test(value);
 }
 
+const KNOWN_SUBTYPE_LABELS: Record<string, Record<AppLocale, string>> = {
+  sneaker: { 'zh-CN': '运动鞋', 'en-US': 'Sneakers' },
+  sneakers: { 'zh-CN': '运动鞋', 'en-US': 'Sneakers' },
+  trainer: { 'zh-CN': '运动鞋', 'en-US': 'Trainers' },
+  trainers: { 'zh-CN': '运动鞋', 'en-US': 'Trainers' },
+  tee: { 'zh-CN': 'T 恤', 'en-US': 'T-shirt' },
+  tshirt: { 'zh-CN': 'T 恤', 'en-US': 'T-shirt' },
+  t_shirt: { 'zh-CN': 'T 恤', 'en-US': 'T-shirt' },
+  jeans: { 'zh-CN': '牛仔裤', 'en-US': 'Jeans' },
+  blazer: { 'zh-CN': '西装外套', 'en-US': 'Blazer' },
+  hoodie: { 'zh-CN': '连帽衫', 'en-US': 'Hoodie' },
+};
+
 function lookup<K extends string>(
   map: LocaleMap<K>,
   locale: AppLocale,
@@ -275,9 +288,43 @@ export function tColorFilterLabel(
   return humanize(raw);
 }
 
-// Item display-name fallback (BE#30): user custom name → server display_name →
-// localized_names[locale] → existing name/title. `name_source === 'user'` (or
-// 'custom') means the user named it, so prefer the stored name as-is.
+function knownSubtypeLabel(
+  locale: AppLocale,
+  values: (string | null | undefined)[],
+): string {
+  for (const value of values) {
+    if (!value) continue;
+    const label = KNOWN_SUBTYPE_LABELS[normalizedFreeform(value)]?.[locale];
+    if (label) return label;
+  }
+  return '';
+}
+
+function deterministicItemDisplayName(
+  locale: AppLocale,
+  args: {
+    name?: string | null;
+    category?: string | null;
+    color?: string | null;
+    subCategory?: string | null;
+  },
+): string {
+  const typeLabel =
+    knownSubtypeLabel(locale, [args.subCategory, args.name]) ||
+    tCategory(locale, args.category);
+  const colorLabel = tColor(locale, args.color);
+
+  if (colorLabel && typeLabel) {
+    return locale === 'zh-CN' ? `${colorLabel}${typeLabel}` : `${colorLabel} ${typeLabel}`;
+  }
+  return typeLabel || colorLabel;
+}
+
+// Item display-name fallback (BE#30/BE#64): user custom name →
+// localized_names[locale] → server display_name → FE deterministic fallback →
+// existing name/title. `name_source === 'user'` (or 'custom') means the user
+// named it, so prefer the stored name as-is. The deterministic fallback is only
+// a resilience layer for old/un-backfilled rows; BE-provided names win when set.
 export function resolveItemDisplayName(
   locale: AppLocale,
   args: {
@@ -285,6 +332,9 @@ export function resolveItemDisplayName(
     nameSource?: string | null;
     displayName?: string | null;
     localizedNames?: Record<string, string> | null;
+    category?: string | null;
+    color?: string | null;
+    subCategory?: string | null;
   },
 ): string {
   const { name, nameSource, displayName, localizedNames } = args;
@@ -293,5 +343,6 @@ export function resolveItemDisplayName(
   const short = locale.split('-')[0];
   const localized =
     localizedNames?.[locale] ?? (short ? localizedNames?.[short] : undefined);
-  return localized ?? displayName ?? name ?? '';
+  const deterministic = deterministicItemDisplayName(locale, args);
+  return localized ?? displayName ?? (deterministic || name || '');
 }
