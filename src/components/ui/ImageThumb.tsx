@@ -3,6 +3,7 @@ import { Image, Pressable, Text, View, type ImageSourcePropType } from 'react-na
 
 import { colors, radius, type } from '@/theme/design';
 
+import { initialImageThumbState, type ImageThumbState } from './imageThumbState';
 import { Skeleton } from './Skeleton';
 import { SystemIcon } from './SystemIcon';
 
@@ -18,7 +19,7 @@ import { SystemIcon } from './SystemIcon';
 //
 // Do NOT re-introduce per-screen placeholder visuals once consumers migrate.
 
-export type ImageThumbState = 'loading' | 'empty' | 'failed' | 'loaded';
+export { type ImageThumbState } from './imageThumbState';
 
 export interface ImageThumbProps {
   // Signed/source URL. null/undefined ⇒ empty state (no fetch attempted).
@@ -51,10 +52,10 @@ export function ImageThumb({
   onRetry,
 }: ImageThumbProps) {
   const hasImage = Boolean(uri || source);
-  const [state, setState] = useState<ImageThumbState>(hasImage ? 'loading' : 'empty');
+  const [state, setState] = useState<ImageThumbState>(initialImageThumbState(hasImage));
 
   useEffect(() => {
-    setState(uri || source ? 'loading' : 'empty');
+    setState(initialImageThumbState(Boolean(uri || source)));
   }, [source, uri]);
 
   const label = fallbackLabel?.trim() || '';
@@ -103,7 +104,7 @@ export function ImageThumb({
     return (
       <Pressable
         onPress={() => {
-          setState(uri ? 'loading' : 'empty');
+          setState(initialImageThumbState(Boolean(uri || source)));
           onRetry();
         }}
         accessibilityRole="button"

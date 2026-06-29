@@ -25,5 +25,7 @@ export { Tag } from './Tag';
 
 // Existing state surfaces (re-exported from their current homes)
 export { EmptyState } from '../feedback/EmptyState';
+export { ErrorState } from '../feedback/ErrorState';
+export { InlineRetry } from '../feedback/InlineRetry';
 export { LoadingBlock } from '../feedback/LoadingBlock';
 export { LoadingState } from '../states/LoadingState';
