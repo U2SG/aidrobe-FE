@@ -424,10 +424,15 @@ export function ItemDetailScreen({ navigation, route }: Props) {
     );
   }
 
+  // While the user is editing the name of an AI/old row, name_source is still
+  // non-user, so treat an edited draft name as user-named — otherwise the
+  // deterministic fallback would keep showing "White Top" over the just-typed
+  // name until the backend flips name_source.
+  const nameEdited = backendItem != null && !sameNullable(draft.name, backendItem.name);
   const displayName = backendItem
     ? resolveItemDisplayName(locale, {
         name: draft.name ?? backendItem.name,
-        nameSource: backendItem.nameSource,
+        nameSource: nameEdited ? 'user' : backendItem.nameSource,
         displayName: backendItem.displayName,
         localizedNames: backendItem.localizedNames,
         // BE#64 will backfill displayName/localizedNames; these fields keep old rows localized.
@@ -802,10 +807,15 @@ export function ItemDetailScreen({ navigation, route }: Props) {
           />
           <MenuAction label={t('item.action.moveLocation')} icon="wardrobe" onPress={focusLocation} />
           <MenuAction
-            label={t('item.action.markUnavailable')}
-            icon="x"
+            label={
+              draft.status === 'unavailable'
+                ? t('item.action.markWearable')
+                : t('item.action.markUnavailable')
+            }
+            icon={draft.status === 'unavailable' ? 'check' : 'x'}
             onPress={() => {
-              setDraft((c) => ({ ...c, status: 'unavailable' }));
+              const next = draft.status === 'unavailable' ? 'wearable' : 'unavailable';
+              setDraft((c) => ({ ...c, status: next }));
               setMenuOpen(false);
             }}
           />
@@ -813,6 +823,7 @@ export function ItemDetailScreen({ navigation, route }: Props) {
             label={t('common.delete')}
             icon="trash"
             destructive
+            disabled={Boolean(showcaseItem)}
             onPress={() => {
               setMenuOpen(false);
               confirmDelete();

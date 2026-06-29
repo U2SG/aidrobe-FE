@@ -130,6 +130,7 @@ export const zhCN = {
   'item.action.reidentify': '重新识别',
   'item.action.moveLocation': '移动位置',
   'item.action.markUnavailable': '标记不可穿',
+  'item.action.markWearable': '标记可穿',
   'item.review.confirm': '看起来没问题',
   'item.review.change': '修改',
   'item.suggest.applied': '已根据品类补充建议标签',

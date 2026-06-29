@@ -132,6 +132,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'item.action.reidentify': 'Re-identify',
   'item.action.moveLocation': 'Move location',
   'item.action.markUnavailable': 'Mark unavailable',
+  'item.action.markWearable': 'Mark wearable',
   'item.review.confirm': 'Looks right',
   'item.review.change': 'Change',
   'item.suggest.applied': 'Suggested tags added from category',
