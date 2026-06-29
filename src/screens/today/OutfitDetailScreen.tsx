@@ -637,11 +637,12 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                       overflow: 'hidden',
                     }}
                   >
-                    {it.imageUrl ? (
-                      <Image source={{ uri: it.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
-                    ) : (
-                      <GarmentSvg kind={categoryToGarment(it.category)} size={44} />
-                    )}
+                    <ImageThumb
+                      uri={it.imageUrl ?? undefined}
+                      size={56}
+                      cornerRadius={10}
+                      icon={<GarmentSvg kind={categoryToGarment(it.category)} size={44} />}
+                    />
                     {isLaundry && (
                       <View
                         style={{
