@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, Pressable, Text, View, type ImageSourcePropType } from 'react-native';
 
 import { colors, radius, type } from '@/theme/design';
 
@@ -23,6 +23,8 @@ export type ImageThumbState = 'loading' | 'empty' | 'failed' | 'loaded';
 export interface ImageThumbProps {
   // Signed/source URL. null/undefined ⇒ empty state (no fetch attempted).
   uri?: string | null;
+  // Optional bundled/local source. Used by showcase/demo items; ignored when uri is set.
+  source?: ImageSourcePropType | null;
   // Square edge length in px. Default 60.
   size?: number;
   // Corner radius. Default radius.sm.
@@ -40,6 +42,7 @@ export interface ImageThumbProps {
 
 export function ImageThumb({
   uri,
+  source,
   size = 60,
   cornerRadius = radius.sm,
   fallbackLabel,
@@ -47,11 +50,12 @@ export function ImageThumb({
   accessibilityLabel,
   onRetry,
 }: ImageThumbProps) {
-  const [state, setState] = useState<ImageThumbState>(uri ? 'loading' : 'empty');
+  const hasImage = Boolean(uri || source);
+  const [state, setState] = useState<ImageThumbState>(hasImage ? 'loading' : 'empty');
 
   useEffect(() => {
-    setState(uri ? 'loading' : 'empty');
-  }, [uri]);
+    setState(uri || source ? 'loading' : 'empty');
+  }, [source, uri]);
 
   const label = fallbackLabel?.trim() || '';
   const placeholderIcon = icon ?? (
@@ -90,7 +94,9 @@ export function ImageThumb({
     </View>
   );
 
-  if (!uri || state === 'empty') return placeholder;
+  const imageSource = uri ? { uri } : source;
+
+  if (!imageSource || state === 'empty') return placeholder;
 
   if (state === 'failed') {
     if (!onRetry) return placeholder;
@@ -129,7 +135,7 @@ export function ImageThumb({
         />
       ) : null}
       <Image
-        source={{ uri }}
+        source={imageSource}
         style={{ width: '100%', height: '100%', opacity: state === 'loaded' ? 1 : 0 }}
         resizeMode="cover"
         onLoadStart={() => setState('loading')}
