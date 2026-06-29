@@ -7,6 +7,7 @@ import {
   tFitIntent,
   tFitStatus,
   tOccasion,
+  tReasonTag,
   tSeason,
   tStatus,
   tVariant,
@@ -55,6 +56,8 @@ export function useT(): UseT {
           return tOccasion(locale, value);
         case 'color':
           return tColor(locale, value);
+        case 'reasonTag':
+          return tReasonTag(locale, value);
         default:
           return value ?? '';
       }

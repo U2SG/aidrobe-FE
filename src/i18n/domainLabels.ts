@@ -14,7 +14,21 @@ export type EnumLabelKind =
   | 'variant'
   | 'season'
   | 'occasion'
-  | 'color';
+  | 'color'
+  | 'reasonTag';
+
+// FE#72 structured recommendation-feedback reasons. Stable enum keys go on the
+// wire (BE reason_tags / feedback learning); the user only ever sees the
+// localized label. The BE feedback-tags catalog is zh-CN only, so en-US labels
+// live here.
+export const REASON_TAG_KEYS = [
+  'too_formal',
+  'too_warm',
+  'wrong_color',
+  'wrong_fit',
+  'not_my_style',
+] as const;
+export type ReasonTagKey = (typeof REASON_TAG_KEYS)[number];
 
 // FE#39 quick-edit option sets. season → season_tags, occasion → style_tags on
 // the wire (both free-form string arrays server-side; we curate a stable set for
@@ -189,6 +203,23 @@ const COLOR: Record<AppLocale, Record<string, string>> = {
 
 // Humanize an unknown enum value so a raw `snake_case` token never reaches the
 // user verbatim.
+const REASON_TAG: LocaleMap<ReasonTagKey> = {
+  'zh-CN': {
+    too_formal: '太正式',
+    too_warm: '偏热',
+    wrong_color: '颜色不喜欢',
+    wrong_fit: '版型不合适',
+    not_my_style: '不是我的风格',
+  },
+  'en-US': {
+    too_formal: 'Too formal',
+    too_warm: 'Too warm',
+    wrong_color: 'Wrong color',
+    wrong_fit: 'Wrong fit',
+    not_my_style: 'Not my style',
+  },
+};
+
 function humanize(value: string): string {
   return value.replace(/[_-]/g, ' ');
 }
@@ -246,6 +277,10 @@ export function tSeason(locale: AppLocale, value: string | null | undefined): st
 
 export function tOccasion(locale: AppLocale, value: string | null | undefined): string {
   return lookup(OCCASION, locale, value);
+}
+
+export function tReasonTag(locale: AppLocale, value: string | null | undefined): string {
+  return lookup(REASON_TAG, locale, value);
 }
 
 export function tVariant(locale: AppLocale, value: string | null | undefined): string {
