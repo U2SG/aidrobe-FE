@@ -286,7 +286,7 @@ function TextDetailRow({ label, value, placeholder, inputRef, onChangeText }: Te
 
 interface MenuActionProps {
   label: string;
-  icon: 'refresh' | 'wardrobe' | 'x' | 'trash';
+  icon: 'refresh' | 'wardrobe' | 'x' | 'trash' | 'check';
   onPress: () => void;
   disabled?: boolean;
   destructive?: boolean;
