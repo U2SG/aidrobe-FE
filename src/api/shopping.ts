@@ -1,10 +1,8 @@
 import { apiGet, apiPost } from './client';
 import type {
-  PurchaseEvaluation,
   SenseCheckBody,
   SenseCheckHistoryEntry,
   SenseCheckResult,
-  ServerPurchaseEvaluation,
   ServerSenseCheckHistoryItem,
   ServerSenseCheckHistoryResponse,
   ServerSenseCheckResponse,
@@ -12,39 +10,11 @@ import type {
   ServerI18nMessage,
   SimilarItem,
 } from '@/types/api';
+import { toEvaluation } from '@/screens/discover/purchaseEvaluation';
 
 // V4 M17 — "should I buy this?" check against the existing wardrobe.
 function toSimilar(s: ServerSimilarItem): SimilarItem {
   return { itemId: s.item_id, similarity: s.similarity };
-}
-
-// BE#69 — map the optional purchase-evaluation block (snake → camel). Null/absent
-// when the server has ENABLE_PURCHASE_EVALUATOR off, so the FE shows no extra cards.
-function toEvaluation(e: ServerPurchaseEvaluation | null | undefined): PurchaseEvaluation | null {
-  if (!e) return null;
-  return {
-    confidence: e.confidence ?? null,
-    redundancy: e.redundancy
-      ? {
-          level: e.redundancy.level,
-          similarOwnedItems: e.redundancy.similar_owned_items.map((s) => ({
-            itemId: s.item_id,
-            similarity: s.similarity,
-            reason: s.reason,
-          })),
-        }
-      : null,
-    wardrobeGapDetail: (e.wardrobe_gap_detail ?? []).map((g) => ({
-      category: g.category,
-      severity: g.severity,
-    })),
-    factors: (e.factors ?? []).map((f) => ({
-      factor: f.factor,
-      detail: f.detail,
-      direction: f.direction,
-    })),
-    costPerWearHint: e.cost_per_wear_hint ?? null,
-  };
 }
 
 function toI18nMessage(message: ServerI18nMessage | null | undefined) {
@@ -60,6 +30,9 @@ export async function senseCheck(body: SenseCheckBody): Promise<SenseCheckResult
   const data = await apiPost<ServerSenseCheckResponse>('/v1/shopping/sense-check', {
     image_url: body.imageUrl ?? null,
     source_url: body.sourceUrl ?? null,
+    // Sending price lets the BE compute the cost_per_wear_hint (otherwise that
+    // card never appears).
+    price: body.price ?? null,
   });
   return {
     verdict: data.verdict,
@@ -89,6 +62,7 @@ function toHistoryEntry(item: ServerSenseCheckHistoryItem): SenseCheckHistoryEnt
     wardrobeGap: item.wardrobe_gap,
     outfitPotential: item.outfit_potential,
     pairableCount: item.pairable_count ?? null,
+    evaluation: toEvaluation(item.evaluation),
     createdAt: item.created_at,
   };
 }
