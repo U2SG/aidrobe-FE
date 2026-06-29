@@ -352,4 +352,9 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'wardrobeHealth.insight.unknown.suggestion': 'Keep an eye on this to get more from your wardrobe.',
   'wardrobeHealth.empty.title': 'Your wardrobe is just getting started',
   'wardrobeHealth.empty.description': 'Add a few items and log some wears, and your tailored health insights will show up here.',
+  // FE#72 structured recommendation feedback chips
+  'feedback.prompt': 'How was this recommendation?',
+  'feedback.loveIt': 'Love it',
+  'feedback.thanks': 'Thanks — tomorrow’s picks will be sharper',
+  'feedback.submitted': 'Thanks, your feedback is recorded!',
 };

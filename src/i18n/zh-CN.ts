@@ -351,6 +351,11 @@ export const zhCN = {
   // Encouraging empty state shown when a data_sparsity insight is present.
   'wardrobeHealth.empty.title': '衣橱才刚开始',
   'wardrobeHealth.empty.description': '多录入几件、记录几次穿着，这里就会出现专属的健康洞察。',
+  // FE#72 structured recommendation feedback chips
+  'feedback.prompt': '这套推荐怎么样？',
+  'feedback.loveIt': '很喜欢',
+  'feedback.thanks': '感谢反馈，明天推荐会更准',
+  'feedback.submitted': '已记录你的反馈，谢谢！',
 } as const;
 
 export type I18nKey = keyof typeof zhCN;

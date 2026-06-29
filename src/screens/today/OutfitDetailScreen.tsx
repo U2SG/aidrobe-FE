@@ -13,6 +13,7 @@ import {
 import { getWardrobeItem } from '@/api/wardrobe';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
+import { RecommendationFeedback } from '@/components/feedback/RecommendationFeedback';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
@@ -766,6 +767,12 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
           </View>
           <SystemIcon name="chevronRight" size={18} color={T.ink3} />
         </Pressable>
+
+        {!isLocal ? (
+          <View style={{ marginTop: 20 }}>
+            <RecommendationFeedback outfitId={outfitId} />
+          </View>
+        ) : null}
       </ScrollView>
 
       <View
