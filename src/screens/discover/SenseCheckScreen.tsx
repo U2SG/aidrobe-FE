@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 
 import { getSenseCheckHistory, senseCheck } from '@/api/shopping';
 import { getWardrobeItem } from '@/api/wardrobe';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
+import { Badge } from '@/components/ui/Badge';
 import { ImageThumb } from '@/components/ui/ImageThumb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { Tag } from '@/components/ui/Tag';
@@ -15,7 +16,14 @@ import type { I18nKey } from '@/i18n';
 import { resolveItemDisplayName } from '@/i18n/domainLabels';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
-import type { I18nMessage, SenseCheckBody, SenseCheckResult, WardrobeItem } from '@/types/api';
+import type {
+  I18nMessage,
+  PurchaseEvaluation,
+  SenseCheckBody,
+  SenseCheckResult,
+  WardrobeItem,
+} from '@/types/api';
+import { severityTone, sortGapsBySeverity } from './purchaseEvaluation';
 import type { DiscoverStackParamList } from '@/types/navigation';
 import { httpStatus } from '@/utils/http';
 import { pickAndUploadImage, uploadErrorMessage } from '@/utils/imageUpload';
@@ -30,6 +38,7 @@ const T = {
   ink2: colors.secondaryLabel,
   ink3: colors.tertiaryLabel,
   accent: colors.accent,
+  divider: colors.separator,
 };
 
 const VERDICT: Record<string, { labelKey: I18nKey; color: string; bg: string }> = {
@@ -183,7 +192,7 @@ function ResultCard({ result, t }: { result: SenseCheckResult; t: UseT }) {
         </View>
       ) : null}
 
-      {result.wardrobeGap.length > 0 ? (
+      {result.wardrobeGap.length > 0 && !result.evaluation?.wardrobeGapDetail.length ? (
         <View>
           <Text style={{ ...type.footnote, color: T.ink3, marginBottom: 8 }}>衣橱真正缺的</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -191,6 +200,66 @@ function ResultCard({ result, t }: { result: SenseCheckResult; t: UseT }) {
               <Tag key={g}>{t.tEnum('category', g) || g}</Tag>
             ))}
           </View>
+        </View>
+      ) : null}
+
+      {result.evaluation ? <EvaluationCards evaluation={result.evaluation} t={t} /> : null}
+    </View>
+  );
+}
+
+// FE#74 — BE#69 purchase-evaluation cards (redundancy / prioritized wardrobe gaps
+// / cost-per-wear). Present only when the server's evaluator is on. Tone tops out
+// at a calm warning — the copy is helpful, never shaming.
+// API_GAP: season-readiness has no backend signal; redundancy similar items carry
+// no resolvable thumbnail here (only id/similarity/reason), and the BE evaluation
+// factors[] are not surfaced in the UI yet.
+function EvaluationCards({ evaluation, t }: { evaluation: PurchaseEvaluation; t: UseT }) {
+  const gaps = useMemo(() => sortGapsBySeverity(evaluation.wardrobeGapDetail), [evaluation.wardrobeGapDetail]);
+  const redundancy = evaluation.redundancy;
+  const showRedundancy = redundancy && redundancy.level !== 'low';
+  if (!showRedundancy && gaps.length === 0 && !evaluation.costPerWearHint) return null;
+
+  return (
+    <View style={{ gap: 12, borderTopWidth: 1, borderTopColor: T.divider, paddingTop: 14 }}>
+      {showRedundancy ? (
+        <View style={{ gap: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ ...type.footnote, fontWeight: '600', color: T.ink }}>
+              {t.t('sense_check.eval.redundancy.title')}
+            </Text>
+            <Badge label={t.t(`sense_check.eval.level.${redundancy.level}` as I18nKey)} tone={severityTone(redundancy.level)} />
+          </View>
+          {redundancy.similarOwnedItems.slice(0, 3).map((s) => (
+            <Text key={s.itemId} style={{ ...type.caption, color: T.ink3 }}>
+              · {s.reason}（{Math.round(s.similarity * 100)}%）
+            </Text>
+          ))}
+        </View>
+      ) : null}
+
+      {gaps.length > 0 ? (
+        <View style={{ gap: 6 }}>
+          <Text style={{ ...type.footnote, fontWeight: '600', color: T.ink }}>
+            {t.t('sense_check.eval.gap.title')}
+          </Text>
+          {gaps.map((g) => (
+            <View key={g.category} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Badge label={t.t(`sense_check.eval.severity.${g.severity}` as I18nKey)} tone={severityTone(g.severity)} />
+              <Text style={{ ...type.caption, color: T.ink2 }}>
+                {t.t('sense_check.eval.gap.item', { category: t.tEnum('category', g.category) || g.category })}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      {evaluation.costPerWearHint ? (
+        <View style={{ gap: 4 }}>
+          <Text style={{ ...type.footnote, fontWeight: '600', color: T.ink }}>
+            {t.t('sense_check.eval.costPerWear.title')}
+          </Text>
+          <Text style={{ ...type.caption, color: T.ink3, lineHeight: 18 }}>{evaluation.costPerWearHint}</Text>
         </View>
       ) : null}
     </View>

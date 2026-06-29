@@ -226,6 +226,17 @@ export const enUS: Record<keyof typeof zhCN, string> = {
     'It can pair into {count} outfits, but overlaps with {similar} items you already own.',
   'sense_check.reason.pending':
     'The backend has not returned a localized reason yet, so use similarity and outfit potential for now.',
+  // FE#74 purchase-evaluation cards (BE#69)
+  'sense_check.eval.redundancy.title': 'You may already own similar',
+  'sense_check.eval.level.high': 'Very similar',
+  'sense_check.eval.level.medium': 'Somewhat similar',
+  'sense_check.eval.level.low': 'Distinct',
+  'sense_check.eval.gap.title': 'Worth prioritizing',
+  'sense_check.eval.gap.item': 'Missing {category}',
+  'sense_check.eval.severity.high': 'Important',
+  'sense_check.eval.severity.medium': 'Suggested',
+  'sense_check.eval.severity.low': 'FYI',
+  'sense_check.eval.costPerWear.title': 'Cost-per-wear',
   // --- Discover empty states ----------------------------------------------
   'discover.inspirations.empty.title': 'No style inspiration yet',
   'discover.inspirations.empty.subtitle':

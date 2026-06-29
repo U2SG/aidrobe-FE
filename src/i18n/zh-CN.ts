@@ -220,6 +220,17 @@ export const zhCN = {
   'sense_check.potential.skip': '虽然能搭 {count} 套，但会重复你的衣橱。',
   'sense_check.potential.skipWithSimilar': '虽然能搭 {count} 套，但会重复衣橱里已有的 {similar} 件。',
   'sense_check.reason.pending': '当前后端还没有返回本地化原因，先根据相似度和搭配潜力判断。',
+  // FE#74 purchase-evaluation cards (BE#69)
+  'sense_check.eval.redundancy.title': '你可能已经有类似的',
+  'sense_check.eval.level.high': '高度重复',
+  'sense_check.eval.level.medium': '有些重复',
+  'sense_check.eval.level.low': '差异较大',
+  'sense_check.eval.gap.title': '更值得优先补齐',
+  'sense_check.eval.gap.item': '缺 {category}',
+  'sense_check.eval.severity.high': '重要',
+  'sense_check.eval.severity.medium': '建议',
+  'sense_check.eval.severity.low': '参考',
+  'sense_check.eval.costPerWear.title': '性价比提示',
   // --- Discover empty states ----------------------------------------------
   'discover.inspirations.empty.title': '还没有风格灵感',
   'discover.inspirations.empty.subtitle':
