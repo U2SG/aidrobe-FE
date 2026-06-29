@@ -1031,6 +1031,45 @@ export interface ServerSimilarItem {
   similarity: number;
 }
 
+// BE#69 wardrobe-aware purchase evaluator. Present only when the server has
+// ENABLE_PURCHASE_EVALUATOR on; null/absent otherwise (clean rollback).
+export interface RedundancySimilarItem {
+  itemId: string;
+  similarity: number;
+  reason: string;
+}
+export interface PurchaseRedundancy {
+  level: string; // low | medium | high
+  similarOwnedItems: RedundancySimilarItem[];
+}
+export interface WardrobeGapDetail {
+  category: string;
+  severity: string; // low | medium | high
+}
+export interface PurchaseDecisionFactor {
+  factor: string;
+  detail: string;
+  direction: string; // buy | consider | skip | neutral
+}
+export interface PurchaseEvaluation {
+  confidence?: number | null;
+  redundancy?: PurchaseRedundancy | null;
+  wardrobeGapDetail: WardrobeGapDetail[];
+  factors: PurchaseDecisionFactor[];
+  costPerWearHint?: string | null;
+}
+
+export interface ServerPurchaseEvaluation {
+  confidence?: number | null;
+  redundancy?: {
+    level: string;
+    similar_owned_items: { item_id: string; similarity: number; reason: string }[];
+  } | null;
+  wardrobe_gap_detail: { category: string; severity: string }[];
+  factors: { factor: string; detail: string; direction: string }[];
+  cost_per_wear_hint?: string | null;
+}
+
 export interface SenseCheckResult {
   verdict: SenseCheckVerdict;
   reason: string;
@@ -1041,6 +1080,7 @@ export interface SenseCheckResult {
   wardrobeGap: string[];
   outfitPotential: number;
   pairableCount?: number | null;
+  evaluation?: PurchaseEvaluation | null;
 }
 
 export interface ServerSenseCheckResponse {
@@ -1053,6 +1093,7 @@ export interface ServerSenseCheckResponse {
   wardrobe_gap: string[];
   outfit_potential: number;
   pairable_count?: number | null;
+  evaluation?: ServerPurchaseEvaluation | null;
 }
 
 export interface SenseCheckBody {
