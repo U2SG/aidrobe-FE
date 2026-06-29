@@ -356,6 +356,5 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'feedback.prompt': 'How was this recommendation?',
   'feedback.loveIt': 'Love it',
   'feedback.thanks': 'Thanks — tomorrow’s picks will be sharper',
-  'feedback.failed': 'Could not submit, please retry',
   'feedback.submitted': 'Thanks, your feedback is recorded!',
 };

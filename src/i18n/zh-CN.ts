@@ -355,7 +355,6 @@ export const zhCN = {
   'feedback.prompt': '这套推荐怎么样？',
   'feedback.loveIt': '很喜欢',
   'feedback.thanks': '感谢反馈，明天推荐会更准',
-  'feedback.failed': '提交失败，请重试',
   'feedback.submitted': '已记录你的反馈，谢谢！',
 } as const;
 

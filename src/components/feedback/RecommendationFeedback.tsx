@@ -36,10 +36,9 @@ export function RecommendationFeedback({ outfitId }: Props) {
       setSubmittedChip(chip);
       showToast({ message: t('feedback.thanks'), kind: 'success' });
     },
-    onError: () => {
-      // Non-blocking: keep the chips enabled so the user can simply tap again.
-      showToast({ message: t('feedback.failed'), kind: 'error' });
-    },
+    // On error: the apiClient interceptor already surfaces a global error toast,
+    // so we don't add a second one. The mutation resets to idle (submittedChip
+    // stays null), leaving the chips enabled so the user can simply tap to retry.
   });
 
   if (submittedChip) {
