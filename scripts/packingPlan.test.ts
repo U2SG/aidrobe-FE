@@ -8,6 +8,7 @@ import {
   reuseCountByItem,
   sortDailyOutfits,
 } from '../src/screens/discover/packingPlan.ts';
+import { SCENE_VALUES, tScene } from '../src/i18n/domainLabels.ts';
 
 let passed = 0;
 function check(label: string, cond: boolean) {
@@ -34,6 +35,16 @@ check('does not mutate input', days[0]?.day === 2);
 // Unique item ids across the plan.
 const ids = planItemIds(days);
 check('unique item ids', ids.length === 3 && ids.includes('a') && ids.includes('b') && ids.includes('c'));
+
+// Planner scene values (commute/business/…) localize in both locales — not the
+// raw English token (the FE#80 review fix: they aren't `occasion` enum values).
+for (const scene of SCENE_VALUES) {
+  const zh = tScene('zh-CN', scene);
+  const en = tScene('en-US', scene);
+  check(`${scene} has a zh-CN label`, zh.length > 0 && zh !== scene);
+  check(`${scene} has an en-US label`, en.length > 0);
+}
+check('commute localizes to 通勤 in zh-CN', tScene('zh-CN', 'commute') === '通勤');
 
 // eslint-disable-next-line no-console
 console.log(`packingPlan: ${passed}/${passed} cases passed`);

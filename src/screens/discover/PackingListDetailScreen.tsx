@@ -32,15 +32,6 @@ const T = {
   divider: colors.separator,
 };
 
-const SCENE_LABEL: Record<string, string> = {
-  commute: '通勤',
-  business: '商务',
-  casual: '休闲',
-  travel: '旅行',
-  date: '约会',
-  formal: '正式',
-};
-
 export function PackingListDetailScreen({ navigation, route }: Props) {
   const { id } = route.params;
   const qc = useQueryClient();
@@ -101,7 +92,7 @@ export function PackingListDetailScreen({ navigation, route }: Props) {
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: 6 }}>
             {list.days ? <Tag dark>{`${list.days} 天`}</Tag> : null}
             {list.scenes.map((s) => (
-              <Tag key={s}>{SCENE_LABEL[s] ?? s}</Tag>
+              <Tag key={s}>{t.tEnum('scene', s) || s}</Tag>
             ))}
           </View>
           <Text style={{ ...type.footnote, color: T.ink3, marginBottom: 16 }}>
@@ -163,7 +154,7 @@ export function PackingListDetailScreen({ navigation, route }: Props) {
                           </Text>
                         ) : null}
                       </View>
-                      <Tag>{SCENE_LABEL[entry.scene] ?? entry.scene}</Tag>
+                      <Tag>{t.tEnum('scene', entry.scene) || entry.scene}</Tag>
                     </Pressable>
                   );
                 })}
@@ -237,7 +228,7 @@ function PackingPlanView({
               <Text style={{ ...type.callout, fontWeight: '700', color: T.ink }}>
                 {t.t('packing.plan.day', { day: outfit.day })}
               </Text>
-              <Tag>{t.tEnum('occasion', outfit.occasion) || outfit.occasion}</Tag>
+              <Tag>{t.tEnum('scene', outfit.occasion) || outfit.occasion}</Tag>
             </View>
             {outfit.itemIds.map((itemId) => {
               const count = reuse[itemId] ?? 0;
