@@ -15,7 +15,14 @@ export type EnumLabelKind =
   | 'season'
   | 'occasion'
   | 'color'
-  | 'reasonTag';
+  | 'reasonTag'
+  | 'scene';
+
+// FE#73 — packing trip scenes (the create-form scene set). Distinct from
+// `occasion` (commute/business aren't occasion values), so they get their own
+// localized map rather than humanizing to raw English.
+export const SCENE_VALUES = ['commute', 'business', 'casual', 'travel', 'date', 'formal'] as const;
+export type SceneTag = (typeof SCENE_VALUES)[number];
 
 // FE#72 structured recommendation-feedback reasons. Stable enum keys go on the
 // wire (BE reason_tags / feedback learning); the user only ever sees the
@@ -277,6 +284,29 @@ export function tSeason(locale: AppLocale, value: string | null | undefined): st
 
 export function tOccasion(locale: AppLocale, value: string | null | undefined): string {
   return lookup(OCCASION, locale, value);
+}
+
+const SCENE: LocaleMap<SceneTag> = {
+  'zh-CN': {
+    commute: '通勤',
+    business: '商务',
+    casual: '休闲',
+    travel: '旅行',
+    date: '约会',
+    formal: '正式',
+  },
+  'en-US': {
+    commute: 'Commute',
+    business: 'Business',
+    casual: 'Casual',
+    travel: 'Travel',
+    date: 'Date',
+    formal: 'Formal',
+  },
+};
+
+export function tScene(locale: AppLocale, value: string | null | undefined): string {
+  return lookup(SCENE, locale, value);
 }
 
 export function tReasonTag(locale: AppLocale, value: string | null | undefined): string {

@@ -7,12 +7,16 @@ import { getPackingList, updatePackingList } from '@/api/packingList';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
+import { Badge } from '@/components/ui/Badge';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { Tag } from '@/components/ui/Tag';
+import { useT, type UseT } from '@/hooks/useT';
 import { useWardrobeItemNames } from '@/hooks/useWardrobeItemNames';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
-import type { PackingEntry } from '@/types/api';
+import type { PackingEntry, PackingPlan } from '@/types/api';
 import type { DiscoverStackParamList } from '@/types/navigation';
+
+import { planItemIds, reuseCountByItem, sortDailyOutfits } from './packingPlan';
 
 type Props = NativeStackScreenProps<DiscoverStackParamList, 'PackingListDetail'>;
 
@@ -28,23 +32,18 @@ const T = {
   divider: colors.separator,
 };
 
-const SCENE_LABEL: Record<string, string> = {
-  commute: '通勤',
-  business: '商务',
-  casual: '休闲',
-  travel: '旅行',
-  date: '约会',
-  formal: '正式',
-};
-
 export function PackingListDetailScreen({ navigation, route }: Props) {
   const { id } = route.params;
   const qc = useQueryClient();
+  const t = useT();
 
   const query = useQuery({ queryKey: ['packingList', id], queryFn: () => getPackingList(id), retry: 1 });
   const list = query.data;
 
-  const nameById = useWardrobeItemNames((list?.items ?? []).map((it) => it.itemId));
+  const nameById = useWardrobeItemNames([
+    ...(list?.items ?? []).map((it) => it.itemId),
+    ...(list?.plan ? planItemIds(list.plan.dailyOutfits) : []),
+  ]);
 
   // Group entries (with their original index) by day.
   const byDay = useMemo(() => {
@@ -93,12 +92,14 @@ export function PackingListDetailScreen({ navigation, route }: Props) {
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: 6 }}>
             {list.days ? <Tag dark>{`${list.days} 天`}</Tag> : null}
             {list.scenes.map((s) => (
-              <Tag key={s}>{SCENE_LABEL[s] ?? s}</Tag>
+              <Tag key={s}>{t.tEnum('scene', s) || s}</Tag>
             ))}
           </View>
           <Text style={{ ...type.footnote, color: T.ink3, marginBottom: 16 }}>
             已打包 {packedCount} / {total}
           </Text>
+
+          {list.plan ? <PackingPlanView plan={list.plan} nameById={nameById} t={t} /> : null}
 
           {byDay.map(([day, entries]) => (
             <View key={day} style={{ marginBottom: 18 }}>
@@ -153,7 +154,7 @@ export function PackingListDetailScreen({ navigation, route }: Props) {
                           </Text>
                         ) : null}
                       </View>
-                      <Tag>{SCENE_LABEL[entry.scene] ?? entry.scene}</Tag>
+                      <Tag>{t.tEnum('scene', entry.scene) || entry.scene}</Tag>
                     </Pressable>
                   );
                 })}
@@ -162,6 +163,89 @@ export function PackingListDetailScreen({ navigation, route }: Props) {
           ))}
         </ScrollView>
       ) : null}
+    </View>
+  );
+}
+
+// FE#73 — BE#68 planner view: per-day outfits + missing-item warnings + reuse
+// count. Renders only the STRUCTURED plan fields with FE-localized copy; the BE
+// plan's free-text (summary / weatherSummary / reasoning / reason) is English-only
+// on the wire, so it is intentionally NOT displayed (API_GAP: those would need
+// localizing or key-ifying on the backend). When daily outfits are empty the
+// wardrobe couldn't dress the trip — we say so honestly rather than fake outfits.
+function PackingPlanView({
+  plan,
+  nameById,
+  t,
+}: {
+  plan: PackingPlan;
+  nameById: Map<string, string>;
+  t: UseT;
+}) {
+  const days = useMemo(() => sortDailyOutfits(plan.dailyOutfits), [plan.dailyOutfits]);
+  const reuse = useMemo(() => reuseCountByItem(plan.dailyOutfits), [plan.dailyOutfits]);
+
+  return (
+    <View style={{ gap: 14, marginBottom: 18 }}>
+      {plan.missingItems.length > 0 ? (
+        <View style={{ gap: 8 }}>
+          <Text style={{ ...type.headline, color: T.ink }}>{t.t('packing.plan.missingTitle')}</Text>
+          {plan.missingItems.map((m) => (
+            <View
+              key={m.category}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                backgroundColor: colors.warningBg,
+                borderRadius: radius.lg,
+                padding: 12,
+              }}
+            >
+              <SystemIcon name="exclamation" size={18} color={colors.warning} />
+              <Text style={{ ...type.body, color: T.ink, flex: 1 }}>
+                {t.t('packing.plan.missingItem', { category: t.tEnum('category', m.category) || m.category })}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      <Text style={{ ...type.headline, color: T.ink }}>{t.t('packing.plan.dailyTitle')}</Text>
+      {days.length === 0 ? (
+        <View style={{ backgroundColor: T.card, borderRadius: radius.lg, padding: 14, ...shadow.soft }}>
+          <Text style={{ ...type.footnote, color: T.ink3, lineHeight: 19 }}>
+            {t.t('packing.plan.empty')}
+          </Text>
+        </View>
+      ) : (
+        days.map((outfit) => (
+          <View
+            key={outfit.day}
+            style={{ backgroundColor: T.card, borderRadius: radius.lg, padding: 14, gap: 8, ...shadow.soft }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ ...type.callout, fontWeight: '700', color: T.ink }}>
+                {t.t('packing.plan.day', { day: outfit.day })}
+              </Text>
+              <Tag>{t.tEnum('scene', outfit.occasion) || outfit.occasion}</Tag>
+            </View>
+            {outfit.itemIds.map((itemId) => {
+              const count = reuse[itemId] ?? 0;
+              return (
+                <View key={itemId} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={{ ...type.body, color: T.ink2, flex: 1 }} numberOfLines={1}>
+                    {nameById.get(itemId) ?? '衣橱单品'}
+                  </Text>
+                  {count > 1 ? (
+                    <Badge label={t.t('packing.plan.reuse', { count })} tone="neutral" />
+                  ) : null}
+                </View>
+              );
+            })}
+          </View>
+        ))
+      )}
     </View>
   );
 }

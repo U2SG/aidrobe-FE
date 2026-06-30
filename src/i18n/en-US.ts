@@ -254,6 +254,15 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'discover.packing.empty.subtitle':
     'Choose trip length and scenes, and Aidrobe will generate a checklist from your wardrobe.',
   'discover.packing.empty.cta': 'Create packing list',
+  // FE#73 packing planner view (BE#68 plan)
+  'packing.plan.dailyTitle': 'Daily outfits',
+  'packing.plan.day': 'Day {day}',
+  'packing.plan.missingTitle': 'You may still need',
+  'packing.plan.missingItem': 'Missing {category}',
+  'packing.plan.reuse': 'Worn {count} days',
+  'packing.plan.empty': 'Not enough in your wardrobe to build daily outfits yet — fill the gaps above first.',
+  'packing.create.weatherLabel': 'Weather (optional, e.g. cold, rainy)',
+  'packing.create.weatherPlaceholder': 'cold / rainy / hot',
 
   // --- Wardrobe report -----------------------------------------------------
   'wardrobeReport.shareMessage':

@@ -887,6 +887,41 @@ export interface ServerPackingItem {
   packed: boolean;
 }
 
+// BE#68 packing PLANNER (present only when ENABLE_PACKING_PLANNER is on). The
+// free-text fields (summary / weatherSummary / reasoning / reason) are English-
+// only on the wire; the FE renders LOCALIZED copy derived from the structured
+// fields instead and does NOT display these strings (see PackingListDetailScreen).
+export interface PackingPlanDailyOutfit {
+  day: number;
+  occasion: string;
+  itemIds: string[];
+  reasoning: string[];
+}
+export interface PackingPlanMissingItem {
+  category: string;
+  reason: string;
+}
+export interface PackingPlanPackingItem {
+  itemId: string;
+  role: string;
+  reason: string;
+}
+export interface PackingPlan {
+  summary: string;
+  weatherSummary: string | null;
+  packingItems: PackingPlanPackingItem[];
+  dailyOutfits: PackingPlanDailyOutfit[];
+  missingItems: PackingPlanMissingItem[];
+}
+
+export interface ServerPackingPlan {
+  summary: string;
+  weather_summary?: string | null;
+  packing_items: { item_id: string; role: string; reason: string }[];
+  daily_outfits: { day: number; occasion: string; item_ids: string[]; reasoning: string[] }[];
+  missing_items: { category: string; reason: string }[];
+}
+
 export interface PackingList {
   id: string;
   destination: string | null;
@@ -895,6 +930,7 @@ export interface PackingList {
   departureDate: string | null;
   items: PackingEntry[];
   status: PackingListStatus;
+  plan: PackingPlan | null;
 }
 
 export interface ServerPackingListResponse {
@@ -905,6 +941,7 @@ export interface ServerPackingListResponse {
   departure_date?: string | null;
   items: ServerPackingItem[];
   status: string;
+  plan?: ServerPackingPlan | null;
 }
 
 export interface CreatePackingListBody {

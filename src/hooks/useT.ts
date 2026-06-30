@@ -8,6 +8,7 @@ import {
   tFitStatus,
   tOccasion,
   tReasonTag,
+  tScene,
   tSeason,
   tStatus,
   tVariant,
@@ -58,6 +59,8 @@ export function useT(): UseT {
           return tColor(locale, value);
         case 'reasonTag':
           return tReasonTag(locale, value);
+        case 'scene':
+          return tScene(locale, value);
         default:
           return value ?? '';
       }
