@@ -23,7 +23,7 @@ import type {
   SenseCheckResult,
   WardrobeItem,
 } from '@/types/api';
-import { severityTone, sortGapsBySeverity } from './purchaseEvaluation';
+import { redundancyReasonKind, severityTone, sortGapsBySeverity } from './purchaseEvaluation';
 import type { DiscoverStackParamList } from '@/types/navigation';
 import { httpStatus } from '@/utils/http';
 import { pickAndUploadImage, uploadErrorMessage } from '@/utils/imageUpload';
@@ -63,6 +63,8 @@ const SENSE_REASON_KEYS = [
   'sense_check.buy.gap',
   'sense_check.buy.versatile',
   'sense_check.consider.some',
+  // BE#69 softens a buy to consider on a negative-preference conflict.
+  'sense_check.consider.preference_conflict',
 ] as const satisfies readonly I18nKey[];
 
 type SenseReasonKey = (typeof SENSE_REASON_KEYS)[number];
@@ -212,8 +214,10 @@ function ResultCard({ result, t }: { result: SenseCheckResult; t: UseT }) {
 // / cost-per-wear). Present only when the server's evaluator is on. Tone tops out
 // at a calm warning — the copy is helpful, never shaming.
 // API_GAP: season-readiness has no backend signal; redundancy similar items carry
-// no resolvable thumbnail here (only id/similarity/reason), and the BE evaluation
-// factors[] are not surfaced in the UI yet.
+// no resolvable thumbnail here (only id/similarity/reason); the BE evaluation
+// factors[] are not surfaced in the UI; and the BE cost_per_wear_hint /
+// redundancy reason are zh-only free text, so the FE renders its own localized
+// copy (derived from similarity) instead.
 function EvaluationCards({ evaluation, t }: { evaluation: PurchaseEvaluation; t: UseT }) {
   const gaps = useMemo(() => sortGapsBySeverity(evaluation.wardrobeGapDetail), [evaluation.wardrobeGapDetail]);
   const redundancy = evaluation.redundancy;
@@ -232,7 +236,8 @@ function EvaluationCards({ evaluation, t }: { evaluation: PurchaseEvaluation; t:
           </View>
           {redundancy.similarOwnedItems.slice(0, 3).map((s) => (
             <Text key={s.itemId} style={{ ...type.caption, color: T.ink3 }}>
-              · {s.reason}（{Math.round(s.similarity * 100)}%）
+              · {t.t(`sense_check.eval.redundancy.reason.${redundancyReasonKind(s.similarity)}` as I18nKey)}
+              （{Math.round(s.similarity * 100)}%）
             </Text>
           ))}
         </View>
@@ -259,7 +264,11 @@ function EvaluationCards({ evaluation, t }: { evaluation: PurchaseEvaluation; t:
           <Text style={{ ...type.footnote, fontWeight: '600', color: T.ink }}>
             {t.t('sense_check.eval.costPerWear.title')}
           </Text>
-          <Text style={{ ...type.caption, color: T.ink3, lineHeight: 18 }}>{evaluation.costPerWearHint}</Text>
+          {/* The BE hint is zh-only free text; presence signals relevance, but we
+              render our own localized copy so en-US never leaks Chinese. */}
+          <Text style={{ ...type.caption, color: T.ink3, lineHeight: 18 }}>
+            {t.t('sense_check.eval.costPerWear.body')}
+          </Text>
         </View>
       ) : null}
     </View>
@@ -275,6 +284,7 @@ export function SenseCheckScreen({ navigation }: Props) {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [priceText, setPriceText] = useState('');
   const [current, setCurrent] = useState<SenseCheckResult | null>(null);
 
   useEffect(() => {
@@ -320,8 +330,10 @@ export function SenseCheckScreen({ navigation }: Props) {
   };
 
   const runCheck = () => {
-    if (imageUrl) checkMutation.mutate({ imageUrl });
-    else if (url.trim()) checkMutation.mutate({ sourceUrl: url.trim() });
+    const parsed = Number(priceText.trim());
+    const price = priceText.trim() && Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+    if (imageUrl) checkMutation.mutate({ imageUrl, price });
+    else if (url.trim()) checkMutation.mutate({ sourceUrl: url.trim(), price });
   };
 
   const canCheck = (!!imageUrl || url.trim().length > 0) && !checkMutation.isPending && !uploading;
@@ -402,6 +414,23 @@ export function SenseCheckScreen({ navigation }: Props) {
               ...type.body,
               color: T.ink,
               opacity: imageUrl ? 0.4 : 1,
+            }}
+          />
+          <Text style={{ ...type.footnote, color: T.ink3 }}>{t.t('sense_check.price.label')}</Text>
+          <TextInput
+            value={priceText}
+            onChangeText={setPriceText}
+            placeholder={t.t('sense_check.price.placeholder')}
+            placeholderTextColor={colors.quaternaryLabel}
+            keyboardType="numeric"
+            inputMode="decimal"
+            style={{
+              backgroundColor: T.bg,
+              borderRadius: radius.md,
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              ...type.body,
+              color: T.ink,
             }}
           />
           <Pressable

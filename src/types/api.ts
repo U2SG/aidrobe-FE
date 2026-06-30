@@ -1099,6 +1099,8 @@ export interface ServerSenseCheckResponse {
 export interface SenseCheckBody {
   imageUrl?: string;
   sourceUrl?: string;
+  // Optional price → BE computes the cost-per-wear hint when provided.
+  price?: number;
 }
 
 export interface SenseCheckHistoryEntry extends SenseCheckResult {
@@ -1121,6 +1123,7 @@ export interface ServerSenseCheckHistoryItem {
   wardrobe_gap: string[];
   outfit_potential: number;
   pairable_count?: number | null;
+  evaluation?: ServerPurchaseEvaluation | null;
   created_at: string;
 }
 

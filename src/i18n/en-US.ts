@@ -237,6 +237,14 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'sense_check.eval.severity.medium': 'Suggested',
   'sense_check.eval.severity.low': 'FYI',
   'sense_check.eval.costPerWear.title': 'Cost-per-wear',
+  'sense_check.eval.costPerWear.body':
+    'Worn at least twice a month, the per-wear cost stays low; rarely worn, it is not worth it.',
+  'sense_check.eval.redundancy.reason.same_color_category': 'Same category & color',
+  'sense_check.eval.redundancy.reason.same_category': 'Same category',
+  'sense_check.consider.preference_conflict':
+    'You said you dislike {color}, so weigh it before buying.',
+  'sense_check.price.label': 'Price (optional — for the cost-per-wear hint)',
+  'sense_check.price.placeholder': 'e.g. 299',
   // --- Discover empty states ----------------------------------------------
   'discover.inspirations.empty.title': 'No style inspiration yet',
   'discover.inspirations.empty.subtitle':

@@ -231,6 +231,12 @@ export const zhCN = {
   'sense_check.eval.severity.medium': '建议',
   'sense_check.eval.severity.low': '参考',
   'sense_check.eval.costPerWear.title': '性价比提示',
+  'sense_check.eval.costPerWear.body': '若每月至少穿两次，长期每次成本就很低；很少穿则不划算。',
+  'sense_check.eval.redundancy.reason.same_color_category': '同类同色',
+  'sense_check.eval.redundancy.reason.same_category': '同类单品',
+  'sense_check.consider.preference_conflict': '你之前说过不喜欢{color}，买之前先斟酌一下。',
+  'sense_check.price.label': '价格（可选，用于性价比提示）',
+  'sense_check.price.placeholder': '如 299',
   // --- Discover empty states ----------------------------------------------
   'discover.inspirations.empty.title': '还没有风格灵感',
   'discover.inspirations.empty.subtitle':
