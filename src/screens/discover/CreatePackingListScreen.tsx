@@ -6,6 +6,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { createPackingList } from '@/api/packingList';
 import { PrimaryButton } from '@/components/forms/PrimaryButton';
 import { SystemIcon } from '@/components/ui/SystemIcon';
+import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
@@ -44,10 +45,12 @@ export function CreatePackingListScreen({ navigation }: Props) {
   const qc = useQueryClient();
   const track = useTrack();
   const showToast = useToastStore((s) => s.show);
+  const t = useT();
 
   const [destination, setDestination] = useState('');
   const [days, setDays] = useState(3);
   const [scenes, setScenes] = useState<string[]>(['commute']);
+  const [weatherHint, setWeatherHint] = useState('');
 
   const toggleScene = (v: string) =>
     setScenes((cur) => (cur.includes(v) ? cur.filter((s) => s !== v) : [...cur, v]));
@@ -58,6 +61,7 @@ export function CreatePackingListScreen({ navigation }: Props) {
         destination: destination.trim() || undefined,
         days,
         scenes,
+        weatherHint: weatherHint.trim() || undefined,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['packingLists'] });
@@ -108,6 +112,24 @@ export function CreatePackingListScreen({ navigation }: Props) {
             value={destination}
             onChangeText={setDestination}
             placeholder="例如：东京"
+            placeholderTextColor={colors.quaternaryLabel}
+            style={{
+              backgroundColor: T.card,
+              borderRadius: radius.md,
+              paddingHorizontal: 14,
+              paddingVertical: 13,
+              ...type.body,
+              color: T.ink,
+              ...shadow.soft,
+            }}
+          />
+        </Field>
+
+        <Field label={t.t('packing.create.weatherLabel')}>
+          <TextInput
+            value={weatherHint}
+            onChangeText={setWeatherHint}
+            placeholder={t.t('packing.create.weatherPlaceholder')}
             placeholderTextColor={colors.quaternaryLabel}
             style={{
               backgroundColor: T.card,

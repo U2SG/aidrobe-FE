@@ -246,6 +246,15 @@ export const zhCN = {
   'discover.packing.empty.subtitle':
     '选择出行天数和场景，Aidrobe 会从你的衣橱生成一份清单',
   'discover.packing.empty.cta': '新建打包清单',
+  // FE#73 packing planner view (BE#68 plan)
+  'packing.plan.dailyTitle': '每日搭配',
+  'packing.plan.day': '第 {day} 天',
+  'packing.plan.missingTitle': '可能还缺',
+  'packing.plan.missingItem': '缺 {category}',
+  'packing.plan.reuse': '复用 {count} 天',
+  'packing.plan.empty': '衣橱还不够搭出每日穿搭，先补齐上面的缺口再生成。',
+  'packing.create.weatherLabel': '天气（可选，如：冷、有雨）',
+  'packing.create.weatherPlaceholder': '冷 / 有雨 / 炎热',
 
   // --- Wardrobe report -----------------------------------------------------
   'wardrobeReport.shareMessage':

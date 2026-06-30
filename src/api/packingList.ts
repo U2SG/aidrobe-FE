@@ -2,9 +2,29 @@ import { apiGet, apiPatch, apiPost } from './client';
 import type {
   CreatePackingListBody,
   PackingList,
+  PackingPlan,
   ServerPackingListResponse,
+  ServerPackingPlan,
   UpdatePackingListBody,
 } from '@/types/api';
+
+// BE#68 — map the optional planner block (snake → camel). Null when the server's
+// ENABLE_PACKING_PLANNER is off, so the FE shows only the flat checklist.
+function toPlan(plan: ServerPackingPlan | null | undefined): PackingPlan | null {
+  if (!plan) return null;
+  return {
+    summary: plan.summary,
+    weatherSummary: plan.weather_summary ?? null,
+    packingItems: plan.packing_items.map((p) => ({ itemId: p.item_id, role: p.role, reason: p.reason })),
+    dailyOutfits: plan.daily_outfits.map((d) => ({
+      day: d.day,
+      occasion: d.occasion,
+      itemIds: d.item_ids,
+      reasoning: d.reasoning,
+    })),
+    missingItems: plan.missing_items.map((m) => ({ category: m.category, reason: m.reason })),
+  };
+}
 
 // V4 M16 — rule-based travel packing list.
 function toPackingList(data: ServerPackingListResponse): PackingList {
@@ -22,6 +42,7 @@ function toPackingList(data: ServerPackingListResponse): PackingList {
       packed: it.packed,
     })),
     status: data.status,
+    plan: toPlan(data.plan),
   };
 }
 
