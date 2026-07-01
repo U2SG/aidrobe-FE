@@ -1,7 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { API_BASE_URL, APP_ENV } from '@/api/client';
 import { updateUserSettings } from '@/api/settings';
@@ -95,14 +95,19 @@ export function DepartureTimeScreen() {
         ))}
       </View>
 
-      <View
-        style={{
-          flex: 1,
+      {/* Scrollable so the optional commute question + pinned CTAs still fit on
+          shorter viewports (space-between preserved on tall screens). */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          flexGrow: 1,
           paddingHorizontal: 28,
           paddingTop: 32,
           paddingBottom: 36,
           justifyContent: 'space-between',
         }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <View>
           <Text
@@ -247,7 +252,7 @@ export function DepartureTimeScreen() {
             <Text style={{ fontSize: 12, color: T.ink3 }}>跳过</Text>
           </Pressable>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 }
