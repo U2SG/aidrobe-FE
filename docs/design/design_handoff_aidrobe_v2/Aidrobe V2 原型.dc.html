@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{background:#26221d;font-family:-apple-system,"PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  #stage{min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(120% 90% at 50% 0%,#38322a 0%,#231f1a 70%)}
+  .noscroll::-webkit-scrollbar{width:0;height:0}
+  @keyframes floatIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes scrimIn{from{opacity:0}to{opacity:1}}
+  @keyframes sheetUp{from{transform:translateY(102%)}to{transform:translateY(0)}}
+  @keyframes orbPulse{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.08);opacity:1}}
+  @keyframes ringDraw{from{stroke-dashoffset:175.9}to{stroke-dashoffset:44}}
+  @keyframes shimmer{0%{background-position:-220px 0}100%{background-position:220px 0}}
+  @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important}}
+</style>
+</helmet>
+<div id="stage">
+  <div class="device" ref="{{ deviceRef }}" style="position:relative;width:393px;height:852px;background:#FAF7F0;border-radius:54px;box-shadow:0 40px 90px rgba(0,0,0,.5),0 0 0 12px #100e0c,0 0 0 14px #2a2622;overflow:hidden;transform-origin:center center">
+
+    <!-- status bar -->
+    <div style="position:absolute;top:0;left:0;right:0;height:54px;z-index:60;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 8px;pointer-events:none">
+      <div style="font-size:15px;font-weight:600;color:#1A1714;letter-spacing:.3px">9:41</div>
+      <div style="display:flex;align-items:center;gap:7px">
+        <svg width="18" height="12" viewBox="0 0 18 12" fill="#1A1714"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="4.5" width="3" height="7.5" rx="1"/><rect x="10" y="2" width="3" height="10" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1" opacity=".35"/></svg>
+        <svg width="17" height="12" viewBox="0 0 17 12" fill="none"><path d="M8.5 3.2C10.6 3.2 12.5 4 14 5.4l1.3-1.5C13.4 2 11 1 8.5 1S3.6 2 1.7 3.9L3 5.4C4.5 4 6.4 3.2 8.5 3.2Z" fill="#1A1714"/><path d="M8.5 6.2c1.1 0 2.1.4 2.9 1.1l1.3-1.4C11.5 4.8 10 4.2 8.5 4.2S5.5 4.8 4.3 5.9l1.3 1.4c.8-.7 1.8-1.1 2.9-1.1Z" fill="#1A1714"/><circle cx="8.5" cy="9.6" r="1.6" fill="#1A1714"/></svg>
+        <svg width="26" height="12" viewBox="0 0 26 12" fill="none"><rect x="1" y="1.5" width="21" height="9" rx="2.5" stroke="#1A1714" stroke-opacity=".4"/><rect x="2.6" y="3" width="16" height="6" rx="1.3" fill="#1A1714"/><rect x="23" y="4" width="1.6" height="4" rx=".8" fill="#1A1714" fill-opacity=".4"/></svg>
+      </div>
+    </div>
+
+    <!-- screen stack -->
+    <div class="stack" style="position:absolute;inset:0">
+
+      <!-- ============ TODAY ============ -->
+      <section data-screen="today" data-disp="flex" data-screen-label="Today" ref="{{ todayRef }}" class="noscroll" style="position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding:62px 20px 108px;display:none;flex-direction:column;gap:16px">
+
+        <!-- greeting + ring -->
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div class="rv" style="opacity:0;animation:floatIn .55s cubic-bezier(.22,.61,.36,1) both">
+            <div style="font-size:30px;line-height:36px;font-weight:700;color:#1A1714;letter-spacing:-.4px">早上好，林</div>
+            <div style="margin-top:6px;font-size:15px;line-height:20px;color:#6B645B">距出门还有 <b style="color:#B08D5B;font-weight:700">8</b> 分钟 · 通勤</div>
+          </div>
+          <button onClick="{{ onRing }}" style="border:none;background:none;padding:0;cursor:pointer;flex:none">
+            <svg width="66" height="66" viewBox="0 0 66 66">
+              <circle cx="33" cy="33" r="28" fill="none" stroke="#EFE8DC" stroke-width="4"/>
+              <circle ref="{{ ringRef }}" cx="33" cy="33" r="28" fill="none" stroke="#B08D5B" stroke-width="4" stroke-linecap="round" transform="rotate(-90 33 33)" stroke-dasharray="175.9" stroke-dashoffset="175.9" style="animation:ringDraw 1.2s cubic-bezier(.4,0,.2,1) .6s both"/>
+            </svg>
+            <div style="position:absolute;width:66px;text-align:center;margin-top:-44px;pointer-events:none">
+              <div style="font-size:17px;font-weight:700;color:#1A1714;line-height:1">8′</div>
+              <div style="font-size:11px;color:#7A736A;margin-top:1px">出门</div>
+            </div>
+          </button>
+        </div>
+
+        <!-- one-liner -->
+        <div class="rv" style="opacity:0;animation:floatIn .55s cubic-bezier(.22,.61,.36,1) both;animation-delay:110ms;font-size:17px;line-height:24px;font-weight:600;color:#1A1714;margin-top:-2px">今天有点闷热，给你配了套透气又利落的。</div>
+
+        <!-- decision card -->
+        <div class="rv" style="opacity:0;animation:floatIn .55s cubic-bezier(.22,.61,.36,1) both;animation-delay:190ms;background:#FFFFFF;border-radius:24px;padding:22px 20px 18px;box-shadow:0 1px 4px rgba(60,40,20,.06),0 10px 30px rgba(60,40,20,.05)">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:22px;font-weight:700;color:#1A1714">今日一套</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:14px;color:#7A736A">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="1.8"><path d="M17.5 19a4.5 4.5 0 0 0 .5-8.97A6 6 0 0 0 6.2 11 3.5 3.5 0 0 0 7 19h10.5Z" stroke-linejoin="round"/></svg>
+            <span>28° 多云 · 准备 5 分</span>
+          </div>
+
+          <!-- outfit canvas -->
+          <div ref="{{ canvasRef }}" style="position:relative;height:300px;margin:8px -4px 2px">
+            <div class="gm" data-slot="top" style="position:absolute;left:2%;top:2%;width:47%;height:60%;opacity:0;animation:floatIn .6s cubic-bezier(.22,.61,.36,1) both;animation-delay:300ms"></div>
+            <div class="gl" data-slot="top" style="position:absolute;left:2%;top:62%;width:47%;text-align:center;font-size:12px;color:#7A736A;opacity:0;animation:floatIn .5s ease both;animation-delay:560ms">亚麻衬衫 · 米白</div>
+            <div class="gm" data-slot="bottom" style="position:absolute;right:1%;top:0;width:47%;height:66%;opacity:0;animation:floatIn .6s cubic-bezier(.22,.61,.36,1) both;animation-delay:380ms"></div>
+            <div class="gl" data-slot="bottom" style="position:absolute;right:1%;top:66%;width:47%;text-align:center;font-size:12px;color:#7A736A;opacity:0;animation:floatIn .5s ease both;animation-delay:620ms">阔腿西装裤 · 驼色</div>
+            <div class="gm" data-slot="shoes" style="position:absolute;left:33%;top:60%;width:34%;height:30%;opacity:0;animation:floatIn .6s cubic-bezier(.22,.61,.36,1) both;animation-delay:460ms"></div>
+            <div class="gl" data-slot="shoes" style="position:absolute;left:33%;top:89%;width:34%;text-align:center;font-size:12px;color:#7A736A;opacity:0;animation:floatIn .5s ease both;animation-delay:680ms">乐福鞋 · 深棕</div>
+          </div>
+
+          <!-- reasons -->
+          <div ref="{{ reasonsRef }}" style="display:flex;flex-direction:column;gap:2px;margin-top:14px"></div>
+
+          <!-- mood quote -->
+          <div class="rq" style="opacity:0;animation:floatIn .55s cubic-bezier(.22,.61,.36,1) both;animation-delay:920ms;margin-top:14px;background:#F5EFE6;border-radius:14px;padding:13px 15px;display:flex;gap:9px;align-items:flex-start">
+            <span style="font-size:22px;line-height:16px;color:#D8B77A;font-weight:700">“</span>
+            <span ref="{{ moodRef }}" style="font-size:14px;line-height:20px;color:#3F3A33;padding-top:2px">经典又清爽，适合闷热的通勤早晨。</span>
+          </div>
+
+          <!-- primary -->
+          <button class="press" onClick="{{ onWear }}" style="margin-top:16px;width:100%;height:56px;border:none;border-radius:16px;background:#171310;color:#fff;font-size:17px;font-weight:600;cursor:pointer;font-family:inherit">今天穿这套</button>
+
+          <!-- secondary links -->
+          <div style="display:flex;align-items:center;justify-content:center;gap:0;margin-top:14px">
+            <button onClick="{{ onDetail }}" style="flex:1;border:none;background:none;font-family:inherit;font-size:15px;font-weight:500;color:#3F3A33;cursor:pointer;padding:4px 0">查看详情</button>
+            <span style="width:1px;height:15px;background:#E5DFD2"></span>
+            <button onClick="{{ onDislike }}" style="flex:1;border:none;background:none;font-family:inherit;font-size:15px;font-weight:500;color:#3F3A33;cursor:pointer;padding:4px 0">不喜欢</button>
+            <span style="width:1px;height:15px;background:#E5DFD2"></span>
+            <button onClick="{{ onSwap }}" style="flex:1;border:none;background:none;font-family:inherit;font-size:15px;font-weight:500;color:#3F3A33;cursor:pointer;padding:4px 0">换一套</button>
+          </div>
+        </div>
+
+        <!-- resurface insight -->
+        <button class="rv press" onClick="{{ onInsight }}" style="opacity:0;animation:floatIn .55s cubic-bezier(.22,.61,.36,1) both;animation-delay:880ms;display:flex;align-items:center;gap:11px;background:#F1ECE2;border:none;border-radius:16px;padding:14px 16px;cursor:pointer;text-align:left;font-family:inherit">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.7"><path d="M3 8l9-5 9 5v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8Z" stroke-linejoin="round"/><path d="M3 8l9 5 9-5" stroke-linejoin="round"/></svg>
+          <span style="font-size:14px;line-height:19px;color:#3F3A33">那件米白衬衫你三周没穿了，今天刚好合适。</span>
+        </button>
+
+        <!-- override bar -->
+        <button class="rv press" onClick="{{ onAsk }}" style="opacity:0;animation:floatIn .55s cubic-bezier(.22,.61,.36,1) both;animation-delay:960ms;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #EFE8DC;border-radius:999px;padding:13px 16px;cursor:pointer;font-family:inherit;box-shadow:0 1px 4px rgba(60,40,20,.05)">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="1.7"><path d="M21 11.5a8.4 8.4 0 0 1-11.9 7.6L3 21l1.9-6.1A8.5 8.5 0 1 1 21 11.5Z" stroke-linejoin="round"/></svg>
+          <span style="flex:1;text-align:left;font-size:15px;color:#A7A09A">今天有什么特别的吗？</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="2"><path d="M5 12h13M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </section>
+
+      <!-- ============ ONBOARDING 01 · WELCOME ============ -->
+      <section data-screen="ob-welcome" data-disp="block" data-screen-label="Onboarding-Welcome" class="noscroll" style="position:absolute;inset:0;display:none;overflow-y:auto;overflow-x:hidden;background:linear-gradient(180deg,#FBF4E6 0%,#FAF7F0 40%,#F3ECDF 100%)">
+        <canvas ref="{{ skyRef }}" style="position:absolute;top:0;left:0;width:100%;height:62%;opacity:.5;pointer-events:none"></canvas>
+        <div style="position:relative;padding:60px 26px 40px">
+          <div style="display:flex;align-items:center;justify-content:space-between;height:30px">
+            <div style="display:flex;align-items:center;gap:8px"><span style="width:24px;height:24px;border-radius:7px;background:#171310;display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F4E8D1" stroke-width="2"><path d="M4 11 12 5l8 6v8H4v-8Z" stroke-linejoin="round"/></svg></span><span style="font-size:15px;font-weight:700;color:#1A1714">Aidrobe</span></div>
+            <div style="display:flex;gap:5px;align-items:center"><span style="width:22px;height:3px;border-radius:2px;background:#171310"></span><span style="width:10px;height:3px;border-radius:2px;background:#E5DFD2"></span><span style="width:10px;height:3px;border-radius:2px;background:#E5DFD2"></span><span style="width:10px;height:3px;border-radius:2px;background:#E5DFD2"></span><span style="width:10px;height:3px;border-radius:2px;background:#E5DFD2"></span><span style="width:10px;height:3px;border-radius:2px;background:#E5DFD2"></span><span style="margin-left:4px;font-size:13px;color:#A7A09A">1 / 6</span></div>
+          </div>
+          <div class="ob" style="opacity:0;margin-top:26px;font-size:13px;font-weight:600;color:#B08D5B;letter-spacing:1px">01</div>
+          <div class="ob" style="opacity:0;margin-top:6px;font-size:33px;line-height:42px;font-weight:700;color:#1A1714;letter-spacing:-.5px">今天，穿成<br>喜欢的自己</div>
+          <div class="ob" style="opacity:0;margin-top:14px;font-size:16px;line-height:24px;color:#6B645B">不用维护一套衣物数据库。<br>把常穿的衣服交给 Aidrobe，每天少一点纠结。</div>
+          <div class="ob" data-crop="flatlay" data-mask="soft" style="opacity:0;height:340px;margin:20px 0 4px"></div>
+          <div class="ob" style="opacity:0;display:flex;align-items:center;gap:9px;justify-content:center;font-size:15px;color:#6B645B;margin:6px 0 22px"><svg width="17" height="17" viewBox="0 0 24 24" fill="#D8B77A"><path d="M12 2l1.6 6.4L20 10l-6.4 1.6L12 18l-1.6-6.4L4 10l6.4-1.6L12 2Z"/></svg>先加几件常穿的，就能看到第一套。</div>
+          <button class="ob press" onClick="{{ goAdd }}" style="opacity:0;width:100%;height:56px;border:none;border-radius:16px;background:#171310;color:#fff;font-size:17px;font-weight:600;cursor:pointer;font-family:inherit">开始整理衣橱</button>
+          <div class="ob" style="opacity:0;text-align:center;margin-top:16px"><button onClick="{{ toToday }}" style="background:none;border:none;font-family:inherit;font-size:15px;font-weight:500;color:#7A736A;cursor:pointer">登录已有账号</button></div>
+          <div class="ob" style="opacity:0;margin-top:22px;padding-top:18px;border-top:1px solid #EBE3D5;text-align:center"><button onClick="{{ toPrivacy }}" style="display:inline-flex;align-items:center;gap:7px;background:none;border:none;font-family:inherit;font-size:14px;color:#A7A09A;cursor:pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="1.7"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6l7-3Z" stroke-linejoin="round"/><path d="M9.5 12l1.8 1.8L15 10" stroke-linecap="round" stroke-linejoin="round"/></svg>隐私与数据说明<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+        </div>
+      </section>
+
+      <!-- ============ ONBOARDING 02 · ADD ============ -->
+      <section data-screen="ob-add" data-disp="block" data-screen-label="Onboarding-Add" class="noscroll" style="position:absolute;inset:0;display:none;overflow-y:auto;overflow-x:hidden;padding:62px 22px 40px">
+        <div style="display:flex;align-items:center;gap:14px;height:44px">
+          <button class="press" onClick="{{ toWelcome }}" style="flex:none;width:32px;height:32px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1A1714" stroke-width="2"><path d="M15 5l-7 7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div style="flex:1;display:flex;gap:5px">
+            <span style="flex:1;height:4px;border-radius:2px;background:#171310"></span>
+            <span style="flex:1;height:4px;border-radius:2px;background:#171310"></span>
+            <span style="flex:1;height:4px;border-radius:2px;background:#E5DFD2"></span>
+            <span style="flex:1;height:4px;border-radius:2px;background:#E5DFD2"></span>
+            <span style="flex:1;height:4px;border-radius:2px;background:#E5DFD2"></span>
+            <span style="flex:1;height:4px;border-radius:2px;background:#E5DFD2"></span>
+          </div>
+        </div>
+        <div class="ob" style="opacity:0;margin-top:18px;font-size:13px;font-weight:600;color:#B08D5B;letter-spacing:1px">02</div>
+        <div class="ob" style="opacity:0;margin-top:6px;font-size:30px;line-height:37px;font-weight:700;color:#1A1714;letter-spacing:-.4px">先加几件常穿的</div>
+        <div class="ob" style="opacity:0;margin-top:10px;font-size:16px;line-height:23px;color:#6B645B">不用拍完整个衣柜。先从今天会考虑穿的开始。</div>
+        <div class="ob" data-crop="flatlay" data-mask="soft" style="opacity:0;height:300px;margin:18px 0 6px"></div>
+        <div class="ob" style="opacity:0;display:flex;align-items:center;gap:9px;background:#F4E8D1;border-radius:14px;padding:13px 16px;margin-top:8px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.7"><path d="M12 3.5l1.8 4.4 4.7.4-3.6 3 1.1 4.6L12 17.7 8 18.4 9.1 15l-3.6-3 4.7-.4L12 3.5Z" stroke-linejoin="round"/></svg>
+          <span style="font-size:14px;color:#3F3A33">约 <b style="color:#1A1714">7</b> 件，就能开始每天推荐。</span>
+        </div>
+        <button class="ob press" onClick="{{ onCamera }}" style="opacity:0;margin-top:16px;width:100%;height:56px;border:none;border-radius:16px;background:#171310;color:#fff;font-size:17px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:9px"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M4 8h3l1.5-2h7L17 8h3v11H4V8Z" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.2"/></svg>拍下衣服</button>
+        <button class="ob press" onClick="{{ goImport }}" style="opacity:0;margin-top:12px;width:100%;height:56px;border:1.5px solid #E5DFD2;border-radius:16px;background:#fff;color:#1A1714;font-size:17px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:9px"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#1A1714" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="m5 17 5-4 3 2 3-3 3 3" stroke-linejoin="round"/></svg>从相册选择</button>
+        <div style="text-align:center;margin-top:18px"><button class="ob" onClick="{{ goImport }}" style="opacity:0;background:none;border:none;font-family:inherit;font-size:15px;font-weight:500;color:#7A736A;cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:#D6CFC2">还有其他添加方式</button></div>
+        <div class="ob" style="opacity:0;text-align:center;margin-top:18px;font-size:13px;line-height:19px;color:#A7A09A">Aidrobe 会自动识别颜色、类别和季节，<br>你只需确认明显错误。</div>
+      </section>
+
+      <!-- ============ ONBOARDING 03 · IMPORT ============ -->
+      <section data-screen="ob-import" data-disp="block" data-screen-label="Onboarding-Import" class="noscroll" style="position:absolute;inset:0;display:none;overflow-y:auto;overflow-x:hidden;padding:62px 22px 40px">
+        <div style="display:flex;align-items:center;justify-content:space-between;height:44px">
+          <button class="press" onClick="{{ goAdd }}" style="width:32px;height:32px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1A1714" stroke-width="2"><path d="M15 5l-7 7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div style="font-size:15px;color:#A7A09A">3 / 6</div>
+        </div>
+        <div class="ob" style="opacity:0;margin-top:14px;font-size:30px;line-height:37px;font-weight:700;color:#1A1714;letter-spacing:-.4px">正在整理你的衣橱</div>
+        <div class="ob" style="opacity:0;margin-top:10px;font-size:16px;line-height:23px;color:#6B645B">不用等全部完成，识别好的会先出现。</div>
+        <div class="ob" style="opacity:0;margin-top:18px;background:#fff;border-radius:22px;padding:20px 18px;box-shadow:0 1px 4px rgba(60,40,20,.06)">
+          <!-- stepper -->
+          <div style="display:flex;align-items:center;margin-bottom:6px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:7px;flex:none;width:66px"><span style="width:30px;height:30px;border-radius:50%;background:#B08D5B;display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"><path d="M5 12l4.5 4.5L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+            <span style="flex:1;height:3px;background:#B08D5B;border-radius:2px"></span>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:7px;flex:none;width:66px"><span style="width:30px;height:30px;border-radius:50%;border:2px solid #B08D5B;color:#B08D5B;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">2</span></div>
+            <span style="flex:1;height:3px;background:#EFE8DC;border-radius:2px"></span>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:7px;flex:none;width:66px"><span style="width:30px;height:30px;border-radius:50%;border:2px solid #E5DFD2;color:#A7A09A;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">3</span></div>
+          </div>
+          <div style="display:flex;text-align:center;font-size:13px;margin-bottom:16px">
+            <div style="flex:1"><div style="color:#1A1714;font-weight:500">识别衣物</div><div style="color:#B08D5B;margin-top:2px">已完成</div></div>
+            <div style="flex:1"><div style="color:#1A1714;font-weight:500">生成抠图</div><div style="color:#B08D5B;margin-top:2px">4 / 6</div></div>
+            <div style="flex:1"><div style="color:#1A1714;font-weight:500">准备首套</div><div style="color:#A7A09A;margin-top:2px">等待中</div></div>
+          </div>
+          <!-- grid -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div style="background:#F5EFE6;border-radius:14px;padding:10px;position:relative"><div data-crop="shirt" style="height:96px"></div><div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px"><span style="font-size:13px;color:#3F3A33">米色亚麻衬衫</span><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8.5 12l2.3 2.3L16 9" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+            <div style="background:#F5EFE6;border-radius:14px;padding:10px;position:relative"><div data-crop="khaki" style="height:96px"></div><div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px"><span style="font-size:13px;color:#3F3A33">驼色阔腿西裤</span><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8.5 12l2.3 2.3L16 9" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+            <div style="background:#F5EFE6;border-radius:14px;padding:10px;position:relative"><div data-crop="loafers" style="height:96px"></div><div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px"><span style="font-size:13px;color:#3F3A33">深棕乐福鞋</span><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8.5 12l2.3 2.3L16 9" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+            <div style="background:#F5EFE6;border-radius:14px;padding:10px;position:relative"><div data-crop="knit" style="height:96px"></div><div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px"><span style="font-size:13px;color:#3F3A33">象牙白针织衫</span><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8.5 12l2.3 2.3L16 9" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+            <div style="background:#F5EFE6;border-radius:14px;padding:10px"><div data-crop="dress" style="height:96px;opacity:.5"></div><div style="display:flex;align-items:center;gap:5px;justify-content:center;margin-top:6px;color:#A7A09A;font-size:13px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2" stroke-linecap="round"/></svg>处理中</div></div>
+            <div style="background:#F5EFE6;border-radius:14px;padding:10px"><div data-crop="tote" style="height:96px;opacity:.5"></div><div style="display:flex;align-items:center;gap:5px;justify-content:center;margin-top:6px;color:#A7A09A;font-size:13px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2" stroke-linecap="round"/></svg>处理中</div></div>
+          </div>
+          <div style="margin-top:16px;font-size:14px;color:#3F3A33">已识别 <b>4</b> 件 · 处理中 <b>2</b> 件</div>
+          <div style="margin-top:10px;height:8px;border-radius:4px;background:#EFE8DC;overflow:hidden"><div ref="{{ importBarRef }}" style="height:100%;width:12%;border-radius:4px;background:#B08D5B;transition:width 1.4s cubic-bezier(.4,0,.2,1)"></div></div>
+        </div>
+        <button class="ob press" onClick="{{ goConfirm }}" style="opacity:0;margin-top:18px;width:100%;height:56px;border:none;border-radius:16px;background:#171310;color:#fff;font-size:17px;font-weight:600;cursor:pointer;font-family:inherit">确认识别的衣物</button>
+        <div style="text-align:center;margin-top:16px"><button class="ob" onClick="{{ goAdd }}" style="opacity:0;background:none;border:none;font-family:inherit;font-size:15px;color:#7A736A;cursor:pointer">取消导入</button></div>
+      </section>
+
+      <!-- ============ ONBOARDING · IMPORT CONFIRM ============ -->
+      <section data-screen="ob-confirm" data-disp="block" data-screen-label="Onboarding-Confirm" class="noscroll" style="position:absolute;inset:0;display:none;overflow-y:auto;overflow-x:hidden;padding:62px 22px 40px">
+        <div style="display:flex;align-items:center;justify-content:space-between;height:44px">
+          <button class="press" onClick="{{ goImport }}" style="width:32px;height:32px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1A1714" stroke-width="2"><path d="M15 5l-7 7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div style="font-size:15px;color:#A7A09A">3 / 6</div>
+        </div>
+        <div class="ob" style="opacity:0;margin-top:14px;font-size:30px;line-height:37px;font-weight:700;color:#1A1714;letter-spacing:-.4px">确认一下就好</div>
+        <div class="ob" style="opacity:0;margin-top:10px;font-size:16px;line-height:23px;color:#6B645B">只改明显不对的，其他交给 Aidrobe。</div>
+        <div class="ob" style="opacity:0;margin-top:18px;background:#fff;border-radius:22px;padding:6px 16px;box-shadow:0 1px 4px rgba(60,40,20,.06)">
+          <div style="display:flex;gap:14px;padding:15px 0;border-bottom:1px solid #F4EFE6"><div data-crop="shirt" style="flex:none;width:76px;height:76px;background:#F5EFE6;border-radius:12px"></div><div style="flex:1"><div style="font-size:16px;font-weight:600;color:#1A1714">米白亚麻衬衫</div><div style="display:flex;gap:6px;margin-top:6px"><span style="font-size:12px;color:#7A736A;background:#F1ECE2;padding:3px 9px;border-radius:6px">上衣</span><span style="font-size:12px;color:#7A736A;background:#F1ECE2;padding:3px 9px;border-radius:6px">米白</span></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px"><span style="display:flex;align-items:center;gap:5px;font-size:13px;color:#B08D5B"><svg width="16" height="16" viewBox="0 0 24 24" fill="#B08D5B"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-1 14-4-4 1.4-1.4L11 13.2l4.6-4.6L17 10l-6 6Z"/></svg>保留</span><button class="press" onClick="{{ notImpl }}" style="display:flex;align-items:center;gap:4px;background:none;border:none;font-family:inherit;font-size:13px;color:#7A736A;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7A736A" stroke-width="1.8"><path d="M4 20h4L18 10l-4-4L4 16v4Z" stroke-linejoin="round"/></svg>改一下</button></div></div>
+          <div style="display:flex;gap:14px;padding:15px 0;border-bottom:1px solid #F4EFE6"><div data-crop="khaki" style="flex:none;width:76px;height:76px;background:#F5EFE6;border-radius:12px"></div><div style="flex:1"><div style="font-size:16px;font-weight:600;color:#1A1714">驼色阔腿西裤</div><div style="display:flex;gap:6px;margin-top:6px"><span style="font-size:12px;color:#7A736A;background:#F1ECE2;padding:3px 9px;border-radius:6px">下装</span><span style="font-size:12px;color:#7A736A;background:#F1ECE2;padding:3px 9px;border-radius:6px">驼色</span></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px"><span style="display:flex;align-items:center;gap:5px;font-size:13px;color:#B08D5B"><svg width="16" height="16" viewBox="0 0 24 24" fill="#B08D5B"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-1 14-4-4 1.4-1.4L11 13.2l4.6-4.6L17 10l-6 6Z"/></svg>保留</span><button class="press" onClick="{{ notImpl }}" style="display:flex;align-items:center;gap:4px;background:none;border:none;font-family:inherit;font-size:13px;color:#7A736A;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7A736A" stroke-width="1.8"><path d="M4 20h4L18 10l-4-4L4 16v4Z" stroke-linejoin="round"/></svg>改一下</button></div></div>
+          <div style="display:flex;gap:14px;padding:15px 0"><div data-crop="cardigan" style="flex:none;width:76px;height:76px;background:#F5EFE6;border-radius:12px"></div><div style="flex:1"><div style="font-size:16px;font-weight:600;color:#1A1714">米色针织开衫</div><div style="display:flex;gap:6px;margin-top:6px;align-items:center"><span style="font-size:12px;color:#9A682E;background:#F8E9C8;padding:3px 9px;border-radius:6px">外套？</span><span style="font-size:12px;color:#7A736A;background:#F1ECE2;padding:3px 9px;border-radius:6px">米色</span></div><div style="display:flex;align-items:center;gap:8px;margin-top:10px;background:#F8E9C8;border-radius:10px;padding:8px 10px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9A682E" stroke-width="1.8"><path d="M12 3 2 20h20L12 3Z" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke-linecap="round"/></svg><span style="flex:1;font-size:13px;color:#9A682E">这件是外套吗？</span><button class="press" onClick="{{ notImpl }}" style="background:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:13px;font-weight:600;color:#1A1714;cursor:pointer;font-family:inherit">是</button><button class="press" onClick="{{ notImpl }}" style="background:none;border:1px solid #D8B77A;border-radius:7px;padding:5px 10px;font-size:13px;color:#9A682E;cursor:pointer;font-family:inherit">改一下</button></div></div></div>
+        </div>
+        <button class="ob press" onClick="{{ goSlotGap }}" style="opacity:0;margin-top:18px;width:100%;height:56px;border:none;border-radius:16px;background:#171310;color:#fff;font-size:17px;font-weight:600;cursor:pointer;font-family:inherit">加入衣橱并生成首套</button>
+        <div style="text-align:center;margin-top:16px"><button class="ob" onClick="{{ goAdd }}" style="opacity:0;background:none;border:none;font-family:inherit;font-size:15px;font-weight:500;color:#7A736A;cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:#D6CFC2">返回继续添加</button></div>
+      </section>
+
+      <!-- ============ ONBOARDING · SLOT GAP ============ -->
+      <section data-screen="ob-slotgap" data-disp="block" data-screen-label="Onboarding-SlotGap" class="noscroll" style="position:absolute;inset:0;display:none;overflow-y:auto;overflow-x:hidden;padding:62px 22px 40px">
+        <div style="display:flex;align-items:center;justify-content:space-between;height:44px">
+          <button class="press" onClick="{{ goConfirm }}" style="width:32px;height:32px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1A1714" stroke-width="2"><path d="M15 5l-7 7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div style="flex:1;margin:0 16px;display:flex;gap:5px"><span style="flex:1;height:4px;border-radius:2px;background:#171310"></span><span style="flex:1;height:4px;border-radius:2px;background:#171310"></span><span style="flex:1;height:4px;border-radius:2px;background:#171310"></span><span style="flex:1;height:4px;border-radius:2px;background:#B08D5B"></span><span style="flex:1;height:4px;border-radius:2px;background:#E5DFD2"></span><span style="flex:1;height:4px;border-radius:2px;background:#E5DFD2"></span></div>
+          <div style="font-size:15px;color:#A7A09A">4 / 6</div>
+        </div>
+        <div class="ob" style="opacity:0;margin-top:14px;font-size:30px;line-height:37px;font-weight:700;color:#1A1714;letter-spacing:-.4px">还差一条下装</div>
+        <div class="ob" style="opacity:0;margin-top:10px;font-size:16px;line-height:23px;color:#6B645B">你已经有 3 件上衣和 1 双鞋。再加一条下装，就能生成第一套搭配。</div>
+        <div class="ob" style="opacity:0;position:relative;height:250px;margin:22px 0 6px;display:flex;align-items:center;justify-content:center;gap:6px">
+          <div data-crop="shirt" style="width:33%;height:80%"></div>
+          <div style="width:30%;height:88%;border:2px dashed #D6C9AE;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px"><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#C3A876" stroke-width="1.4"><path d="M8 3h8l-1 6 2 12H7L9 9 8 3Z" stroke-linejoin="round"/></svg><span style="font-size:13px;color:#B08D5B">需要一条下装</span></div>
+          <div data-crop="loafers" style="width:30%;height:52%"></div>
+        </div>
+        <div class="ob" style="opacity:0;margin-top:10px;background:#F5EFE6;border-radius:16px;padding:6px 16px">
+          <div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid #EBE3D5"><span style="flex:none;width:34px;height:34px;border-radius:50%;background:#EEE6DA;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A7F6E" stroke-width="1.6"><path d="M9 4l3 2 3-2 5 3-2 4-2-1v9H8v-9L6 9 4 5l5-1Z" stroke-linejoin="round"/></svg></span><span style="flex:1;font-size:15px;color:#1A1714">上衣</span><span style="display:flex;align-items:center;gap:5px;font-size:14px;color:#3F8060"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3F8060" stroke-width="2.2"><path d="M5 12l4.5 4.5L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>已有</span></div>
+          <div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid #EBE3D5"><span style="flex:none;width:34px;height:34px;border-radius:50%;background:#EEE6DA;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A7F6E" stroke-width="1.6"><path d="M8 3h8l-1 6 2 12H7L9 9 8 3Z" stroke-linejoin="round"/></svg></span><span style="flex:1;font-size:15px;color:#1A1714">下装</span><span style="display:flex;align-items:center;gap:5px;font-size:14px;color:#9A682E"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9A682E" stroke-width="2.2"><path d="M5 12h14" stroke-linecap="round"/></svg>缺少</span></div>
+          <div style="display:flex;align-items:center;gap:12px;padding:14px 0"><span style="flex:none;width:34px;height:34px;border-radius:50%;background:#EEE6DA;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A7F6E" stroke-width="1.6"><path d="M3 15l1-6 5 3 8 1 4 2v3H3v-3Z" stroke-linejoin="round"/></svg></span><span style="flex:1;font-size:15px;color:#1A1714">鞋</span><span style="display:flex;align-items:center;gap:5px;font-size:14px;color:#3F8060"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3F8060" stroke-width="2.2"><path d="M5 12l4.5 4.5L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>已有</span></div>
+        </div>
+        <button class="ob press" onClick="{{ slotAdd }}" style="opacity:0;margin-top:18px;width:100%;height:56px;border:none;border-radius:16px;background:#171310;color:#fff;font-size:17px;font-weight:600;cursor:pointer;font-family:inherit">添加一条下装</button>
+        <div style="text-align:center;margin-top:16px"><button class="ob" onClick="{{ goMemory }}" style="opacity:0;background:none;border:none;font-family:inherit;font-size:15px;font-weight:500;color:#7A736A;cursor:pointer">稍后再说</button></div>
+        <div class="ob" style="opacity:0;display:flex;align-items:center;gap:7px;justify-content:center;margin-top:16px;font-size:13px;color:#A7A09A"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01" stroke-linecap="round"/></svg>补一件后会自动重新检查。</div>
+      </section>
+
+      <!-- ============ ONBOARDING · STYLE MEMORY ============ -->
+      <section data-screen="ob-memory" data-disp="block" data-screen-label="Onboarding-StyleMemory" class="noscroll" style="position:absolute;inset:0;display:none;overflow-y:auto;overflow-x:hidden;padding:62px 22px 40px">
+        <div style="display:flex;align-items:center;justify-content:space-between;height:44px">
+          <button class="press" onClick="{{ goSlotGap }}" style="width:32px;height:32px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1A1714" stroke-width="2"><path d="M15 5l-7 7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div style="flex:1;margin:0 16px;display:flex;gap:5px"><span style="flex:1;height:4px;border-radius:2px;background:#171310"></span><span style="flex:1;height:4px;border-radius:2px;background:#171310"></span><span style="flex:1;height:4px;border-radius:2px;background:#171310"></span><span style="flex:1;height:4px;border-radius:2px;background:#171310"></span><span style="flex:1;height:4px;border-radius:2px;background:#B08D5B"></span><span style="flex:1;height:4px;border-radius:2px;background:#E5DFD2"></span></div>
+          <div style="font-size:15px;color:#A7A09A">5 / 6</div>
+        </div>
+        <div class="ob" style="opacity:0;margin-top:14px;font-size:30px;line-height:37px;font-weight:700;color:#1A1714;letter-spacing:-.4px">给 Aidrobe 一点灵感</div>
+        <div class="ob" style="opacity:0;margin-top:10px;font-size:16px;line-height:23px;color:#6B645B">选一张你喜欢的穿搭图，我会参考这种感觉。可以跳过。</div>
+        <button class="ob press" onClick="{{ notImpl }}" style="opacity:0;position:relative;width:100%;height:340px;margin:20px 0 4px;border:none;border-radius:20px;overflow:hidden;cursor:pointer;padding:0;background:#EEE6DA">
+          <div data-crop="inspo" data-mask="none" style="position:absolute;inset:0"></div>
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(250,247,240,.15)"><span style="width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(60,40,20,.18)"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="m5 17 5-4 3 2 3-3 3 3" stroke-linejoin="round"/></svg></span><span style="font-size:16px;font-weight:600;color:#8A6A3A;text-shadow:0 1px 3px rgba(255,255,255,.6)">选择你的照片</span></div>
+        </button>
+        <div class="ob" style="opacity:0;display:flex;gap:8px;margin-top:18px">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.5"><circle cx="12" cy="12" r="8.5"/><circle cx="9" cy="9.5" r="1"/><circle cx="15" cy="9.5" r="1"/><circle cx="9.5" cy="14.5" r="1"/><circle cx="14.5" cy="14.5" r="1"/></svg><div><div style="font-size:14px;font-weight:600;color:#1A1714">理解色调</div><div style="font-size:12px;color:#A7A09A;margin-top:2px">更懂你喜欢的颜色</div></div></div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.5"><path d="M9 4l3 2 3-2 5 3-2 4-2-1v9H8v-9L6 9 4 5l5-1Z" stroke-linejoin="round"/></svg><div><div style="font-size:14px;font-weight:600;color:#1A1714">理解廓形</div><div style="font-size:12px;color:#A7A09A;margin-top:2px">更懂你喜欢的版型</div></div></div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="#D8B77A"><path d="M12 2l1.6 6.4L20 10l-6.4 1.6L12 18l-1.6-6.4L4 10l6.4-1.6L12 2Z"/></svg><div><div style="font-size:14px;font-weight:600;color:#1A1714">影响以后推荐</div><div style="font-size:12px;color:#A7A09A;margin-top:2px">推荐更贴近你喜好</div></div></div>
+        </div>
+        <button class="ob press" onClick="{{ goFirst }}" style="opacity:0;margin-top:24px;width:100%;height:56px;border:none;border-radius:16px;background:#171310;color:#fff;font-size:17px;font-weight:600;cursor:pointer;font-family:inherit">选择一张照片</button>
+        <div style="text-align:center;margin-top:16px"><button class="ob" onClick="{{ goFirst }}" style="opacity:0;background:none;border:none;font-family:inherit;font-size:15px;font-weight:600;color:#B08D5B;cursor:pointer">跳过</button></div>
+        <div class="ob" style="opacity:0;display:flex;align-items:center;gap:7px;justify-content:center;margin-top:16px;font-size:13px;color:#A7A09A"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="1.7"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6l7-3Z" stroke-linejoin="round"/></svg>随时可以在「我的」里查看、更换或删除。</div>
+      </section>
+
+      <!-- ============ ONBOARDING 04 · FIRST OUTFIT ============ -->
+      <section data-screen="ob-first" data-disp="block" data-screen-label="Onboarding-FirstOutfit" class="noscroll" style="position:absolute;inset:0;display:none;overflow-y:auto;overflow-x:hidden;padding:62px 22px 40px">
+        <div style="display:flex;align-items:center;justify-content:space-between;height:44px">
+          <button class="press" onClick="{{ goMemory }}" style="width:32px;height:32px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1A1714" stroke-width="2"><path d="M15 5l-7 7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div style="font-size:15px;color:#A7A09A">6 / 6</div>
+        </div>
+        <div class="ob" style="opacity:0;margin-top:14px;font-size:30px;line-height:37px;font-weight:700;color:#1A1714;letter-spacing:-.4px">第一套，已经准备好了</div>
+        <div class="ob" style="opacity:0;margin-top:10px;font-size:16px;line-height:23px;color:#6B645B">根据你刚加入的衣物，先给你一套最稳妥的。</div>
+        <div class="ob" style="opacity:0;margin-top:18px;background:#fff;border-radius:24px;padding:20px 18px 18px;box-shadow:0 1px 4px rgba(60,40,20,.06),0 10px 30px rgba(60,40,20,.05)">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between">
+            <div><div style="font-size:20px;font-weight:700;color:#1A1714">你的第一套</div><div style="margin-top:4px;font-size:14px;color:#7A736A">正式通勤 · 舒适利落</div></div>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C8B79A" stroke-width="1.8"><path d="M12 20s-7-4.4-7-9.3A3.7 3.7 0 0 1 12 8a3.7 3.7 0 0 1 7 2.7C19 15.6 12 20 12 20Z" stroke-linejoin="round"/></svg>
+          </div>
+          <div style="position:relative;height:250px;margin:10px -2px 0">
+            <div data-crop="sweater" style="position:absolute;left:0;top:4%;width:38%;height:74%"></div>
+            <div style="position:absolute;left:0;top:80%;width:38%;text-align:center;font-size:12px;color:#7A736A">燕麦色针织衫</div>
+            <div data-crop="charcoal" style="position:absolute;left:36%;top:0;width:30%;height:82%"></div>
+            <div style="position:absolute;left:36%;top:84%;width:30%;text-align:center;font-size:12px;color:#7A736A">深灰直筒西裤</div>
+            <div data-crop="loafers2" style="position:absolute;right:0;top:26%;width:32%;height:40%"></div>
+            <div style="position:absolute;right:0;top:70%;width:32%;text-align:center;font-size:12px;color:#7A736A">深棕乐福鞋</div>
+          </div>
+          <div style="height:1px;background:#EFE8DC;margin:16px 0"></div>
+          <div style="font-size:17px;font-weight:600;color:#1A1714;margin-bottom:6px">为什么这一套最合适</div>
+          <div style="display:flex;align-items:center;gap:11px;padding:10px 2px"><span style="flex:none;width:32px;height:32px;border-radius:50%;background:#F4E8D1;display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.7"><path d="M9 3l3 2 3-2 5 3-2 4-2-1v9H8v-9l-2 1-2-4 5-3Z" stroke-linejoin="round"/></svg></span><span style="flex:1;font-size:14px;color:#3F3A33">这三件正式度接近，组合最稳妥。</span><span style="font-size:12px;color:#A7A09A">衣物</span></div>
+          <div style="display:flex;align-items:center;gap:11px;padding:10px 2px"><span style="flex:none;width:32px;height:32px;border-radius:50%;background:#F4E8D1;display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.7"><path d="M13 4l-2 6h4l-3 10" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span style="flex:1;font-size:14px;color:#3F3A33">鞋和裤装都适合今天多走路。</span><span style="font-size:12px;color:#A7A09A">场景</span></div>
+          <div style="display:flex;align-items:center;gap:11px;padding:10px 2px"><span style="flex:none;width:32px;height:32px;border-radius:50%;background:#F4E8D1;display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.7"><path d="M12 3 4 8v8l8 5 8-5V8l-8-5Z" stroke-linejoin="round"/></svg></span><span style="flex:1;font-size:14px;color:#3F3A33">深浅有层次，不会显得沉闷。</span><span style="font-size:12px;color:#A7A09A">搭配规则</span></div>
+          <div style="margin-top:12px;background:#F5EFE6;border-radius:14px;padding:13px 15px;display:flex;gap:9px;align-items:flex-start"><span style="font-size:22px;line-height:14px;color:#D8B77A;font-weight:700">“</span><span style="font-size:14px;line-height:20px;color:#3F3A33;padding-top:2px">先从这套开始，明天会更懂你。</span></div>
+          <button class="press" onClick="{{ toToday }}" style="margin-top:16px;width:100%;height:56px;border:none;border-radius:16px;background:#171310;color:#fff;font-size:17px;font-weight:600;cursor:pointer;font-family:inherit">穿这套看看</button>
+          <div style="text-align:center;margin-top:14px"><button onClick="{{ goAdd }}" style="background:none;border:none;font-family:inherit;font-size:15px;font-weight:500;color:#3F3A33;cursor:pointer">再加几件</button></div>
+        </div>
+        <div class="ob" style="opacity:0;display:flex;align-items:center;gap:8px;justify-content:center;margin-top:16px;font-size:13px;color:#A7A09A"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01" stroke-linecap="round"/></svg>现在只有这一套可行搭配，再加几件就能有更多选择。</div>
+      </section>
+
+      <!-- ============ WARDROBE ============ -->
+      <section data-screen="wardrobe" data-disp="block" data-screen-label="Wardrobe" class="noscroll" style="position:absolute;inset:0;display:none;overflow-y:auto;overflow-x:hidden;padding:62px 20px 108px">
+        <div class="sv" style="opacity:0;display:flex;align-items:flex-start;justify-content:space-between">
+          <div><div style="font-size:28px;font-weight:700;color:#1A1714;letter-spacing:-.3px">我的衣橱</div><div style="margin-top:4px;font-size:15px;color:#7A736A">已收纳 <b style="color:#B08D5B">26</b> 件</div></div>
+          <button class="press" onClick="{{ openAdd }}" style="flex:none;width:42px;height:42px;border-radius:13px;border:none;background:#fff;box-shadow:0 1px 4px rgba(60,40,20,.08);cursor:pointer;display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg></button>
+        </div>
+        <div class="sv" style="opacity:0;display:flex;gap:10px;margin-top:16px">
+          <div style="flex:1;display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #EFE8DC;border-radius:13px;padding:11px 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5" stroke-linecap="round"/></svg><span style="font-size:15px;color:#A7A09A">搜索衣物、颜色、品类</span></div>
+          <button class="press" onClick="{{ openFilter }}" style="flex:none;display:flex;align-items:center;gap:7px;background:#fff;border:1px solid #EFE8DC;border-radius:13px;padding:0 14px;cursor:pointer;font-family:inherit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3F3A33" stroke-width="1.8"><path d="M4 6h16M7 12h10M10 18h4" stroke-linecap="round"/></svg><span style="font-size:15px;color:#3F3A33">筛选</span></button>
+        </div>
+        <div class="sv" style="opacity:0;display:flex;gap:9px;margin-top:14px;overflow-x:auto" class="noscroll">
+          <span style="flex:none;padding:8px 18px;border-radius:999px;background:#171310;color:#fff;font-size:14px;font-weight:500">全部</span>
+          <span style="flex:none;padding:8px 18px;border-radius:999px;background:#fff;border:1px solid #EFE8DC;color:#3F3A33;font-size:14px">上衣</span>
+          <span style="flex:none;padding:8px 18px;border-radius:999px;background:#fff;border:1px solid #EFE8DC;color:#3F3A33;font-size:14px">下装</span>
+          <span style="flex:none;padding:8px 18px;border-radius:999px;background:#fff;border:1px solid #EFE8DC;color:#3F3A33;font-size:14px">外套</span>
+          <span style="flex:none;padding:8px 18px;border-radius:999px;background:#fff;border:1px solid #EFE8DC;color:#3F3A33;font-size:14px">鞋</span>
+        </div>
+        <button class="sv press" onClick="{{ onInsight }}" style="opacity:0;width:100%;display:flex;align-items:center;gap:10px;background:#F1ECE2;border:none;border-radius:14px;padding:13px 15px;margin-top:14px;cursor:pointer;font-family:inherit;text-align:left">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.7"><path d="M12 3a6 6 0 0 0-4 10.5V17h8v-3.5A6 6 0 0 0 12 3Z"/><path d="M9.5 20h5" stroke-linecap="round"/></svg>
+          <span style="flex:1;font-size:14px;color:#3F3A33">有 <b style="color:#1A1714">4</b> 件衣服一个月没出现，看看它们。</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:16px">
+          <sc-for list="{{ wardrobeItems }}" as="it" hint-placeholder-count="8">
+            <button class="press" onClick="{{ it.tap }}" style="border:none;background:#fff;border-radius:18px;padding:12px;cursor:pointer;font-family:inherit;box-shadow:0 1px 4px rgba(60,40,20,.05)">
+              <div data-crop="{{ it.key }}" style="height:128px"></div>
+              <div style="margin-top:8px;font-size:14px;color:#1A1714;text-align:left">{{ it.name }}</div>
+              <div style="margin-top:3px;font-size:12px;color:#A7A09A;text-align:left">{{ it.cat }}</div>
+            </button>
+          </sc-for>
+        </div>
+      </section>
+
+      <!-- ============ ASK ============ -->
+      <section data-screen="ask" data-disp="block" data-screen-label="Ask" class="noscroll" style="position:absolute;inset:0;display:none;overflow-y:auto;overflow-x:hidden;padding:60px 20px 150px">
+        <div class="sv" style="opacity:0;font-size:30px;font-weight:700;color:#1A1714;letter-spacing:-.4px">Ask Aidrobe</div>
+        <div class="sv" style="opacity:0;margin-top:6px;font-size:15px;line-height:22px;color:#7A736A">特殊场合、旅行、购物，直接说一句就好。</div>
+        <div ref="{{ askIdleRef }}" class="sv" style="opacity:0;margin-top:20px;background:#fff;border-radius:22px;padding:22px 18px 8px;box-shadow:0 1px 4px rgba(60,40,20,.06)">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding-bottom:6px">
+            <div style="width:64px;height:64px;border-radius:50%;background:radial-gradient(circle at 36% 30%,#FBF3E2,#D8B77A 62%,#B08D5B);box-shadow:0 0 0 8px rgba(216,183,122,.16),0 8px 22px rgba(176,141,91,.34);animation:orbPulse 3.6s ease-in-out infinite"></div>
+            <div style="font-size:20px;font-weight:700;color:#1A1714">今天想怎么调整？</div>
+            <div style="font-size:14px;color:#7A736A;margin-top:-4px">我会基于你的真实衣橱来回答。</div>
+          </div>
+          <div style="margin-top:8px">
+            <button class="press" onClick="{{ askParty }}" style="width:100%;display:flex;align-items:center;gap:14px;padding:15px 2px;border:none;border-top:1px solid #F4EFE6;background:none;cursor:pointer;font-family:inherit;text-align:left"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.6"><path d="M4 20l5-13 8 8-13 5Z" stroke-linejoin="round"/><path d="M14 4l1 2M18 6l-1 2M20 10l-2 1" stroke-linecap="round"/></svg><span style="flex:1;font-size:16px;color:#1A1714">今晚有聚会，想有精神一点</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C3BCB0" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <button class="press" onClick="{{ askExample }}" style="width:100%;display:flex;align-items:center;gap:14px;padding:15px 2px;border:none;border-top:1px solid #F4EFE6;background:none;cursor:pointer;font-family:inherit;text-align:left"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.6"><path d="M3 15l1-6 5 3 8 1 4 2v3H3v-3Z" stroke-linejoin="round"/></svg><span style="flex:1;font-size:16px;color:#1A1714">今天要走很多路，换双舒服的鞋</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C3BCB0" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <button class="press" onClick="{{ askExample }}" style="width:100%;display:flex;align-items:center;gap:14px;padding:15px 2px;border:none;border-top:1px solid #F4EFE6;background:none;cursor:pointer;font-family:inherit;text-align:left"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.6"><rect x="5" y="7" width="14" height="13" rx="2"/><path d="M9 7V5a3 3 0 0 1 6 0v2" stroke-linecap="round"/></svg><span style="flex:1;font-size:16px;color:#1A1714">下周去东京，帮我准备衣服</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C3BCB0" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <button class="press" onClick="{{ askExample }}" style="width:100%;display:flex;align-items:center;gap:14px;padding:15px 2px;border:none;border-top:1px solid #F4EFE6;background:none;cursor:pointer;font-family:inherit;text-align:left"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.6"><path d="M9 4l3 2 3-2 5 3-2 4-2-1v9H8v-9L6 9 4 5l5-1Z" stroke-linejoin="round"/></svg><span style="flex:1;font-size:16px;color:#1A1714">这件米白衬衫还能怎么搭</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C3BCB0" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          </div>
+        </div>
+        <div ref="{{ askThreadRef }}" style="margin-top:18px;display:flex;flex-direction:column;gap:16px"></div>
+        <div style="position:absolute;left:16px;right:16px;bottom:104px;display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #E5DFD2;border-radius:999px;padding:8px 8px 8px 18px;box-shadow:0 6px 20px rgba(60,40,20,.12)">
+          <span ref="{{ askInputRef }}" style="flex:1;font-size:15px;color:#A7A09A">说说今天有什么特别的…</span>
+          <button class="press" onClick="{{ askParty }}" style="flex:none;width:40px;height:40px;border-radius:50%;border:none;background:#171310;cursor:pointer;display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M4 12l16-8-6 16-2.5-6.5L4 12Z" stroke-linejoin="round"/></svg></button>
+        </div>
+      </section>
+
+      <!-- ============ PROFILE ============ -->
+      <section data-screen="profile" data-disp="block" data-screen-label="Profile" class="noscroll" style="position:absolute;inset:0;display:none;overflow-y:auto;overflow-x:hidden;padding:62px 20px 108px">
+        <div class="sv" style="opacity:0;font-size:28px;font-weight:700;color:#1A1714;letter-spacing:-.3px">我的</div>
+        <div class="sv" style="opacity:0;display:flex;align-items:center;gap:15px;margin-top:20px">
+          <div style="flex:none;width:60px;height:60px;border-radius:50%;background:#E7E0D3;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:600;color:#8A7F6E">林</div>
+          <div style="flex:1"><div style="font-size:19px;font-weight:600;color:#1A1714">林</div><div style="margin-top:4px;font-size:14px;color:#7A736A">Aidrobe 使用第 28 天</div></div>
+          <button class="press" onClick="{{ notImpl }}" style="display:flex;align-items:center;gap:2px;background:none;border:none;font-family:inherit;font-size:15px;color:#7A736A;cursor:pointer">编辑<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#C3BCB0" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        <div class="sv" style="opacity:0;margin-top:22px;background:#fff;border-radius:20px;padding:16px 18px 4px;box-shadow:0 1px 4px rgba(60,40,20,.06)">
+          <div style="font-size:17px;font-weight:700;color:#1A1714;margin-bottom:4px">Aidrobe 与你</div>
+          <button class="press" onClick="{{ toMemory }}" style="width:100%;display:flex;align-items:center;gap:13px;padding:15px 0;border:none;border-bottom:1px solid #F4EFE6;background:none;cursor:pointer;font-family:inherit;text-align:left"><span style="flex:none;width:36px;height:36px;border-radius:50%;background:#F4E8D1;display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.7"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20c.6-3.5 3.2-5.5 6.5-5.5s5.9 2 6.5 5.5" stroke-linecap="round"/></svg></span><span style="flex:1"><span style="display:block;font-size:16px;color:#1A1714">Aidrobe 记住的关于你</span><span style="display:block;font-size:13px;color:#A7A09A;margin-top:2px">查看、纠正或清空偏好</span></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C3BCB0" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="press" onClick="{{ notImpl }}" style="width:100%;display:flex;align-items:center;gap:13px;padding:15px 0;border:none;background:none;cursor:pointer;font-family:inherit;text-align:left"><span style="flex:none;width:36px;height:36px;border-radius:50%;background:#F4E8D1;display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="#D8B77A"><path d="M12 2l1.6 6.4L20 10l-6.4 1.6L12 18l-1.6-6.4L4 10l6.4-1.6L12 2Z"/></svg></span><span style="flex:1"><span style="display:block;font-size:16px;color:#1A1714">风格灵感</span><span style="display:block;font-size:13px;color:#A7A09A;margin-top:2px">已保存 3 张</span></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C3BCB0" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        <div class="sv" style="opacity:0;margin-top:16px;background:#fff;border-radius:20px;padding:4px 18px;box-shadow:0 1px 4px rgba(60,40,20,.06)">
+          <button class="press" onClick="{{ openLeaveTime }}" style="width:100%;display:flex;align-items:center;gap:13px;padding:16px 0;border:none;border-bottom:1px solid #F4EFE6;background:none;cursor:pointer;font-family:inherit;text-align:left"><span style="flex:none;width:36px;height:36px;border-radius:50%;background:#F4E8D1;display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2" stroke-linecap="round"/></svg></span><span style="flex:1;font-size:16px;color:#1A1714">出门时间</span><span style="font-size:15px;color:#A7A09A">9:00</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C3BCB0" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="press" onClick="{{ notImpl }}" style="width:100%;display:flex;align-items:center;gap:13px;padding:16px 0;border:none;border-bottom:1px solid #F4EFE6;background:none;cursor:pointer;font-family:inherit;text-align:left"><span style="flex:none;width:36px;height:36px;border-radius:50%;background:#F4E8D1;display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.7"><path d="M5 11a7 7 0 0 1 14 0v4l1.5 2.5h-17L5 15v-4Z" stroke-linejoin="round"/><path d="M10 20a2 2 0 0 0 4 0" stroke-linecap="round"/></svg></span><span style="flex:1;font-size:16px;color:#1A1714">通知</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C3BCB0" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="press" onClick="{{ toPrivacy }}" style="width:100%;display:flex;align-items:center;gap:13px;padding:16px 0;border:none;background:none;cursor:pointer;font-family:inherit;text-align:left"><span style="flex:none;width:36px;height:36px;border-radius:50%;background:#F4E8D1;display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.7"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6l7-3Z" stroke-linejoin="round"/></svg></span><span style="flex:1;font-size:16px;color:#1A1714">隐私与数据</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C3BCB0" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        <div class="sv" style="opacity:0;margin-top:24px;text-align:center"><button class="press" onClick="{{ openClear }}" style="display:inline-flex;align-items:center;gap:8px;background:none;border:none;font-family:inherit;font-size:15px;color:#B85C4A;cursor:pointer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#B85C4A" stroke-width="1.8"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13" stroke-linecap="round" stroke-linejoin="round"/></svg>清空全部数据</button></div>
+      </section>
+      <section data-screen="privacy" data-disp="block" data-screen-label="Privacy" class="noscroll" style="position:absolute;inset:0;display:none;overflow-y:auto;overflow-x:hidden;padding:56px 20px 40px">
+        <button class="press" onClick="{{ backProfile }}" style="width:34px;height:34px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1A1714" stroke-width="2"><path d="M15 5l-7 7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div class="pv" style="opacity:0;margin-top:14px;font-size:30px;line-height:38px;font-weight:700;color:#1A1714;letter-spacing:-.4px">你的衣橱，只属于你</div>
+        <div class="pv" style="opacity:0;margin-top:12px;font-size:15px;line-height:23px;color:#6B645B">Aidrobe 需要了解你的衣服和习惯，才能帮你少纠结、穿得像自己。这些信息只为这一件事服务。</div>
+        <div class="pv" style="opacity:0;margin-top:22px;background:#F5EFE6;border-radius:18px;padding:16px 18px 6px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:16px;font-weight:600;color:#1A1714;margin-bottom:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.7"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6l7-3Z" stroke-linejoin="round"/></svg>我们会用到</div>
+          <div style="display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:1px solid #EBE3D5;font-size:15px;color:#3F3A33">衣物照片</div>
+          <div style="display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:1px solid #EBE3D5;font-size:15px;color:#3F3A33">使用行为</div>
+          <div style="display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:1px solid #EBE3D5;font-size:15px;color:#3F3A33">风格灵感</div>
+          <div style="display:flex;align-items:center;gap:11px;padding:12px 0;font-size:15px;color:#3F3A33">授权后的天气和大致位置</div>
+        </div>
+        <div class="pv" style="opacity:0;margin-top:16px;background:#F5EFE6;border-radius:18px;padding:16px 18px 6px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:16px;font-weight:600;color:#1A1714;margin-bottom:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="#D8B77A"><path d="M12 2l1.6 6.4L20 10l-6.4 1.6L12 18l-1.6-6.4L4 10l6.4-1.6L12 2Z"/></svg>你可以随时</div>
+          <div style="display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:1px solid #EBE3D5;font-size:15px;color:#3F3A33">查看偏好 · 纠正判断 · 删除记录</div>
+          <div style="display:flex;align-items:center;gap:11px;padding:12px 0;font-size:15px;color:#3F3A33">删除全部数据或注销</div>
+        </div>
+        <div class="pv" style="opacity:0;text-align:center;margin-top:22px"><button onClick="{{ notImpl }}" style="background:none;border:none;font-family:inherit;font-size:15px;color:#B08D5B;cursor:pointer;text-decoration:underline;text-underline-offset:3px">阅读《隐私政策》</button></div>
+      </section>
+
+      <!-- ============ MEMORY (drill-in) ============ -->
+      <section data-screen="memory" data-disp="block" data-screen-label="Memory" class="noscroll" style="position:absolute;inset:0;display:none;overflow-y:auto;overflow-x:hidden;padding:62px 22px 40px;background:#F3EEE4">
+        <button class="press" onClick="{{ backProfile }}" style="width:32px;height:32px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1A1714" stroke-width="2"><path d="M15 5l-7 7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div class="mv" style="opacity:0;margin-top:14px;font-size:28px;line-height:35px;font-weight:700;color:#1A1714;letter-spacing:-.3px">Aidrobe 记住的关于你</div>
+        <div class="mv" style="opacity:0;margin-top:10px;font-size:15px;line-height:22px;color:#7A736A">这些是 Aidrobe 从你的使用里学到的，不是你填的表。不准的地方，随时改。</div>
+        <div class="mv" style="opacity:0;margin-top:24px;font-size:18px;font-weight:600;color:#1A1714">你的偏好</div>
+        <div class="mv" style="opacity:0;margin-top:12px;background:#fff;border-radius:18px;padding:4px 16px;box-shadow:0 1px 4px rgba(60,40,20,.05)">
+          <div style="display:flex;align-items:center;gap:13px;padding:15px 0;border-bottom:1px solid #F4EFE6">
+            <span style="flex:none;width:42px;height:42px;border-radius:50%;background:#F4E8D1;display:flex;align-items:center;justify-content:center"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.6"><path d="M6 8l6-4 6 4-3 2v9H9v-9L6 8Z" stroke-linejoin="round"/></svg></span>
+            <span style="flex:1;font-size:15px;line-height:21px;color:#1A1714">偏好干净、利落、通勤感的搭配</span>
+            <button class="press" onClick="{{ notImpl }}" style="flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;cursor:pointer;font-family:inherit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="1.7"><path d="M17 4h2v9h-2M17 13l-3 6a2 2 0 0 1-2-2v-3H6a2 2 0 0 1-2-2.3l1-5A2 2 0 0 1 7 4h10v9Z" stroke-linejoin="round"/></svg><span style="font-size:11px;color:#A7A09A">这不准</span></button>
+            <span style="width:1px;height:26px;background:#EFE8DC"></span>
+            <button class="press" onClick="{{ notImpl }}" style="flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;cursor:pointer;font-family:inherit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="1.7"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13" stroke-linecap="round" stroke-linejoin="round"/></svg><span style="font-size:11px;color:#A7A09A">删除</span></button>
+          </div>
+          <div style="display:flex;align-items:center;gap:13px;padding:15px 0">
+            <span style="flex:none;width:42px;height:42px;border-radius:50%;background:#F4E8D1;display:flex;align-items:center;justify-content:center"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><circle cx="9" cy="10" r="1"/><circle cx="15" cy="10" r="1"/><circle cx="10" cy="15" r="1"/></svg></span>
+            <span style="flex:1;font-size:15px;line-height:21px;color:#1A1714">不太穿亮色</span>
+            <button class="press" onClick="{{ notImpl }}" style="flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;cursor:pointer;font-family:inherit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="1.7"><path d="M17 4h2v9h-2M17 13l-3 6a2 2 0 0 1-2-2v-3H6a2 2 0 0 1-2-2.3l1-5A2 2 0 0 1 7 4h10v9Z" stroke-linejoin="round"/></svg><span style="font-size:11px;color:#A7A09A">这不准</span></button>
+            <span style="width:1px;height:26px;background:#EFE8DC"></span>
+            <button class="press" onClick="{{ notImpl }}" style="flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;cursor:pointer;font-family:inherit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="1.7"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13" stroke-linecap="round" stroke-linejoin="round"/></svg><span style="font-size:11px;color:#A7A09A">删除</span></button>
+          </div>
+        </div>
+        <div class="mv" style="opacity:0;margin-top:24px;font-size:18px;font-weight:600;color:#1A1714">最近的穿着倾向</div>
+        <div class="mv" style="opacity:0;margin-top:12px;background:#fff;border-radius:18px;padding:4px 16px;box-shadow:0 1px 4px rgba(60,40,20,.05)">
+          <div style="display:flex;align-items:center;gap:13px;padding:15px 0;border-bottom:1px solid #F4EFE6"><span style="flex:none;width:42px;height:42px;border-radius:50%;background:#F4E8D1;display:flex;align-items:center;justify-content:center"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.6"><path d="M8 3h8l-1 6 2 12H7L9 9 8 3Z" stroke-linejoin="round"/></svg></span><span style="flex:1;font-size:15px;color:#1A1714">常穿：那条深灰西裤</span></div>
+          <div style="display:flex;align-items:center;gap:13px;padding:15px 0"><span style="flex:none;width:42px;height:42px;border-radius:50%;background:#F4E8D1;display:flex;align-items:center;justify-content:center"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.6"><path d="M9 3l3 2 3-2 5 3-2 4-2-1v9H8v-9l-2 1-2-4 5-3Z" stroke-linejoin="round"/></svg></span><span style="flex:1;font-size:15px;color:#1A1714">很少出现：浅色的几件上衣</span></div>
+        </div>
+        <div class="mv" style="opacity:0;margin-top:28px;text-align:center"><button class="press" onClick="{{ openClear }}" style="display:inline-flex;align-items:center;gap:8px;background:none;border:none;font-family:inherit;font-size:15px;color:#B85C4A;cursor:pointer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#B85C4A" stroke-width="1.8"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13" stroke-linecap="round" stroke-linejoin="round"/></svg>清空 Aidrobe 学到的全部偏好</button></div>
+      </section>
+
+      <!-- ============ OUTFIT DETAIL ============ -->
+      <section data-screen="outfit-detail" data-disp="block" data-screen-label="OutfitDetail" class="noscroll" style="position:absolute;inset:0;display:none;overflow-y:auto;overflow-x:hidden;padding:56px 20px 40px">
+        <div style="display:flex;align-items:center;justify-content:space-between;height:44px">
+          <button class="press" onClick="{{ toToday }}" style="width:34px;height:34px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1A1714" stroke-width="2"><path d="M15 5l-7 7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div style="font-size:17px;font-weight:600;color:#1A1714">搭配详情</div>
+          <button class="press" onClick="{{ notImpl }}" style="width:34px;height:34px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="#7A736A"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+        </div>
+        <div class="dv" style="opacity:0;background:#F5EFE6;border-radius:22px;padding:16px;margin-top:8px;position:relative;height:250px">
+          <div data-crop="shirt" style="position:absolute;left:5%;top:8%;width:42%;height:64%"></div>
+          <div data-crop="loafers" style="position:absolute;left:9%;top:60%;width:30%;height:30%"></div>
+          <div data-crop="khaki" style="position:absolute;right:6%;top:4%;width:42%;height:82%"></div>
+        </div>
+        <div class="dv" style="opacity:0;display:flex;gap:26px;margin-top:10px;padding:0 6px"><span style="font-size:12px;color:#7A736A">米白亚麻衬衫</span><span style="font-size:12px;color:#7A736A;margin-left:auto">驼色阔腿西裤</span></div>
+        <div class="dv" style="opacity:0;margin-top:18px;background:#fff;border-radius:18px;padding:16px 18px;box-shadow:0 1px 4px rgba(60,40,20,.05)">
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.7"><path d="M7 11v9H4v-9h3Zm3 0l2-6a2 2 0 0 1 4 .6V9h4a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 22 19h-9l-3-1v-7Z" stroke-linejoin="round"/></svg><span style="font-size:17px;font-weight:600;color:#1A1714">为什么适合今天</span></div>
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #F4EFE6"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.6"><path d="M10 13.5V5a2 2 0 1 1 4 0v8.5a4 4 0 1 1-4 0Z" stroke-linejoin="round"/></svg><span style="flex:1;font-size:14px;color:#3F3A33">高温闷热，亚麻透气，利落不黏腻。</span><span style="font-size:12px;color:#A7A09A">天气</span></div>
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #F4EFE6"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.6"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 9h16M8 3v4M16 3v4" stroke-linecap="round"/></svg><span style="flex:1;font-size:14px;color:#3F3A33">这条阔腿西裤最近更常穿，状态在线。</span><span style="font-size:12px;color:#A7A09A">穿着记录</span></div>
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 0"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.6"><path d="M6 13a4 4 0 0 1 .6-7.96A5.5 5.5 0 0 1 17.5 6 3.5 3.5 0 0 1 18 13H6Z" stroke-linejoin="round"/><path d="M8 17l-1 2M12 17l-1 2M16 17l-1 2" stroke-linecap="round"/></svg><span style="flex:1;font-size:14px;color:#3F3A33">午后有阵雨，深色鞋子更安心。</span><span style="font-size:12px;color:#A7A09A">天气规则</span></div>
+        </div>
+        <div class="dv" style="opacity:0;margin-top:14px;background:#fff;border-radius:18px;padding:16px 18px;box-shadow:0 1px 4px rgba(60,40,20,.05)">
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.6"><path d="M12 6a2 2 0 1 0 0-.01M4 20l8-9 8 9" stroke-linecap="round" stroke-linejoin="round"/></svg><span style="font-size:17px;font-weight:600;color:#1A1714">这套包含</span></div>
+          <button class="press" onClick="{{ openShirt }}" style="width:100%;display:flex;align-items:center;gap:13px;padding:10px 0;border:none;border-bottom:1px solid #F4EFE6;background:none;cursor:pointer;font-family:inherit;text-align:left"><div data-crop="shirt" style="flex:none;width:52px;height:52px;background:#F5EFE6;border-radius:11px"></div><div style="flex:1"><div style="font-size:15px;color:#1A1714">米白亚麻衬衫</div><div style="font-size:13px;color:#3F8060;margin-top:2px">可穿 · 通勤</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C3BCB0" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="press" onClick="{{ openShirt }}" style="width:100%;display:flex;align-items:center;gap:13px;padding:10px 0;border:none;border-bottom:1px solid #F4EFE6;background:none;cursor:pointer;font-family:inherit;text-align:left"><div data-crop="khaki" style="flex:none;width:52px;height:52px;background:#F5EFE6;border-radius:11px"></div><div style="flex:1"><div style="font-size:15px;color:#1A1714">驼色阔腿西裤</div><div style="font-size:13px;color:#3F8060;margin-top:2px">可穿 · 通勤</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C3BCB0" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="press" onClick="{{ openShirt }}" style="width:100%;display:flex;align-items:center;gap:13px;padding:10px 0;border:none;background:none;cursor:pointer;font-family:inherit;text-align:left"><div data-crop="loafers" style="flex:none;width:52px;height:52px;background:#F5EFE6;border-radius:11px"></div><div style="flex:1"><div style="font-size:15px;color:#1A1714">深棕乐福鞋</div><div style="font-size:13px;color:#7A736A;margin-top:2px">可穿 · 日常</div></div><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C3BCB0" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        <button class="dv press" onClick="{{ onWear }}" style="opacity:0;margin-top:18px;width:100%;height:56px;border:none;border-radius:16px;background:#171310;color:#fff;font-size:17px;font-weight:600;cursor:pointer;font-family:inherit">今天穿这套</button>
+        <div class="dv" style="opacity:0;text-align:center;margin-top:14px"><button onClick="{{ onDislike }}" style="background:none;border:none;font-family:inherit;font-size:15px;font-weight:500;color:#7A736A;cursor:pointer">不喜欢 · 换一套</button></div>
+      </section>
+
+      <!-- ============ ITEM DETAIL ============ -->
+      <section data-screen="item-detail" data-disp="block" data-screen-label="ItemDetail" class="noscroll" style="position:absolute;inset:0;display:none;overflow-y:auto;overflow-x:hidden;padding:56px 20px 40px">
+        <div style="display:flex;align-items:center;justify-content:space-between;height:44px">
+          <button class="press" onClick="{{ toWardrobe }}" style="width:34px;height:34px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1A1714" stroke-width="2"><path d="M15 5l-7 7 7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="press" onClick="{{ notImpl }}" style="width:34px;height:34px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="#7A736A"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+        </div>
+        <div class="iv" style="opacity:0;display:flex;gap:14px;align-items:flex-start;margin-top:6px">
+          <div style="flex:1;padding-top:12px"><div ref="{{ itemTitleRef }}" style="font-size:26px;font-weight:700;color:#1A1714;line-height:32px;letter-spacing:-.3px">米白亚麻衬衫</div><div ref="{{ itemMetaRef }}" style="margin-top:8px;font-size:15px;color:#7A736A">上衣 · 米白 · 春夏</div><div style="display:flex;align-items:center;gap:6px;margin-top:14px;font-size:15px;color:#3F8060"><span style="width:8px;height:8px;border-radius:50%;background:#3F8060"></span>可穿</div><div style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:14px;color:#7A736A"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2" stroke-linecap="round"/></svg>12 天前穿过</div></div>
+          <div ref="{{ itemImgRef }}" data-crop="shirt" style="flex:none;width:168px;height:200px"></div>
+        </div>
+        <div class="iv" style="opacity:0;margin-top:18px;background:#F5EFE6;border-radius:18px;padding:4px 16px">
+          <button class="press" onClick="{{ openCategory }}" style="width:100%;display:flex;align-items:center;gap:12px;padding:15px 0;border:none;border-bottom:1px solid #EBE3D5;background:none;cursor:pointer;font-family:inherit;text-align:left"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A7F6E" stroke-width="1.6"><path d="M3 12c3-4 6-4 9 0s6 4 9 0" stroke-linecap="round"/><path d="M3 17c3-4 6-4 9 0s6 4 9 0" stroke-linecap="round"/></svg><span style="width:64px;font-size:15px;color:#7A736A">材质</span><span style="flex:1;font-size:15px;font-weight:500;color:#1A1714">亚麻</span><span style="font-size:14px;color:#A7A09A">改一下</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C3BCB0" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="press" onClick="{{ openCategory }}" style="width:100%;display:flex;align-items:center;gap:12px;padding:15px 0;border:none;border-bottom:1px solid #EBE3D5;background:none;cursor:pointer;font-family:inherit;text-align:left"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A7F6E" stroke-width="1.6"><circle cx="12" cy="8" r="3.2"/><path d="M6 20c.6-3 3-4.5 6-4.5s5.4 1.5 6 4.5" stroke-linecap="round"/></svg><span style="width:64px;font-size:15px;color:#7A736A">场合</span><span style="flex:1;font-size:15px;font-weight:500;color:#1A1714">通勤 / 日常</span><span style="font-size:14px;color:#A7A09A">改一下</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C3BCB0" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="press" onClick="{{ openCategory }}" style="width:100%;display:flex;align-items:center;gap:12px;padding:15px 0;border:none;background:none;cursor:pointer;font-family:inherit;text-align:left"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A7F6E" stroke-width="1.6"><path d="M9 4l3 2 3-2 5 3-2 4-2-1v9H8v-9L6 9 4 5l5-1Z" stroke-linejoin="round"/></svg><span style="width:64px;font-size:15px;color:#7A736A">正式度</span><span style="flex:1;font-size:15px;font-weight:500;color:#1A1714">适中</span><span style="font-size:14px;color:#A7A09A">改一下</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C3BCB0" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        <div class="iv" style="opacity:0;display:flex;align-items:center;justify-content:space-between;margin-top:24px"><span style="font-size:18px;font-weight:600;color:#1A1714">常和它一起穿</span><button onClick="{{ notImpl }}" style="display:flex;align-items:center;gap:3px;background:none;border:none;font-family:inherit;font-size:14px;color:#7A736A;cursor:pointer">查看全部<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7A736A" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+        <div class="iv" style="opacity:0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px">
+          <button class="press" onClick="{{ openShirt }}" style="border:none;background:#fff;border-radius:14px;padding:10px;cursor:pointer;font-family:inherit;box-shadow:0 1px 4px rgba(60,40,20,.05)"><div data-crop="khaki" style="height:82px"></div><div style="font-size:12px;color:#1A1714;margin-top:6px;text-align:left">驼色阔腿西裤</div><div style="font-size:11px;color:#3F8060;margin-top:2px;text-align:left">可穿</div></button>
+          <button class="press" onClick="{{ openShirt }}" style="border:none;background:#fff;border-radius:14px;padding:10px;cursor:pointer;font-family:inherit;box-shadow:0 1px 4px rgba(60,40,20,.05)"><div data-crop="loafers" style="height:82px"></div><div style="font-size:12px;color:#1A1714;margin-top:6px;text-align:left">深棕乐福鞋</div><div style="font-size:11px;color:#7A736A;margin-top:2px;text-align:left">穿过</div></button>
+          <button class="press" onClick="{{ openShirt }}" style="border:none;background:#fff;border-radius:14px;padding:10px;cursor:pointer;font-family:inherit;box-shadow:0 1px 4px rgba(60,40,20,.05)"><div data-crop="cardigan" style="height:82px"></div><div style="font-size:12px;color:#1A1714;margin-top:6px;text-align:left">米色羊毛开衫</div><div style="font-size:11px;color:#3F8060;margin-top:2px;text-align:left">可穿</div></button>
+        </div>
+        <button class="iv press" onClick="{{ toToday }}" style="opacity:0;margin-top:22px;width:100%;height:56px;border:none;border-radius:16px;background:#171310;color:#fff;font-size:17px;font-weight:600;cursor:pointer;font-family:inherit">用它搭一套</button>
+        <div class="iv" style="opacity:0;text-align:center;margin-top:14px"><button onClick="{{ notImpl }}" style="background:none;border:none;font-family:inherit;font-size:15px;color:#7A736A;cursor:pointer">编辑 · 删除</button></div>
+      </section>
+
+      <!-- MORE SCREENS -->
+
+    </div>
+
+    <!-- ============ TAB BAR ============ -->
+    <div ref="{{ tabbarRef }}" style="position:absolute;left:0;right:0;bottom:0;z-index:50;height:92px;padding:0 8px 22px;background:linear-gradient(180deg,rgba(250,247,240,0) 0%,rgba(250,247,240,.9) 40%,#FAF7F0 100%);display:flex;align-items:flex-end;justify-content:space-around">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+        <button onClick="{{ t.go }}" style="flex:1;border:none;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;font-family:inherit">
+          <span ref="{{ t.icon }}"></span>
+          <span style="font-size:11px;font-weight:500" ref="{{ t.lab }}">{{ t.name }}</span>
+        </button>
+      </sc-for>
+    </div>
+
+    <!-- ============ SHEET HOST ============ -->
+    <div ref="{{ sheetHostRef }}" style="position:absolute;inset:0;z-index:80;display:none">
+      <div ref="{{ scrimRef }}" onClick="{{ closeSheet }}" style="position:absolute;inset:0;background:rgba(26,23,20,.36);opacity:0"></div>
+      <div ref="{{ sheetRef }}" style="position:absolute;left:0;right:0;bottom:0;background:#FAF7F0;border-radius:28px 28px 0 0;transform:translateY(102%);box-shadow:0 -10px 40px rgba(0,0,0,.18);max-height:88%;overflow-y:auto;padding:12px 22px calc(28px + env(safe-area-inset-bottom))">
+        <div style="width:38px;height:5px;border-radius:3px;background:#E5DFD2;margin:2px auto 12px"></div>
+        <div ref="{{ sheetBodyRef }}"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { screen: 'today' };
+
+  // ---- data ----
+  G = {
+    shirt:    { src:'ref/307a7c75.png', box:[0.115,0.325,0.455,0.475] },
+    khaki:    { src:'ref/307a7c75.png', box:[0.55,0.315,0.905,0.475] },
+    loafers:  { src:'ref/307a7c75.png', box:[0.135,0.525,0.45,0.635] },
+    knit:     { src:'ref/307a7c75.png', box:[0.565,0.505,0.885,0.635] },
+    dress:    { src:'ref/307a7c75.png', box:[0.19,0.675,0.41,0.825] },
+    tote:     { src:'ref/307a7c75.png', box:[0.555,0.685,0.905,0.825] },
+    sweater:  { src:'ref/a678a37a.png', box:[0.10,0.30,0.375,0.495] },
+    charcoal: { src:'ref/a678a37a.png', box:[0.395,0.285,0.625,0.515] },
+    loafers2: { src:'ref/a678a37a.png', box:[0.655,0.365,0.935,0.485] },
+    cardigan: { src:'uploads/exec-11ba3d28-b2b7-4048-9f5d-82dfdf7f3dda.png', box:[0.56,0.24,0.93,0.47] },
+    sneakers: { src:'uploads/exec-11ba3d28-b2b7-4048-9f5d-82dfdf7f3dda.png', box:[0.10,0.49,0.32,0.63] },
+    flatlay:  { src:'uploads/exec-11ba3d28-b2b7-4048-9f5d-82dfdf7f3dda.png', box:[0.06,0.23,0.95,0.65] },
+    silk_shirt:{ src:'ref/d4b76723.png', box:[0.09,0.27,0.37,0.50] },
+    navy_skirt:{ src:'ref/d4b76723.png', box:[0.40,0.27,0.64,0.53] },
+    earrings: { src:'ref/d4b76723.png', box:[0.71,0.30,0.865,0.40] },
+    loafers_d:{ src:'ref/d4b76723.png', box:[0.66,0.41,0.94,0.53] },
+    inspo:    { src:'ref/d0ded744.png', box:[0.06,0.225,0.94,0.665] },
+  };
+  NAT = { 'ref/307a7c75.png':[853,1844], 'ref/a678a37a.png':[853,1844], 'uploads/exec-11ba3d28-b2b7-4048-9f5d-82dfdf7f3dda.png':[853,1844], 'ref/d4b76723.png':[853,1844], 'ref/d0ded744.png':[853,1844] };
+
+  OUTFITS = [
+    { top:['shirt','亚麻衬衫 · 米白'], bottom:['khaki','阔腿西装裤 · 驼色'], shoes:['loafers','乐福鞋 · 深棕'],
+      mood:'经典又清爽，适合闷热的通勤早晨。',
+      reasons:[
+        {ic:'temp', t:'28° 多云，体感偏闷，亚麻更透气。', s:'来源：天气'},
+        {ic:'shirt', t:'你最近常穿深色，这套更轻盈清爽。', s:'来源：穿着记录'},
+        {ic:'rain', t:'午后有阵雨，裤装更利落不易闷热。', s:'来源：天气规则'},
+      ]},
+    { top:['sweater','燕麦色针织衫'], bottom:['charcoal','深灰直筒西裤'], shoes:['loafers2','乐福鞋 · 深棕'],
+      mood:'沉稳有层次，走一天也自在。',
+      reasons:[
+        {ic:'temp', t:'午后转凉，加一件针织更稳妥。', s:'来源：天气'},
+        {ic:'shirt', t:'这条深灰西裤最近常穿，状态在线。', s:'来源：穿着记录'},
+        {ic:'rain', t:'深浅有层次，通勤也不显沉闷。', s:'来源：搭配规则'},
+      ]},
+  ];
+
+  ICONS = {
+    temp:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.8"><path d="M10 13.5V5a2 2 0 1 1 4 0v8.5a4 4 0 1 1-4 0Z" stroke-linejoin="round"/></svg>',
+    shirt:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.7"><path d="M9 3l3 2 3-2 5 3-2 4-2-1v9H8v-9l-2 1-2-4 5-3Z" stroke-linejoin="round"/></svg>',
+    rain:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.7"><path d="M6 13a4 4 0 0 1 .6-7.96A5.5 5.5 0 0 1 17.5 6 3.5 3.5 0 0 1 18 13H6Z" stroke-linejoin="round"/><path d="M8 17l-1 2M12 17l-1 2M16 17l-1 2" stroke-linecap="round"/></svg>',
+  };
+
+  reduced() { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+
+  fitDevice = () => {
+    const d = this.deviceRef; if (!d) return;
+    const s = Math.min(1, (window.innerHeight-24)/852, (window.innerWidth-24)/393);
+    d.style.transform = `scale(${s})`;
+  };
+
+  fillGarment(el, key) {
+    const g = this.G[key]; if (!g) return;
+    const [NW,NH] = this.NAT[g.src]; const [x0,y0,x1,y1] = g.box;
+    const tw = el.clientWidth, th = el.clientHeight;
+    if (!tw || !th) return;
+    const cw=(x1-x0)*NW, ch=(y1-y0)*NH;
+    const sc = Math.min(tw/cw, th/ch);
+    const dispW=cw*sc, dispH=ch*sc;
+    el.style.backgroundImage = `url("${g.src}")`;
+    el.style.backgroundRepeat = 'no-repeat';
+    el.style.backgroundSize = `${NW*sc}px ${NH*sc}px`;
+    el.style.backgroundPosition = `${-x0*NW*sc + (tw-dispW)/2}px ${-y0*NH*sc + (th-dispH)/2}px`;
+    const mode = el.dataset.mask || 'ellipse';
+    const masks = {
+      ellipse: 'radial-gradient(ellipse 74% 76% at 50% 48%, #000 62%, transparent 100%)',
+      soft: 'radial-gradient(ellipse 96% 94% at 50% 50%, #000 82%, transparent 100%)',
+      none: 'none',
+    };
+    el.style.webkitMaskImage = masks[mode]; el.style.maskImage = masks[mode];
+  }
+
+  paintOutfit(variant, animate) {
+    const o = this.OUTFITS[variant]; const cv = this.canvasRef; if (!cv) return;
+    ['top','bottom','shoes'].forEach(slot => {
+      const gm = cv.querySelector(`.gm[data-slot="${slot}"]`);
+      const gl = cv.querySelector(`.gl[data-slot="${slot}"]`);
+      if (gm) this.fillGarment(gm, o[slot][0]);
+      if (gl) gl.textContent = o[slot][1];
+    });
+    if (this.moodRef) this.moodRef.textContent = o.mood;
+    this.renderReasons(o.reasons);
+  }
+
+  renderReasons(reasons) {
+    const box = this.reasonsRef; if (!box) return;
+    box.innerHTML = '';
+    reasons.forEach((r,i) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:11px;padding:11px 4px;border-bottom:1px solid #F4EFE6;opacity:0;transform:translateY(10px);transition:opacity .45s ease, transform .45s cubic-bezier(.22,.61,.36,1)';
+      if (i === reasons.length-1) row.style.borderBottom = 'none';
+      row.innerHTML = `<span style="flex:none;width:32px;height:32px;border-radius:50%;background:#F4E8D1;display:flex;align-items:center;justify-content:center">${this.ICONS[r.ic]}</span>`
+        + `<span style="flex:1;font-size:14px;line-height:20px;color:#3F3A33">${r.t}</span>`
+        + `<span style="flex:none;font-size:12px;color:#A7A09A">${r.s}</span>`;
+      box.appendChild(row);
+    });
+  }
+
+  animateReasons(baseDelay) {
+    const box = this.reasonsRef; if (!box) return;
+    const rows = [...box.children];
+    rows.forEach((row,i) => {
+      if (this.reduced()) { row.style.opacity='1'; row.style.transform='none'; return; }
+      setTimeout(()=>{ row.style.opacity='1'; row.style.transform='translateY(0)'; }, (baseDelay||0) + i*90);
+    });
+  }
+
+  // JS/setTimeout-driven reveal: plays in any tab and re-triggers on every entry
+  revealToday() {
+    const scr = this.todayRef; if (!scr) return;
+    const reduced = this.reduced();
+    const rvs = [...scr.querySelectorAll('.rv, .rq')];
+    rvs.forEach((el,i) => {
+      el.style.animation = 'none';
+      if (reduced) { el.style.opacity='1'; el.style.transform='none'; return; }
+      el.style.opacity='0'; el.style.transform='translateY(14px)';
+      el.style.transition='opacity .55s ease, transform .55s cubic-bezier(.22,.61,.36,1)';
+      setTimeout(()=>{ el.style.opacity='1'; el.style.transform='translateY(0)'; }, 40 + i*85);
+    });
+    const gms = [...this.canvasRef.querySelectorAll('.gm')];
+    gms.forEach((el,i) => {
+      el.style.animation='none';
+      if (reduced) { el.style.opacity='1'; el.style.transform='none'; return; }
+      el.style.opacity='0'; el.style.transform='translateY(16px) scale(.97)';
+      el.style.transition='opacity .5s ease, transform .55s cubic-bezier(.22,.61,.36,1)';
+      setTimeout(()=>{ el.style.opacity='1'; el.style.transform='translateY(0) scale(1)'; }, 240 + i*100);
+    });
+    const gls = [...this.canvasRef.querySelectorAll('.gl')];
+    gls.forEach((el,i) => {
+      el.style.animation='none';
+      if (reduced) { el.style.opacity='1'; return; }
+      el.style.opacity='0'; el.style.transition='opacity .5s ease';
+      setTimeout(()=>{ el.style.opacity='1'; }, 460 + i*100);
+    });
+    this.animateReasons(reduced ? 0 : 640);
+    this.setRing(0.75, !reduced);
+  }
+
+  setRing(frac, animate) {
+    const r = this.ringRef; if (!r) return;
+    const C = 175.9;
+    r.style.animation = 'none';
+    if (animate) {
+      r.style.transition = 'none'; r.style.strokeDashoffset = C;
+      setTimeout(()=>{ r.style.transition = 'stroke-dashoffset 1.15s cubic-bezier(.4,0,.2,1)'; r.style.strokeDashoffset = C*(1-frac); }, 560);
+    } else { r.style.transition='none'; r.style.strokeDashoffset = C*(1-frac); }
+  }
+
+  // fill garment crops once layout is ready; CSS drives the reveal choreography
+  mountPaint(tries) {
+    tries = tries || 0;
+    const cv = this.canvasRef;
+    const gm = cv && cv.querySelector('.gm');
+    if ((!gm || !gm.clientWidth) && tries < 40) { setTimeout(()=>this.mountPaint(tries+1), 40); return; }
+    this.paintOutfit(this._variant || 0, false);
+    this.fillAllCrops();
+    // safety: ensure final visible state even where CSS animations are disabled
+    clearTimeout(this._settle);
+    this._settle = setTimeout(()=>this.forceVisible(), 2000);
+  }
+
+  fillAllCrops() {
+    document.querySelectorAll('[data-crop]').forEach(el => {
+      if (el.clientWidth) this.fillGarment(el, el.getAttribute('data-crop'));
+    });
+  }
+
+  forceVisible() {
+    const scr = this.todayRef; if (!scr) return;
+    scr.querySelectorAll('.rv,.rq,.gl,.gm').forEach(e=>{ e.style.opacity = '1'; });
+    if (this.ringRef) this.ringRef.style.strokeDashoffset = '44';
+  }
+
+  onSwap = () => {
+    if (this._swapping) return; this._swapping = true;
+    const next = (this._variant===0?1:0); this._variant = next;
+    const gms = this.canvasRef.querySelectorAll('.gm');
+    const gls = this.canvasRef.querySelectorAll('.gl');
+    if (this.reduced()) { this.paintOutfit(next,false); this._swapping=false; return; }
+    gms.forEach((el,i)=>{ el.style.transition='opacity .22s ease, transform .28s ease'; setTimeout(()=>{el.style.opacity='0';el.style.transform='translateY(8px) scale(.97)';}, i*40); });
+    gls.forEach(el=> el.style.opacity='0');
+    setTimeout(()=>{
+      this.paintOutfit(next,true);
+      gms.forEach((el,i)=> setTimeout(()=>{el.style.opacity='1';el.style.transform='translateY(0) scale(1)';}, i*90));
+      gls.forEach((el,i)=> setTimeout(()=>el.style.opacity='1', 300+i*90));
+      this.toast('已换一套');
+      this._swapping=false;
+    }, 300);
+  };
+
+  toast(msg) {
+    let t = this._toast;
+    if (!t) { t = document.createElement('div'); this._toast=t; this.deviceRef.appendChild(t);
+      t.style.cssText='position:absolute;left:50%;bottom:120px;transform:translateX(-50%) translateY(10px);z-index:90;background:rgba(23,19,16,.92);color:#fff;font-size:14px;padding:10px 18px;border-radius:999px;opacity:0;transition:opacity .28s ease, transform .28s ease;pointer-events:none;white-space:nowrap'; }
+    t.textContent = msg; t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)';
+    clearTimeout(this._toastT); this._toastT=setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(10px)'; }, 1500);
+  }
+
+  onWear = () => this.toast('好的，今天就穿这套 ✓');
+  onRing = () => this.openSheet('leavetime');
+  onInsight = () => this.setScreen('outfit-detail');
+  onDetail = () => this.setScreen('outfit-detail');
+  onDislike = () => this.openSheet('feedback');
+  onAsk = () => this.openSheet('override');
+
+  // ---------- router ----------
+  screenEl(name){ return this.deviceRef.querySelector('section[data-screen="'+name+'"]'); }
+  allScreens(){ return [...this.deviceRef.querySelectorAll('section[data-screen]')]; }
+
+  setScreen(name, dir){
+    const target = this.screenEl(name); if(!target) return;
+    const prev = this._screen;
+    this.allScreens().forEach(s=>{ if(s!==target) s.style.display='none'; });
+    target.style.display = target.dataset.disp || 'block';
+    target.scrollTop = 0;
+    this._screen = name;
+    const appTabs = ['today','wardrobe','ask','profile'];
+    this.tabbarRef.style.display = appTabs.includes(name) ? 'flex' : 'none';
+    this.updateTabbar(name);
+    setTimeout(()=>{
+      if(name==='item-detail') this.fillItem();
+      this.fillAllCrops();
+      if(name==='today'){ this.paintOutfit(this._variant||0,false); this.revealToday(); clearTimeout(this._todayPin); this._todayPin=setTimeout(()=>this.forceVisible(), 2200); }
+      else this.enterScreen(target);
+      if(name==='ob-import') this.runImport();
+      if(name==='ob-welcome' && !this._skyInit){ this._skyInit=true; this.initSky(); }
+    }, 20);
+  }
+
+  fillItem(){
+    const it = this._item || {key:'shirt', name:'米白亚麻衬衫', meta:'上衣 · 米白 · 春夏'};
+    if(this.itemImgRef) this.itemImgRef.dataset.crop = it.key;
+    if(this.itemTitleRef) this.itemTitleRef.textContent = it.name;
+    if(this.itemMetaRef) this.itemMetaRef.textContent = it.meta;
+  }
+
+  enterScreen(target){
+    const items = [...target.querySelectorAll('.ob,.sv,.mv,.dv,.iv,.pv')];
+    const reduced = this.reduced();
+    items.forEach((el,i)=>{
+      el.style.animation='none';
+      if(reduced){ el.style.opacity='1'; el.style.transform='none'; return; }
+      el.style.opacity='0'; el.style.transform='translateY(12px)';
+      el.style.transition='opacity .5s ease, transform .5s cubic-bezier(.22,.61,.36,1)';
+      setTimeout(()=>{ el.style.opacity='1'; el.style.transform='translateY(0)'; }, 30 + i*55);
+    });
+    // safety: pin to final visible state even where animations don't run
+    clearTimeout(this._enterPin);
+    this._enterPin = setTimeout(()=>{ items.forEach(el=>{ el.style.transition='none'; el.style.opacity='1'; el.style.transform='none'; }); }, 1700);
+  }
+
+  runImport(){
+    if(!this.importBarRef) return;
+    this.importBarRef.style.transition='none'; this.importBarRef.style.width='12%';
+    setTimeout(()=>{ this.importBarRef.style.transition='width 1.5s cubic-bezier(.4,0,.2,1)'; this.importBarRef.style.width='67%'; }, 420);
+  }
+
+  updateTabbar(name){
+    const ids=['today','wardrobe','ask','profile'];
+    ids.forEach(id=>{
+      const active = id===name;
+      if(this.tabIcon && this.tabIcon[id]) this.tabIcon[id].innerHTML=this.TABICON(id,active);
+      if(this.tabLab && this.tabLab[id]) this.tabLab[id].style.color = active?'#B08D5B':'#A7A09A';
+    });
+  }
+
+  // onboarding nav
+  goAdd = () => this.setScreen('ob-add');
+  goImport = () => this.setScreen('ob-import');
+  goConfirm = () => this.setScreen('ob-confirm');
+  goSlotGap = () => this.setScreen('ob-slotgap');
+  goMemory = () => this.setScreen('ob-memory');
+  goFirst = () => this.setScreen('ob-first');
+  slotAdd = () => { this.openSheet('add'); };
+  toWelcome = () => this.setScreen('ob-welcome');
+  toToday = () => this.setScreen('today');
+  toWardrobe = () => this.setScreen('wardrobe');
+  onCamera = () => { this.openSheet('permission'); };
+  toMemory = () => this.setScreen('memory');
+  backProfile = () => this.setScreen(this._privReturn || 'profile');
+  toPrivacy = () => { this._privReturn = (this._screen==='ob-welcome') ? 'ob-welcome' : 'profile'; this.setScreen('privacy'); };
+  openShirt = () => this.openItem('shirt','米白亚麻衬衫','上衣 · 米白 · 春夏');
+  openItem = (key,name,meta) => {
+    this._item = {key,name,meta};
+    this.setScreen('item-detail');
+  };
+  notImpl = () => this.toast('原型内暂未接入');
+
+  // ---------- sheets ----------
+  openAdd = () => this.openSheet('add');
+  openFilter = () => this.openSheet('filter');
+  openLeaveTime = () => this.openSheet('leavetime');
+  openClear = () => this.openSheet('clear');
+  openSheet(key, arg){
+    const body = this.sheetBodyRef; body.innerHTML='';
+    const node = this.buildSheet(key, arg);
+    body.appendChild(node);
+    const host=this.sheetHostRef, scrim=this.scrimRef, sheet=this.sheetRef;
+    host.style.display='block';
+    scrim.style.transition='none'; scrim.style.opacity='0';
+    sheet.style.transition='none'; sheet.style.transform='translateY(102%)';
+    sheet.scrollTop=0;
+    setTimeout(()=>{
+      this.fillAllCrops();
+      if(this.reduced()){ scrim.style.opacity='1'; sheet.style.transform='translateY(0)'; return; }
+      scrim.style.transition='opacity .3s ease'; scrim.style.opacity='1';
+      sheet.style.transition='transform .44s cubic-bezier(.22,.61,.36,1)'; sheet.style.transform='translateY(0)';
+    }, 20);
+  }
+  closeSheet = () => {
+    const host=this.sheetHostRef, scrim=this.scrimRef, sheet=this.sheetRef;
+    if(this.reduced()){ host.style.display='none'; return; }
+    scrim.style.opacity='0'; sheet.style.transform='translateY(102%)';
+    setTimeout(()=>{ host.style.display='none'; }, 400);
+  };
+
+  sheetHead(title, sub){
+    return '<div style="font-size:22px;font-weight:700;color:#1A1714">'+title+'</div>'
+      + (sub?'<div style="margin-top:6px;font-size:15px;color:#7A736A">'+sub+'</div>':'');
+  }
+  btnDark(label){ return '<button data-act="close" style="width:100%;height:54px;border:none;border-radius:15px;background:#171310;color:#fff;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit">'+label+'</button>'; }
+  btnGhost(label){ return '<button data-act="close" style="width:100%;height:54px;border:1.5px solid #E5DFD2;border-radius:15px;background:#fff;color:#1A1714;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:10px">'+label+'</button>'; }
+
+  buildSheet(key, arg){
+    const d=document.createElement('div'); d.style.paddingBottom='6px';
+    if(key==='permission'){
+      d.innerHTML = this.sheetHead('允许使用相机','用来拍下你的衣物并自动识别。照片只用于生成你的衣橱，可随时在设置里删除。')
+        + '<div style="height:18px"></div>'
+        + '<div style="display:flex;flex-direction:column;gap:12px;align-items:center;margin:6px 0 20px"><div style="width:64px;height:64px;border-radius:20px;background:#F4E8D1;display:flex;align-items:center;justify-content:center"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.6"><path d="M4 8h3l1.5-2h7L17 8h3v11H4V8Z" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4"/></svg></div></div>'
+        + '<button data-act="camera" style="width:100%;height:54px;border:none;border-radius:15px;background:#171310;color:#fff;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit">允许并继续</button>'
+        + this.btnGhost('暂不');
+      this.wire(d, { camera:()=>{ this.closeSheet(); setTimeout(()=>this.setScreen('ob-import'), 320); } });
+    }
+    else if(key==='add'){
+      const row=(ic,t,s)=>'<button data-act="close" style="width:100%;display:flex;align-items:center;gap:14px;padding:15px 4px;border:none;border-bottom:1px solid #EFE8DC;background:none;cursor:pointer;font-family:inherit;text-align:left"><span style="flex:none;width:44px;height:44px;border-radius:13px;background:#F4E8D1;display:flex;align-items:center;justify-content:center">'+ic+'</span><span style="flex:1"><span style="display:block;font-size:16px;color:#1A1714">'+t+'</span><span style="display:block;font-size:13px;color:#A7A09A;margin-top:2px">'+s+'</span></span></button>';
+      d.innerHTML = this.sheetHead('添加衣物','选最省事的方式。')
+        + '<div style="margin-top:12px">'
+        + row('<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.6"><path d="M4 8h3l1.5-2h7L17 8h3v11H4V8Z" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.2"/></svg>','拍下衣服','适合平铺连拍')
+        + row('<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="m5 17 5-4 3 2 3-3 3 3" stroke-linejoin="round"/></svg>','从相册选择','支持多张')
+        + row('<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.6"><path d="M9 4l3 2 3-2 5 3-2 4-2-1v9H8v-9L6 9 4 5l5-1Z" stroke-linejoin="round"/></svg>','从穿搭照提取','一张照片识别多件')
+        + row('<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.6"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" stroke-linecap="round" stroke-linejoin="round"/></svg>','粘贴商品链接','添加正在考虑的单品')
+        + '</div><div style="height:8px"></div>' + this.btnGhost('取消');
+    }
+    else if(key==='filter'){
+      const chip=(t,on)=>'<span data-chip="1" style="display:flex;align-items:center;gap:6px;padding:9px 15px;border-radius:12px;font-size:14px;cursor:pointer;'+(on?'background:#F4E8D1;color:#1A1714':'background:#fff;border:1px solid #E5DFD2;color:#3F3A33')+'">'+(on?'<svg width=\'15\' height=\'15\' viewBox=\'0 0 24 24\' fill=\'#B08D5B\'><path d=\'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-1 14-4-4 1.4-1.4L11 13.2l4.6-4.6L17 10l-6 6Z\'/></svg>':'')+t+'</span>';
+      const chipC=(t,dot,on)=>'<span data-chip="1" style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:12px;font-size:14px;cursor:pointer;'+(on?'background:#F4E8D1;color:#1A1714':'background:#fff;border:1px solid #E5DFD2;color:#3F3A33')+'"><span style="width:15px;height:15px;border-radius:50%;background:'+dot+';border:1px solid rgba(0,0,0,.1)"></span>'+t+'</span>';
+      const grp=(title,chips)=>'<div style="margin-top:20px"><div style="font-size:15px;font-weight:600;color:#1A1714;margin-bottom:11px">'+title+'</div><div style="display:flex;flex-wrap:wrap;gap:9px">'+chips+'</div></div>';
+      d.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between"><div style="font-size:22px;font-weight:700;color:#1A1714">筛选衣物</div><button data-act="close" style="width:32px;height:32px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7A736A" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button></div>'
+        + grp('品类', chip('全部',true)+chip('上衣')+chip('下装')+chip('外套')+chip('连衣裙')+chip('鞋'))
+        + grp('状态', chip('可穿',true)+chip('待洗')+chip('暂不适合'))
+        + grp('季节', chip('春秋',true)+chip('夏')+chip('冬'))
+        + grp('颜色', chipC('米白','#F1E9D9',true)+chipC('驼色','#C6A06A')+chipC('黑色','#2A241E')+chipC('蓝色','#5B7C99')+chipC('其他','#B8B2A8'))
+        + '<div style="display:flex;align-items:center;gap:14px;margin-top:26px"><button data-act="close" style="flex:none;background:none;border:none;font-family:inherit;font-size:16px;color:#7A736A;cursor:pointer;padding:14px 6px">清除</button><button data-act="close" style="flex:1;height:54px;border:none;border-radius:15px;background:#171310;color:#fff;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit">查看 8 件</button></div>';
+      this.wireChips(d);
+    }
+    else if(key==='override'){
+      const card=(ic,t)=>'<button data-ov="'+t+'" data-on="0" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#fff;border:1.5px solid #E5DFD2;border-radius:16px;padding:22px 10px;cursor:pointer;font-family:inherit"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.5">'+ic+'</svg><span style="font-size:15px;color:#1A1714">'+t+'</span></button>';
+      d.innerHTML = '<div style="display:flex;align-items:flex-start;justify-content:space-between"><div><div style="font-size:22px;font-weight:700;color:#1A1714">今天有什么特别的吗？</div><div style="margin-top:6px;font-size:15px;color:#7A736A">赶时间可以直接选一个。</div></div><button data-act="close" style="flex:none;width:32px;height:32px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-top:2px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7A736A" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button></div>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px">'
+        + card('<rect x="5" y="7" width="14" height="12" rx="2"/><path d="M9 7V5h6v2" stroke-linecap="round"/>','有会议')
+        + card('<path d="M4 20l5-13 8 8-13 5Z" stroke-linejoin="round"/>','想舒服一点')
+        + card('<path d="M10 3h4l2 5-2 2 2 9H8l2-9-2-2 2-5Z" stroke-linejoin="round"/>','不穿裙子')
+        + card('<path d="M13 4l-2 6h4l-3 10" stroke-linecap="round" stroke-linejoin="round"/>','要走很多路')
+        + '</div>'
+        + '<div style="display:flex;align-items:center;gap:10px;margin-top:18px;color:#A7A09A;font-size:13px"><span style="flex:1;height:1px;background:#EBE3D5"></span>还可以打字<span style="flex:1;height:1px;background:#EBE3D5"></span></div>'
+        + '<div style="display:flex;align-items:center;gap:9px;margin-top:14px;background:#fff;border:1px solid #E5DFD2;border-radius:14px;padding:13px 15px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5" stroke-linecap="round"/></svg><span style="flex:1;font-size:15px;color:#A7A09A">补充其他情况…</span></div>'
+        + '<div style="height:20px"></div>'
+        + '<button data-act="rerun" style="width:100%;height:54px;border:none;border-radius:15px;background:#171310;color:#fff;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit">按这个重新推荐</button>'
+        + '<div style="text-align:center;margin-top:8px"><button data-act="close" style="background:none;border:none;font-family:inherit;font-size:16px;color:#7A736A;cursor:pointer;padding:12px">取消</button></div>';
+      this.wireOverride(d);
+    }
+    else if(key==='category'){
+      const opts=[['上衣','<path d=\'M9 4l3 2 3-2 5 3-2 4-2-1v9H8v-9L6 9 4 5l5-1Z\' stroke-linejoin=\'round\'/>',true],['下装','<path d=\'M8 3h8l-1 6 2 12H7L9 9 8 3Z\' stroke-linejoin=\'round\'/>'],['外套','<path d=\'M7 4l5 3 5-3 3 3-2 3v9h-4v-6h-4v6H6v-9L4 7l3-3Z\' stroke-linejoin=\'round\'/>'],['连衣裙','<path d=\'M10 3h4l2 5-2 2 2 9H8l2-9-2-2 2-5Z\' stroke-linejoin=\'round\'/>'],['鞋','<path d=\'M3 15l1-6 5 3 8 1 4 2v3H3v-3Z\' stroke-linejoin=\'round\'/>']];
+      const rows = opts.map((o,i)=>'<button data-radio="'+i+'" style="width:100%;display:flex;align-items:center;gap:13px;padding:15px 16px;margin-bottom:10px;border-radius:15px;border:none;cursor:pointer;font-family:inherit;text-align:left;background:'+(o[2]?'#F4E8D1':'#fff')+'"><span style="flex:none;width:34px;height:34px;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8A6A3A" stroke-width="1.6">'+o[1]+'</svg></span><span style="flex:1;font-size:16px;color:#1A1714">'+o[0]+'</span><span data-dot style="flex:none;width:22px;height:22px;border-radius:50%;border:2px solid '+(o[2]?'#B08D5B':'#D6CFC2')+';display:flex;align-items:center;justify-content:center">'+(o[2]?'<span style=\'width:11px;height:11px;border-radius:50%;background:#B08D5B\'></span>':'')+'</span></button>').join('');
+      d.innerHTML = this.sheetHead('修改类别','选择最接近的一项。')
+        + '<div style="margin-top:16px">'+rows+'</div>'
+        + '<div style="height:6px"></div>' + this.btnDark('完成') + this.btnGhost('取消')
+        + '<div style="display:flex;align-items:center;gap:7px;justify-content:center;margin-top:16px;font-size:13px;color:#A7A09A"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="1.7"><path d="M12 3.5l1.8 4.4 4.7.4-3.6 3 1.1 4.6L12 17.7 8 18.4 9.1 15l-3.6-3 4.7-.4L12 3.5Z" stroke-linejoin="round"/></svg>其他字段也使用同一轻编辑方式。</div>';
+      this.wireRadios(d);
+    }
+    else if(key==='leavetime'){
+      d.innerHTML = this.sheetHead('你通常几点出门？','用来在早上合适的时间准备推荐，可以跳过。')
+        + '<div style="display:flex;align-items:center;justify-content:center;gap:14px;margin:22px 0 16px;background:#EEE6DA;border-radius:18px;padding:16px 18px"><button data-step="-" style="width:46px;height:46px;border-radius:50%;border:none;background:#fff;font-size:24px;color:#1A1714;cursor:pointer">−</button><span data-time style="flex:1;text-align:center;font-size:44px;font-weight:700;color:#1A1714;letter-spacing:-1px">9:00</span><button data-step="+" style="width:46px;height:46px;border-radius:50%;border:none;background:#fff;font-size:24px;color:#1A1714;cursor:pointer">+</button></div>'
+        + '<div style="display:flex;gap:10px;margin-bottom:22px">'
+        + ['8:00','8:30','9:00'].map(t=>'<div data-preset="'+t+'" style="flex:1;text-align:center;padding:16px 0;border-radius:14px;font-size:16px;cursor:pointer;'+(t==='9:00'?'background:#F4E8D1;border:1.5px solid #B08D5B;color:#8A6A3A':'background:#fff;border:1.5px solid #E5DFD2;color:#3F3A33')+'">'+t+'</div>').join('')
+        + '</div>' + this.btnDark('保存时间') + this.btnGhost('跳过')
+        + '<div style="display:flex;align-items:center;gap:7px;justify-content:center;margin-top:16px;font-size:13px;color:#A7A09A"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01" stroke-linecap="round"/></svg>之后可以在「我的」里修改。</div>';
+      this.wireTime(d);
+    }
+    else if(key==='clear'){
+      d.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:6px"><div style="width:60px;height:60px;border-radius:50%;background:#F6DDD6;display:flex;align-items:center;justify-content:center;margin-bottom:16px"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#B85C4A" stroke-width="1.8"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 11v5" stroke-linecap="round"/></svg></div>'
+        + '<div style="font-size:22px;font-weight:700;color:#1A1714">清空全部数据？</div>'
+        + '<div style="margin-top:10px;font-size:15px;line-height:22px;color:#6B645B;max-width:300px">将删除你的衣物、使用行为和 Aidrobe 学到的偏好，相当于重新开始。账号会保留。</div></div>'
+        + '<div style="margin-top:20px;background:#F5EFE6;border-radius:16px;padding:4px 16px">'
+        + '<div style="display:flex;align-items:center;gap:11px;padding:13px 0;border-bottom:1px solid #EBE3D5;font-size:15px;color:#3F3A33"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A7F6E" stroke-width="1.6"><path d="M9 4l3 2 3-2 5 3-2 4-2-1v9H8v-9L6 9 4 5l5-1Z" stroke-linejoin="round"/></svg>衣物与图片</div>'
+        + '<div style="display:flex;align-items:center;gap:11px;padding:13px 0;border-bottom:1px solid #EBE3D5;font-size:15px;color:#3F3A33"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A7F6E" stroke-width="1.6"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 9h6M9 13h6M9 17h4" stroke-linecap="round"/></svg>穿着和反馈记录</div>'
+        + '<div style="display:flex;align-items:center;gap:11px;padding:13px 0;font-size:15px;color:#3F3A33"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A7F6E" stroke-width="1.6"><path d="M12 20s-7-4.4-7-9.3A3.7 3.7 0 0 1 12 8a3.7 3.7 0 0 1 7 2.7C19 15.6 12 20 12 20Z" stroke-linejoin="round"/></svg>学到的偏好</div>'
+        + '</div>'
+        + '<div style="height:20px"></div>'
+        + '<button data-act="cleared" style="width:100%;height:54px;border:none;border-radius:15px;background:#B85C4A;color:#fff;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit">确认清空</button>'
+        + this.btnGhost('取消')
+        + '<div style="display:flex;align-items:center;gap:7px;justify-content:center;margin-top:16px;font-size:13px;color:#A7A09A"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="1.7"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke-linecap="round"/></svg>此操作无法撤销。</div>';
+      this.wire(d, { cleared:()=>{ this.closeSheet(); setTimeout(()=>this.toast('已清空数据'),200); } });
+    }
+    else if(key==='feedback'){
+      const rc=(ic,t)=>'<button data-reason="'+t+'" style="display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid #E5DFD2;border-radius:14px;padding:15px 13px;cursor:pointer;font-family:inherit;text-align:left"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.5">'+ic+'</svg><span style="flex:1;font-size:15px;color:#1A1714">'+t+'</span><span data-ck style="display:none;width:18px;height:18px;border-radius:50%;background:#B08D5B;align-items:center;justify-content:center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M5 12l4.5 4.5L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>';
+      d.innerHTML = this.sheetHead('这套哪里不合适？','选一个最主要的原因，我会调整下一套。')
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px">'
+        + rc('<path d="M10 3h4l-1 4 2 3-3 11-3-11 2-3-1-4Z" stroke-linejoin="round"/>','太正式')
+        + rc('<path d="M3 15l1-6 5 3 8 1 4 2v3H3v-3Z" stroke-linejoin="round"/>','太休闲')
+        + rc('<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M6 6l1.4 1.4M16.6 16.6 18 18M18 6l-1.4 1.4M7.4 16.6 6 18" stroke-linecap="round"/>','太热')
+        + rc('<path d="M12 2v20M4 6l16 12M20 6 4 18" stroke-linecap="round"/>','太冷')
+        + rc('<circle cx="12" cy="12" r="8"/><circle cx="9" cy="10" r="1"/><circle cx="15" cy="10" r="1"/><circle cx="10" cy="15" r="1"/>','颜色不喜欢')
+        + rc('<circle cx="12" cy="8" r="3.2"/><path d="M6 20c.6-3 3-4.5 6-4.5s5.4 1.5 6 4.5" stroke-linecap="round"/>','不像我')
+        + rc('<path d="M12 7a2 2 0 1 0-2-2M12 7v2M4 18l8-6 8 6H4Z" stroke-linejoin="round"/>','刚穿过')
+        + '</div>'
+        + '<div style="margin-top:14px;background:#fff;border:1px solid #E5DFD2;border-radius:14px;padding:13px 14px;display:flex;align-items:center;gap:8px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#A7A09A" stroke-width="1.7"><path d="M4 20h4L18 10l-4-4L4 16v4Z" stroke-linejoin="round"/></svg><span style="flex:1;color:#A7A09A;font-size:14px">还有别的原因？（可选）</span><span style="color:#C3BCB0;font-size:12px">0/100</span></div>'
+        + '<div style="height:20px"></div>'
+        + '<button data-act="submit" style="width:100%;height:54px;border:none;border-radius:15px;background:#171310;color:#fff;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit">提交并换一套</button>'
+        + '<div style="text-align:center;margin-top:8px"><button data-act="close" style="background:none;border:none;font-family:inherit;font-size:16px;color:#7A736A;cursor:pointer;padding:12px">只提交反馈</button></div>';
+      this.wireFeedback(d);
+    }
+    return d;
+  }
+
+  wire(root, map){
+    root.querySelectorAll('[data-act]').forEach(b=>{
+      b.addEventListener('click',()=>{ const a=b.getAttribute('data-act'); if(a==='close') this.closeSheet(); else if(map&&map[a]) map[a](); });
+    });
+  }
+  wireChips(root){ root.querySelectorAll('[data-chip]').forEach(c=>c.addEventListener('click',()=>{ const on=c.style.background.indexOf('244, 232, 209')>-1||c.style.background.indexOf('#F4E8D1')>-1; if(on){c.style.background='#fff';c.style.border='1px solid #E5DFD2';c.style.color='#3F3A33';}else{c.style.background='#F4E8D1';c.style.color='#1A1714';c.style.border='none';} })); this.wire(root,{}); }
+  wireOverride(root){
+    const cards=[...root.querySelectorAll('[data-ov]')];
+    cards.forEach(c=>c.addEventListener('click',()=>{
+      const sel=c.getAttribute('data-on')==='1';
+      cards.forEach(x=>{ x.style.background='#fff'; x.style.borderColor='#E5DFD2'; x.setAttribute('data-on','0'); });
+      if(!sel){ c.style.background='#F4E8D1'; c.style.borderColor='#B08D5B'; c.setAttribute('data-on','1'); this._ovSel=c.getAttribute('data-ov'); } else this._ovSel=null;
+    }));
+    root.querySelectorAll('[data-act]').forEach(b=>b.addEventListener('click',()=>{
+      const a=b.getAttribute('data-act');
+      if(a==='rerun'){ this.closeSheet(); setTimeout(()=>{ this.toast(this._ovSel?('已按「'+this._ovSel+'」重新推荐'):'已重新推荐'); if(this._screen==='today') this.onSwap(); this._ovSel=null; },260); }
+      else this.closeSheet();
+    }));
+  }
+  wireRadios(root){
+    const rows=[...root.querySelectorAll('[data-radio]')];
+    rows.forEach(r=>r.addEventListener('click',()=>{
+      rows.forEach(x=>{ x.style.background='#fff'; const dot=x.querySelector('[data-dot]'); dot.style.border='2px solid #D6CFC2'; dot.innerHTML=''; });
+      r.style.background='#F4E8D1'; const dot=r.querySelector('[data-dot]'); dot.style.border='2px solid #B08D5B'; dot.innerHTML='<span style="width:11px;height:11px;border-radius:50%;background:#B08D5B"></span>';
+    }));
+    this.wire(root,{});
+  }
+  wireTime(root){
+    let mins=9*60; const label=root.querySelector('[data-time]');
+    const fmt=m=>Math.floor(m/60)+':'+String(m%60).padStart(2,'0');
+    const setP=t=>root.querySelectorAll('[data-preset]').forEach(p=>{ const on=p.getAttribute('data-preset')===t; p.style.background=on?'#F4E8D1':'#fff'; p.style.color=on?'#8A6A3A':'#3F3A33'; p.style.border=on?'1.5px solid #B08D5B':'1.5px solid #E5DFD2'; });
+    root.querySelector('[data-step="+"]').addEventListener('click',()=>{ mins=Math.min(23*60+30,mins+15); label.textContent=fmt(mins); setP(fmt(mins)); });
+    root.querySelector('[data-step="-"]').addEventListener('click',()=>{ mins=Math.max(0,mins-15); label.textContent=fmt(mins); setP(fmt(mins)); });
+    root.querySelectorAll('[data-preset]').forEach(p=>p.addEventListener('click',()=>{ const t=p.getAttribute('data-preset'); mins=parseInt(t)*60+parseInt(t.split(':')[1]); label.textContent=t; setP(t); }));
+    this.wire(root,{});
+  }
+  wireFeedback(root){
+    const cards=[...root.querySelectorAll('[data-reason]')];
+    cards.forEach(c=>c.addEventListener('click',()=>{
+      cards.forEach(x=>{ x.style.background='#fff'; x.style.borderColor='#E5DFD2'; const ck=x.querySelector('[data-ck]'); if(ck)ck.style.display='none'; });
+      c.style.background='#F4E8D1'; c.style.borderColor='#B08D5B'; const ck=c.querySelector('[data-ck]'); if(ck)ck.style.display='flex';
+      this._fbReason=c.getAttribute('data-reason');
+    }));
+    root.querySelectorAll('[data-act]').forEach(b=>b.addEventListener('click',()=>{
+      const a=b.getAttribute('data-act');
+      if(a==='submit'){ const r=this._fbReason||'不合适'; this.closeSheet(); setTimeout(()=>{ this.toast('记下了：'+r+' · 已换一套'); if(this._screen==='today') this.onSwap(); this._fbReason=null; }, 260); }
+      else this.closeSheet();
+    }));
+  }
+
+  // ---------- WebGL morning sky ----------
+  initSky(){
+    const cv=this.skyRef; if(!cv) return;
+    const dpr=Math.min(2, window.devicePixelRatio||1);
+    const resize=()=>{ cv.width=cv.clientWidth*dpr; cv.height=cv.clientHeight*dpr; };
+    let gl; try{ gl=cv.getContext('webgl')||cv.getContext('experimental-webgl'); }catch(e){}
+    if(!gl){ return; }
+    resize();
+    const vs='attribute vec2 p;void main(){gl_Position=vec4(p,0.0,1.0);}';
+    const fs='precision highp float;uniform vec2 u_res;uniform float u_t;'
+      +'void main(){vec2 uv=gl_FragCoord.xy/u_res.xy;'
+      +'vec3 cream=vec3(0.980,0.968,0.941);vec3 peach=vec3(0.968,0.886,0.780);vec3 gold=vec3(0.905,0.745,0.505);'
+      +'vec3 col=mix(peach,cream,smoothstep(0.15,0.95,uv.y));'
+      +'vec2 sun=vec2(0.5,0.96);float d=distance(uv*vec2(1.0,1.35),sun*vec2(1.0,1.35));'
+      +'float glow=smoothstep(0.85,0.0,d);col=mix(col,gold,glow*0.55);'
+      +'float c=sin(uv.x*5.0+u_t*0.12)*0.5+0.5;c*=sin(uv.y*3.0-u_t*0.09)*0.5+0.5;col+=c*0.015;'
+      +'float g2=smoothstep(0.0,0.4,uv.y);col=mix(cream,col,g2);'
+      +'gl_FragColor=vec4(col,1.0);}';
+    const mk=(t,s)=>{const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);return sh;};
+    const prog=gl.createProgram(); gl.attachShader(prog,mk(gl.VERTEX_SHADER,vs)); gl.attachShader(prog,mk(gl.FRAGMENT_SHADER,fs)); gl.linkProgram(prog); gl.useProgram(prog);
+    const buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,buf); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+    const loc=gl.getAttribLocation(prog,'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+    const uR=gl.getUniformLocation(prog,'u_res'), uT=gl.getUniformLocation(prog,'u_t');
+    const draw=(t)=>{ gl.viewport(0,0,cv.width,cv.height); gl.uniform2f(uR,cv.width,cv.height); gl.uniform1f(uT,t*0.001); gl.drawArrays(gl.TRIANGLES,0,3); };
+    draw(0);
+    const loop=(t)=>{ draw(t); this._skyRAF=requestAnimationFrame(loop); };
+    this._skyRAF=requestAnimationFrame(loop);
+    this._skyResize=()=>{ resize(); draw(performance.now()); };
+    window.addEventListener('resize',this._skyResize);
+  }
+
+  componentDidMount() {
+    this.fitDevice();
+    this._resize = () => this.fitDevice();
+    window.addEventListener('resize', this._resize);
+    this.tabIcon={}; this.tabLab={};
+    this._variant = 0;
+    this.initPress();
+    // start at onboarding welcome (sky inits lazily once welcome is visible)
+    setTimeout(()=>{ this.setScreen('ob-welcome'); }, 40);
+  }
+  initPress(){
+    const root=this.deviceRef; if(!root) return;
+    const down=(e)=>{ if(this.reduced())return; const el=e.target.closest('.press'); if(!el)return; el.__pt=el.style.transform||''; el.style.transition='transform .1s ease'; el.style.transform=(el.__pt?el.__pt+' ':'')+'scale(0.97)'; el.__isPressed=true; };
+    const up=()=>{ root.querySelectorAll('.press').forEach(el=>{ if(el.__isPressed){ el.style.transform=el.__pt||''; el.__isPressed=false; } }); };
+    root.addEventListener('pointerdown', down);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    this._pressUp=up;
+  }
+
+  componentWillUnmount(){ window.removeEventListener('resize', this._resize); if(this._skyResize) window.removeEventListener('resize',this._skyResize); if(this._skyRAF) cancelAnimationFrame(this._skyRAF); if(this._pressUp){ window.removeEventListener('pointerup',this._pressUp); window.removeEventListener('pointercancel',this._pressUp);} }
+
+  renderVals() {
+    const W=[['shirt','米色亚麻衬衫','上衣'],['khaki','驼色阔腿西裤','下装'],['loafers','深棕乐福鞋','鞋'],['knit','象牙白针织衫','上衣'],['sweater','燕麦色针织衫','上衣'],['charcoal','深灰直筒西裤','下装'],['cardigan','米色开衫','外套'],['sneakers','白色运动鞋','鞋']];
+    const mkTab = (id, name) => ({ name,
+      go: ()=>this.setScreen(id),
+      icon: (el)=>{ if(el){ this.tabIcon=this.tabIcon||{}; this.tabIcon[id]=el; el.innerHTML=this.TABICON(id, id===(this._screen||'today')); } },
+      lab: (el)=>{ if(el){ this.tabLab=this.tabLab||{}; this.tabLab[id]=el; el.style.color = id===(this._screen||'today')?'#B08D5B':'#A7A09A'; } } });
+    return {
+      deviceRef:(el)=>this.deviceRef=el,
+      todayRef:(el)=>this.todayRef=el,
+      canvasRef:(el)=>this.canvasRef=el,
+      reasonsRef:(el)=>this.reasonsRef=el,
+      moodRef:(el)=>this.moodRef=el,
+      ringRef:(el)=>this.ringRef=el,
+      tabbarRef:(el)=>this.tabbarRef=el,
+      sheetHostRef:(el)=>this.sheetHostRef=el,
+      scrimRef:(el)=>this.scrimRef=el,
+      sheetRef:(el)=>this.sheetRef=el,
+      sheetBodyRef:(el)=>this.sheetBodyRef=el,
+      skyRef:(el)=>this.skyRef=el,
+      importBarRef:(el)=>this.importBarRef=el,
+      askThreadRef:(el)=>this.askThreadRef=el,
+      askIdleRef:(el)=>this.askIdleRef=el,
+      askInputRef:(el)=>this.askInputRef=el,
+      itemImgRef:(el)=>this.itemImgRef=el,
+      itemTitleRef:(el)=>this.itemTitleRef=el,
+      itemMetaRef:(el)=>this.itemMetaRef=el,
+      onSwap:this.onSwap, onWear:this.onWear, onRing:this.onRing, onInsight:this.onInsight,
+      onDetail:this.onDetail, onDislike:this.onDislike, onAsk:this.onAsk, closeSheet:this.closeSheet,
+      goAdd:this.goAdd, goImport:this.goImport, goConfirm:this.goConfirm, goSlotGap:this.goSlotGap, goMemory:this.goMemory,
+      goFirst:this.goFirst, slotAdd:this.slotAdd, toWelcome:this.toWelcome, toToday:this.toToday, toWardrobe:this.toWardrobe,
+      onCamera:this.onCamera, openAdd:this.openAdd, openFilter:this.openFilter, openLeaveTime:this.openLeaveTime,
+      openClear:this.openClear, toMemory:this.toMemory, backProfile:this.backProfile, toPrivacy:this.toPrivacy, notImpl:this.notImpl,
+      openShirt:this.openShirt, openCategory:()=>this.openSheet('category'),
+      askExample:this.askExample, askParty:this.askParty,
+      wardrobeItems: W.map(([key,name,cat])=>({ key, name, cat, tap:()=>this.openItem(key, name, cat+' · 常用 · 春秋') })),
+      tabs:[ mkTab('today','今日'), mkTab('wardrobe','衣橱'), mkTab('ask','Ask'), mkTab('profile','我的') ],
+    };
+  }
+
+  askParty = () => this.buildAnswer('今晚有聚会，想有精神一点', '把今天这套换得更有精神一点',
+    [['silk_shirt','米白真丝衬衫',44],['navy_skirt','深藏青中长半裙',48],['earrings','小巧金色耳环',26],['loafers_d','深棕乐福鞋',34]],
+    [['top','深色下装更利落，但没有过度正式。'],['shoe','保留舒服的乐福鞋，走路也轻松。']],
+    '不想穿高跟鞋');
+
+  askExample = () => this.buildAnswer('今天要走很多路，换双舒服的鞋', '给你一套好走路的通勤搭配',
+    [['knit','象牙白针织衫',44],['charcoal','深灰直筒西裤',46],['loafers2','深棕乐福鞋',34]],
+    [['top','针织透气，走一天也自在。'],['shoe','乐福鞋比高跟更适合久走。']],
+    '再暖一点');
+
+  buildAnswer(userText, title, pieces, reasons, followChip){
+    const box=this.askThreadRef; if(!box) return;
+    if(this.askIdleRef){ this.askIdleRef.style.transition='opacity .3s ease, transform .3s ease, max-height .4s ease, margin .3s ease'; this.askIdleRef.style.opacity='0'; this.askIdleRef.style.transform='translateY(-6px)'; this.askIdleRef.style.maxHeight='0'; this.askIdleRef.style.overflow='hidden'; this.askIdleRef.style.margin='0'; this.askIdleRef.style.padding='0'; }
+    if(this.askInputRef) this.askInputRef.textContent = '再说一句…';
+    const reduced=this.reduced();
+    const q=document.createElement('div');
+    q.style.cssText='align-self:flex-end;max-width:80%;background:#171310;color:#fff;font-size:15px;line-height:21px;padding:11px 15px;border-radius:18px 18px 4px 18px;opacity:0;transform:translateY(8px);transition:opacity .35s ease,transform .35s ease';
+    q.textContent=userText; box.appendChild(q);
+    setTimeout(()=>{ q.style.opacity='1'; q.style.transform='none'; }, reduced?0:20);
+    const iconMap={ top:'<path d="M9 4l3 2 3-2 5 3-2 4-2-1v9H8v-9L6 9 4 5l5-1Z" stroke-linejoin="round"/>', shoe:'<path d="M3 15l1-6 5 3 8 1 4 2v3H3v-3Z" stroke-linejoin="round"/>' };
+    const piecesHtml = pieces.map(p=>{
+      const acc = p[0]==='earrings';
+      const colStyle = acc ? 'flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:6px' : 'flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:6px';
+      const imgStyle = acc ? 'width:46px;height:'+(p[2]*2.2)+'px' : 'align-self:stretch;height:'+(p[2]*2.2)+'px';
+      return '<div style="'+colStyle+'"><div data-crop="'+p[0]+'" style="'+imgStyle+'"></div><span style="font-size:11px;color:#7A736A;text-align:center">'+p[1]+'</span></div>';
+    }).join('');
+    const reasonsHtml = reasons.map(r=>'<div style="display:flex;align-items:center;gap:10px;padding:9px 0"><span style="flex:none;width:30px;height:30px;border-radius:50%;background:#F4E8D1;display:flex;align-items:center;justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.6">'+iconMap[r[0]]+'</svg></span><span style="flex:1;font-size:14px;line-height:20px;color:#3F3A33">'+r[1]+'</span></div>').join('');
+    const a=document.createElement('div');
+    a.style.cssText='align-self:stretch;background:#fff;border:1px solid #EFE8DC;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(60,40,20,.05);opacity:0;transform:translateY(10px);transition:opacity .45s ease,transform .45s cubic-bezier(.22,.61,.36,1)';
+    a.innerHTML='<div style="display:flex;align-items:center;gap:9px;margin-bottom:12px"><span style="width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FBF3E2,#D8B77A 62%,#B08D5B);box-shadow:0 0 0 4px rgba(216,183,122,.16)"></span><span style="flex:1;font-size:16px;font-weight:600;color:#1A1714">'+title+'</span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C3BCB0" stroke-width="1.7"><path d="M7 11v9H4v-9h3Zm3 0l2-6a2 2 0 0 1 4 .6V9h4a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 22 19h-9l-3-1v-7Z" stroke-linejoin="round"/></svg><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C3BCB0" stroke-width="1.7"><path d="M17 13V4h3v9h-3Zm-3 0l-2 6a2 2 0 0 1-4-.6V15H4a2 2 0 0 1-2-2.3l1.2-6A2 2 0 0 1 6 5h9l3 1v7Z" stroke-linejoin="round"/></svg></div>'
+      +'<div style="display:flex;align-items:flex-end;gap:8px;margin:2px 0 8px">'+piecesHtml+'</div>'
+      +'<div style="height:1px;background:#EFE8DC;margin:8px 0 4px"></div>'
+      +'<div style="font-size:15px;font-weight:600;color:#1A1714;margin:6px 0 2px">为什么这一套更合适</div>'+reasonsHtml
+      +'<button data-answer-wear style="margin-top:12px;width:100%;height:50px;border:none;border-radius:14px;background:#171310;color:#fff;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit">用这套</button>'
+      +'<div style="text-align:center;margin-top:12px"><button data-answer-detail style="background:none;border:none;font-family:inherit;font-size:14px;color:#7A736A;cursor:pointer">再调整 · 查看详情</button></div>';
+    box.appendChild(a);
+    const chip=document.createElement('button');
+    chip.className='press';
+    chip.style.cssText='align-self:flex-start;display:flex;align-items:center;gap:7px;background:#fff;border:1px solid #E5DFD2;border-radius:999px;padding:9px 15px;font-size:14px;color:#3F3A33;cursor:pointer;font-family:inherit;opacity:0;transform:translateY(8px);transition:opacity .35s ease,transform .35s ease';
+    chip.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B08D5B" stroke-width="1.7"><path d="M21 11.5a8.4 8.4 0 0 1-11.9 7.6L3 21l1.9-6.1A8.5 8.5 0 1 1 21 11.5Z" stroke-linejoin="round"/></svg>'+followChip;
+    chip.addEventListener('click',()=>this.toast('已记下：'+followChip));
+    box.appendChild(chip);
+    a.querySelector('[data-answer-wear]').addEventListener('click',()=>this.toast('好的，用这套 ✓'));
+    a.querySelector('[data-answer-detail]').addEventListener('click',()=>this.setScreen('outfit-detail'));
+    setTimeout(()=>{ a.style.opacity='1'; a.style.transform='none'; this.fillAllCrops(); }, reduced?0:220);
+    setTimeout(()=>{ chip.style.opacity='1'; chip.style.transform='none'; }, reduced?0:520);
+    setTimeout(()=>{ const sc=this.screenEl('ask'); if(sc) sc.scrollTop=sc.scrollHeight; }, 400);
+  }
+
+  TABICON(id, active) {
+    const c = active ? '#B08D5B' : '#A7A09A';
+    const m = {
+      today:`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.8"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1v-8.5Z" stroke-linejoin="round"/></svg>`,
+      wardrobe:`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 3v18M9 8.5h.01M15 8.5h.01" stroke-linecap="round"/></svg>`,
+      ask:`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.7"><path d="M12 3.5l1.8 4.4 4.7.4-3.6 3 1.1 4.6L12 17.7 8 18.4 9.1 15l-3.6-3 4.7-.4L12 3.5Z" stroke-linejoin="round"/></svg>`,
+      profile:`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.7-3.5 3.4-5.5 7-5.5s6.3 2 7 5.5" stroke-linecap="round"/></svg>`,
+    };
+    return m[id];
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,207 @@
+<meta charset="utf-8" />
+<title>Aidrobe Today v2 · 进化 V1</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --bg:#FAF7F0; --grouped:#F1ECE2; --elevated:#FFFFFF; --sec-elev:#F5EFE6; --fill:#EEE6DA;
+    --sep:#E5DFD2; --sep-soft:#EFE8DC;
+    --label:#1A1714; --label-2:#3F3A33; --label-3:#7A736A; --label-4:#A7A09A;
+    --accent:#B08D5B; --accent-2:#9A7843; --accent-soft:#F4E8D1;
+    --success:#3F8060; --success-bg:#EDF4EE;
+    --wash:#EFEBE1;            /* warm evolution of V1's mint board wash */
+    --cloth-shirt:#F0EADD; --cloth-shirt-2:#DCD0BA;
+    --cloth-khaki:#C7B189; --cloth-khaki-2:#AE9669;
+    --cloth-brown:#6E4D35; --cloth-brown-2:#553A27;
+    --r-md:16px; --r-lg:20px; --r-xl:24px; --r-pill:999px;
+    --sh-card: 0 14px 34px -12px rgba(60,40,20,0.16), 0 2px 5px rgba(60,40,20,0.05);
+    --sh-soft: 0 1px 4px rgba(60,40,20,0.06);
+    --sans: system-ui, -apple-system, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
+    --page-bg:#E7E1D6;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; }
+  body {
+    background: radial-gradient(1100px 560px at 72% -8%, #F0EBE0, transparent 62%), var(--page-bg);
+    font-family: var(--sans); color: var(--label); -webkit-font-smoothing: antialiased;
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:48px 20px 72px; gap:26px;
+  }
+  .cap { max-width:420px; width:100%; }
+  .cap .eyebrow { font-size:12px; font-weight:600; color:var(--accent-2); }
+  .cap h1 { font-weight:700; font-size:24px; letter-spacing:-0.4px; margin:7px 0 6px; }
+  .cap p { margin:0; font-size:13px; line-height:1.7; color:var(--label-3); max-width:54ch; }
+
+  .device { width:390px; max-width:100%; background:#14120e; border-radius:52px; padding:12px;
+    box-shadow:0 34px 80px -22px rgba(40,28,14,0.5), 0 6px 16px rgba(40,28,14,0.18); }
+  .screen { background:var(--bg); border-radius:40px; overflow:hidden; height:980px; display:flex; flex-direction:column; position:relative; }
+
+  .statusbar { display:flex; justify-content:space-between; align-items:center; padding:18px 26px 2px; font-size:14px; font-weight:600; flex:0 0 auto; }
+  .statusbar .r { font-weight:700; font-size:12px; }
+
+  .scroll { flex:1 1 auto; overflow:hidden; padding:8px 22px 0; display:flex; flex-direction:column; }
+
+  /* header with ring badge — evolved from V1 */
+  .head { display:flex; justify-content:space-between; align-items:flex-start; padding:8px 2px 0; }
+  .head .greet { font-size:30px; font-weight:700; letter-spacing:-0.6px; }
+  .head .sub { font-size:13px; color:var(--label-3); margin-top:6px; }
+  .head .sub b { color:var(--accent-2); font-weight:700; }
+  .ring { width:62px; height:62px; flex:0 0 auto; border-radius:50%; display:grid; place-items:center; position:relative;
+    background: conic-gradient(var(--accent) 0deg 270deg, var(--sep) 270deg 360deg); }
+  .ring::after { content:""; position:absolute; inset:5px; border-radius:50%; background:var(--bg); }
+  .ring .rv { position:relative; z-index:1; text-align:center; line-height:1; }
+  .ring .rv b { font-size:17px; font-weight:700; }
+  .ring .rv small { display:block; font-size:9px; color:var(--label-3); margin-top:2px; }
+
+  .line { font-size:15px; line-height:1.55; color:var(--label-2); margin:14px 2px 0; }
+  .line em { font-style:normal; color:var(--accent-2); font-weight:600; }
+
+  /* THE one big calm card */
+  .card { margin-top:14px; background:var(--elevated); border-radius:var(--r-xl); box-shadow:var(--sh-card); padding:18px 18px 20px; }
+  .card .ch { display:flex; justify-content:space-between; align-items:center; }
+  .card .ch .t { font-size:17px; font-weight:700; }
+  .card .ch .meta { display:flex; gap:8px; align-items:center; font-size:12px; font-weight:600; color:var(--label-3); }
+  .card .ch .meta .w { display:flex; align-items:center; gap:5px; }
+  .card .ch .meta .sun { width:13px; height:13px; border-radius:50%; background:radial-gradient(circle at 35% 35%, #E9C07A, var(--accent)); }
+  .card .ch .meta .pipe { width:1px; height:12px; background:var(--sep); }
+
+  /* garment flat-lay floating over warm wash — V1's airy board */
+  .board { position:relative; height:236px; margin-top:14px; }
+  .board .wash { position:absolute; left:6px; right:6px; top:10px; bottom:10px; border-radius:30px; background:var(--wash); }
+  .board .g { position:absolute; }
+  .board .g svg { display:block; width:100%; height:auto; }
+  .board .g .gl { font-size:9.5px; letter-spacing:1px; color:var(--label-3); text-align:center; margin-top:3px; }
+  .board .g.shirt { width:128px; left:14px; top:24px; }
+  .board .g.pants { width:78px; right:96px; top:18px; }
+  .board .g.shoes { width:96px; right:18px; bottom:30px; }
+
+  .reasons { margin-top:6px; display:flex; flex-direction:column; gap:9px; }
+  .reasons .r { display:flex; gap:9px; font-size:13.5px; color:var(--label-2); line-height:1.45; }
+  .reasons .r .d { width:5px; height:5px; border-radius:50%; background:var(--accent); margin-top:7px; flex:0 0 auto; }
+  .reasons .r b { color:var(--label); font-weight:600; }
+  .reasons .r .src { color:var(--label-4); font-size:11px; font-weight:600; margin-left:4px; }
+
+  .quote { margin-top:14px; background:var(--sec-elev); border-radius:var(--r-md); padding:13px 15px; font-size:13px; color:var(--label-2); line-height:1.5; }
+  .quote .qm { color:var(--accent); font-weight:700; }
+
+  .cta { margin-top:16px; width:100%; border:none; background:var(--label); color:#FBF7EF; font-family:var(--sans); font-size:16px; font-weight:700; padding:17px; border-radius:var(--r-md); cursor:pointer; transition:200ms; }
+  .cta:hover { background:#322B25; }
+  .links { display:flex; justify-content:center; align-items:center; gap:0; margin-top:13px; }
+  .links a { font-size:13.5px; font-weight:600; color:var(--label-2); padding:4px 16px; text-decoration:none; cursor:pointer; }
+  .links .sep { width:1px; height:14px; background:var(--sep); }
+
+  /* resurface insight — subtle, on-brand strip (NOT a heavy card) */
+  .insight { margin-top:16px; display:flex; gap:11px; align-items:center; padding:0 4px; }
+  .insight .ic { width:30px; height:30px; border-radius:50%; background:var(--accent-soft); display:grid; place-items:center; flex:0 0 auto; }
+  .insight .ic svg { width:16px; height:16px; }
+  .insight p { margin:0; font-size:13px; line-height:1.5; color:var(--label-2); }
+  .insight p b { color:var(--accent-2); font-weight:700; }
+
+  .spacer { flex:1 1 auto; min-height:10px; }
+
+  .override { margin-top:14px; display:flex; align-items:center; gap:10px; background:var(--grouped); border-radius:var(--r-pill); padding:14px 18px; }
+  .override .pl { width:18px; height:18px; border-radius:50%; background:var(--accent-soft); display:grid; place-items:center; color:var(--accent-2); font-weight:700; font-size:14px; flex:0 0 auto; }
+  .override span { font-size:13.5px; color:var(--label-3); }
+  .override .go { margin-left:auto; color:var(--label-4); font-size:16px; }
+
+  .tabbar { flex:0 0 auto; display:grid; grid-template-columns:repeat(4,1fr); padding:10px 14px 30px; background:var(--elevated); box-shadow:0 -1px 0 var(--sep-soft); }
+  .tab { display:flex; flex-direction:column; align-items:center; gap:5px; font-size:11px; font-weight:600; color:var(--label-4); padding-top:6px; }
+  .tab .ic { width:46px; height:30px; border-radius:var(--r-pill); display:grid; place-items:center; }
+  .tab.on { color:var(--accent-2); } .tab.on .ic { background:var(--accent-soft); }
+  .tab svg { width:22px; height:22px; }
+</style>
+
+<div class="cap">
+  <div class="eyebrow">V2 方向 · 进化 V1 · 复用 design.ts</div>
+  <h1>Today v2 — 进化 V1 的安静大卡</h1>
+  <p>保住 V1 的暖驼品牌色、一张大卡、舒展 flat-lay 与精修微件（环形 badge / 引用框 / 朴素 bullet 理由 / 黑色大 CTA / 文字链次级）；去掉策略轨道，换单推荐 + 一句话 override + resurface insight + 4-tab。不做卡片汤。</p>
+</div>
+
+<div class="device"><div class="screen">
+
+  <div class="statusbar"><span>8:15</span><span class="r">5G ▮▮▮</span></div>
+
+  <div class="scroll">
+
+    <div class="head">
+      <div>
+        <div class="greet">早上好，林</div>
+        <div class="sub">距出门还有 <b>8 分钟</b> · 通勤</div>
+      </div>
+      <div class="ring"><div class="rv"><b>8'</b><small>出门</small></div></div>
+    </div>
+
+    <div class="line">今天有点闷热，给你配了套<em>透气又利落</em>的。</div>
+
+    <div class="card">
+      <div class="ch">
+        <span class="t">今日一套</span>
+        <span class="meta"><span class="w"><span class="sun"></span>28° 多云</span><span class="pipe"></span><span>准备 5 分</span></span>
+      </div>
+
+      <div class="board">
+        <div class="wash"></div>
+        <div class="g shirt">
+          <svg viewBox="0 0 150 178" aria-label="衬衫">
+            <g fill="var(--cloth-shirt)" stroke="var(--cloth-shirt-2)" stroke-width="1.5">
+              <path d="M52 22 L30 36 L18 62 L33 72 L40 60 L40 152 Q75 160 110 152 L110 60 L117 72 L132 62 L120 36 L98 22 Z"/>
+              <path d="M52 22 L75 42 L98 22 L88 18 Q75 26 62 18 Z" fill="var(--cloth-shirt-2)" stroke="none"/>
+            </g>
+            <line x1="75" y1="42" x2="75" y2="152" stroke="var(--cloth-shirt-2)" stroke-width="1.2"/>
+            <g fill="none" stroke="var(--cloth-shirt-2)" stroke-width="1.1"><circle cx="75" cy="62" r="1.7"/><circle cx="75" cy="86" r="1.7"/><circle cx="75" cy="110" r="1.7"/><circle cx="75" cy="134" r="1.7"/></g>
+            <path d="M62 18 Q75 32 88 18" fill="none" stroke="var(--cloth-shirt-2)" stroke-width="1.3"/>
+          </svg>
+          <div class="gl">米白亚麻衬衫</div>
+        </div>
+        <div class="g pants">
+          <svg viewBox="0 0 120 150" aria-label="裤装">
+            <g fill="var(--cloth-khaki)" stroke="var(--cloth-khaki-2)" stroke-width="1.5"><path d="M22 8 L98 8 L98 22 L94 145 L66 145 L60 40 L54 145 L26 145 L22 22 Z"/></g>
+            <rect x="22" y="8" width="76" height="11" fill="var(--cloth-khaki-2)"/>
+            <line x1="42" y1="26" x2="40" y2="140" stroke="var(--cloth-khaki-2)" stroke-width="1"/>
+            <line x1="78" y1="26" x2="80" y2="140" stroke="var(--cloth-khaki-2)" stroke-width="1"/>
+          </svg>
+          <div class="gl">阔腿裤</div>
+        </div>
+        <div class="g shoes">
+          <svg viewBox="0 0 90 50" aria-label="鞋">
+            <g fill="var(--cloth-brown)" stroke="var(--cloth-brown-2)" stroke-width="1.3"><path d="M6 34 Q6 22 22 20 L58 15 Q84 15 86 33 Q86 42 70 42 L16 42 Q6 42 6 34 Z"/></g>
+            <path d="M24 21 Q36 28 52 24" fill="none" stroke="var(--cloth-brown-2)" stroke-width="1.2"/>
+            <rect x="32" y="20" width="11" height="3.5" rx="1.5" fill="var(--cloth-brown-2)"/>
+          </svg>
+          <div class="gl">乐福鞋</div>
+        </div>
+      </div>
+
+      <div class="reasons">
+        <div class="r"><span class="d"></span><div>今天 28°，挑了透气的<b>亚麻</b>，闷热也清爽。<span class="src">天气</span></div></div>
+        <div class="r"><span class="d"></span><div>这条阔腿裤你最近常穿，<b>好搭也好走</b>。<span class="src">穿着记录</span></div></div>
+        <div class="r"><span class="d"></span><div>避开了浅色鞋，午后<b>可能有阵雨</b>。<span class="src">天气规则</span></div></div>
+      </div>
+
+      <div class="quote"><span class="qm">“</span>经典又清爽，适合闷热的通勤早晨。<span class="qm">”</span></div>
+
+      <button class="cta">今天穿这套</button>
+      <div class="links"><a>查看详情</a><span class="sep"></span><a>不喜欢</a><span class="sep"></span><a>换一套</a></div>
+    </div>
+
+    <div class="insight">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#9A7843" stroke-width="2"><path d="M12 3a6 6 0 0 0-4 10.5c.6.6 1 1.3 1 2.5h6c0-1.2.4-1.9 1-2.5A6 6 0 0 0 12 3Z"/><path d="M9 19h6M10 22h4"/></svg></span>
+      <p>那件米白衬衫你 <b>三周</b> 没穿了，今天刚好合适。</p>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="override">
+      <span class="pl">+</span>
+      <span>今天有什么特别的吗？</span>
+      <span class="go">›</span>
+    </div>
+
+  </div>
+
+  <div class="tabbar">
+    <div class="tab on"><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 11 L12 4 L20 11 V20 H4 Z"/></svg></span>今日</div>
+    <div class="tab"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="4" y1="9" x2="20" y2="9"/><line x1="12" y1="9" x2="12" y2="20"/></svg></span>衣橱</div>
+    <div class="tab"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 5 H20 V16 H12 L7 20 V16 H4 Z" stroke-linejoin="round"/></svg></span>Ask</div>
+    <div class="tab"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="4"/><path d="M5 20 Q5 14 12 14 Q19 14 19 20"/></svg></span>我的</div>
+  </div>
+
+</div></div>

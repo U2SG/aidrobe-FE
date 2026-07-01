@@ -1,0 +1,644 @@
+<meta charset="utf-8">
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aidrobe · 今日穿搭</title>
+  <style>
+    :root {
+      --oat: #F5F0E7;
+      --paper: #FFFDF8;
+      --pine: #24352F;
+      --clay: #D96C4D;
+      --sand: #C9B99D;
+      --brown: #3B261E;
+      --serif: ui-serif, "Songti SC", "STSong", "Noto Serif CJK SC", serif;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { color-scheme: light; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 42px 20px;
+      color: var(--pine);
+      font-family: var(--sans);
+      background:
+        radial-gradient(circle at 18% 12%, rgba(255,253,248,.96) 0 16%, transparent 42%),
+        linear-gradient(132deg, var(--oat) 0 48%, rgba(201,185,157,.48) 48.2% 49%, var(--oat) 49.2% 100%);
+    }
+
+    button, input { font: inherit; }
+
+    button { color: inherit; }
+
+    .phone {
+      position: relative;
+      width: min(100%, 420px);
+      overflow: hidden;
+      border: 1px solid rgba(36,53,47,.2);
+      border-radius: 38px;
+      background: var(--paper);
+      box-shadow:
+        0 38px 90px rgba(59,38,30,.18),
+        0 8px 22px rgba(59,38,30,.1),
+        inset 0 0 0 5px rgba(245,240,231,.76);
+    }
+
+    .phone::before {
+      content: "";
+      position: absolute;
+      z-index: 4;
+      top: 10px;
+      left: 50%;
+      width: 62px;
+      height: 5px;
+      border-radius: 99px;
+      background: rgba(36,53,47,.14);
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+
+    main { padding: 30px 22px 0; }
+
+    .masthead {
+      position: relative;
+      padding: 7px 2px 16px;
+    }
+
+    .date {
+      margin: 0 0 8px;
+      color: rgba(36,53,47,.62);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .08em;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: var(--serif);
+      font-size: 34px;
+      font-weight: 500;
+      line-height: 1.08;
+      letter-spacing: -.04em;
+    }
+
+    .intro {
+      max-width: 310px;
+      margin: 11px 0 0;
+      color: rgba(36,53,47,.78);
+      font-size: 15px;
+      line-height: 1.65;
+    }
+
+    .weather {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 11px;
+      color: var(--pine);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .weather svg { width: 19px; height: 19px; flex: none; }
+
+    .outfit-stage {
+      position: relative;
+      margin: 0 -22px;
+      overflow: hidden;
+      background: var(--oat);
+      border-top: 1px solid rgba(36,53,47,.1);
+      border-bottom: 1px solid rgba(36,53,47,.12);
+    }
+
+    .outfit-stage::after {
+      content: "";
+      position: absolute;
+      top: -24%;
+      left: 27%;
+      width: 22%;
+      height: 160%;
+      background: rgba(255,253,248,.46);
+      transform: rotate(18deg);
+      pointer-events: none;
+    }
+
+    .stage-kicker {
+      position: absolute;
+      z-index: 3;
+      top: 17px;
+      left: 22px;
+      margin: 0;
+      color: rgba(36,53,47,.58);
+      font-size: 10px;
+      font-weight: 750;
+      letter-spacing: .16em;
+    }
+
+    .garments {
+      display: block;
+      width: 100%;
+      height: 316px;
+    }
+
+    .outfit-caption {
+      position: absolute;
+      z-index: 3;
+      right: 18px;
+      bottom: 14px;
+      left: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 7px;
+      margin: 0;
+      color: rgba(36,53,47,.82);
+      font-size: 10.5px;
+      white-space: nowrap;
+    }
+
+    .outfit-caption b {
+      margin-right: 2px;
+      color: var(--clay);
+      font-size: 9px;
+      letter-spacing: .06em;
+    }
+
+    .reasons {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      margin: 0 -2px;
+      padding: 14px 0 12px;
+      border-bottom: 1px solid rgba(36,53,47,.12);
+    }
+
+    .reason {
+      min-width: 0;
+      padding: 0 10px;
+    }
+
+    .reason + .reason { border-left: 1px solid rgba(36,53,47,.12); }
+
+    .source {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--clay);
+      font-size: 10.5px;
+      font-weight: 750;
+      letter-spacing: .08em;
+    }
+
+    .reason p {
+      margin: 0;
+      color: rgba(36,53,47,.75);
+      font-size: 11.5px;
+      line-height: 1.55;
+    }
+
+    .actions { padding: 14px 0 12px; }
+
+    .primary {
+      width: 100%;
+      min-height: 52px;
+      border: 0;
+      border-radius: 16px;
+      color: var(--paper);
+      background: var(--pine);
+      box-shadow: 0 8px 18px rgba(36,53,47,.18);
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 750;
+      letter-spacing: .08em;
+      transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+    }
+
+    .primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 11px 22px rgba(36,53,47,.22);
+    }
+
+    .secondary-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .secondary-actions button {
+      min-height: 44px;
+      padding: 0 6px;
+      border: 1px solid rgba(36,53,47,.24);
+      border-radius: 13px;
+      background: transparent;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 650;
+      transition: border-color 160ms ease, background 160ms ease;
+    }
+
+    .secondary-actions button:hover {
+      border-color: var(--pine);
+      background: var(--oat);
+    }
+
+    .insight {
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 10px;
+      align-items: center;
+      min-height: 58px;
+      padding: 8px 12px;
+      border-left: 3px solid var(--clay);
+      background: var(--oat);
+    }
+
+    .insight-icon {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--paper);
+    }
+
+    .insight svg { width: 19px; height: 19px; }
+
+    .insight p {
+      margin: 0;
+      color: rgba(36,53,47,.8);
+      font-family: var(--serif);
+      font-size: 13px;
+      line-height: 1.48;
+    }
+
+    .context {
+      position: relative;
+      margin: 10px 0 13px;
+    }
+
+    .context svg {
+      position: absolute;
+      top: 50%;
+      left: 14px;
+      width: 17px;
+      height: 17px;
+      color: rgba(36,53,47,.52);
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .context input {
+      width: 100%;
+      min-height: 46px;
+      padding: 0 42px;
+      border: 1px solid rgba(36,53,47,.18);
+      border-radius: 13px;
+      outline: 0;
+      color: var(--pine);
+      background: var(--paper);
+      font-size: 12px;
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .context input::placeholder { color: rgba(36,53,47,.42); opacity: 1; }
+
+    .context button {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 38px;
+      height: 38px;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .context button::before {
+      content: "";
+      position: absolute;
+      top: 14px;
+      left: 12px;
+      width: 9px;
+      height: 9px;
+      border-top: 1.5px solid currentColor;
+      border-right: 1.5px solid currentColor;
+      transform: rotate(45deg);
+    }
+
+    .context input:focus {
+      border-color: var(--clay);
+      box-shadow: 0 0 0 3px rgba(217,108,77,.13);
+    }
+
+    .tabbar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      min-height: 74px;
+      padding: 7px 12px 11px;
+      border-top: 1px solid rgba(36,53,47,.12);
+      background: rgba(255,253,248,.98);
+    }
+
+    .tab {
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 3px;
+      min-width: 44px;
+      min-height: 52px;
+      border: 0;
+      border-radius: 12px;
+      color: rgba(36,53,47,.5);
+      background: transparent;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .tab svg { width: 21px; height: 21px; }
+
+    .tab[aria-current="page"] { color: var(--pine); }
+
+    .tab[aria-current="page"]::after {
+      content: "";
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      margin-top: 40px;
+      border-radius: 50%;
+      background: var(--clay);
+    }
+
+    .toast {
+      position: absolute;
+      z-index: 8;
+      right: 20px;
+      bottom: 82px;
+      left: 20px;
+      padding: 12px 14px;
+      border-radius: 13px;
+      color: var(--paper);
+      background: var(--pine);
+      box-shadow: 0 10px 30px rgba(36,53,47,.24);
+      font-size: 12px;
+      text-align: center;
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: opacity 180ms ease, transform 180ms ease;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    .reasons.attention {
+      animation: reason-flash 900ms ease;
+    }
+
+    button:focus-visible,
+    input:focus-visible {
+      outline: 3px solid var(--clay);
+      outline-offset: 3px;
+    }
+
+    @keyframes reason-flash {
+      0%, 100% { background: transparent; }
+      38% { background: rgba(217,108,77,.1); }
+    }
+
+    @media (max-width: 460px) {
+      body { display: block; padding: 0; background: var(--paper); }
+      .phone { width: 100%; border: 0; border-radius: 0; box-shadow: none; }
+      .phone::before { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <article class="phone" aria-label="Aidrobe 今日穿搭手机界面">
+    <main>
+      <header class="masthead">
+        <p class="date">周二 · 6月30日</p>
+        <h1>早安，林</h1>
+        <p class="intro">今天有点闷热，给你配了套透气又利落的。</p>
+        <div class="weather" aria-label="天气与出门时间">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 18.5h10.2a4.3 4.3 0 0 0 .3-8.6A6 6 0 0 0 6.1 11.6 3.5 3.5 0 0 0 7 18.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M7.2 7.2 5.8 5.8M12 5V3M16.8 7.2l1.4-1.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+          <span>28° 多云 · 8:15 出门</span>
+        </div>
+      </header>
+
+      <section class="outfit-stage" aria-labelledby="outfit-label">
+        <p class="stage-kicker" id="outfit-label">今天这一套</p>
+        <svg class="garments" viewBox="0 0 420 316" role="img" aria-label="米白亚麻衬衫、浅卡其阔腿裤与深棕乐福鞋组成的一套穿搭">
+          <defs>
+            <linearGradient id="table" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#FFFDF8"/>
+              <stop offset=".65" stop-color="#F5F0E7"/>
+              <stop offset="1" stop-color="#C9B99D" stop-opacity=".42"/>
+            </linearGradient>
+            <linearGradient id="linen" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#FFFDF8"/>
+              <stop offset=".48" stop-color="#F5F0E7"/>
+              <stop offset="1" stop-color="#C9B99D"/>
+            </linearGradient>
+            <linearGradient id="trouser" x1="0" y1="0" x2="1" y2=".8">
+              <stop offset="0" stop-color="#F5F0E7"/>
+              <stop offset=".45" stop-color="#C9B99D"/>
+              <stop offset="1" stop-color="#3B261E" stop-opacity=".3"/>
+            </linearGradient>
+            <linearGradient id="leather" x1="0" y1="0" x2=".8" y2="1">
+              <stop offset="0" stop-color="#C9B99D"/>
+              <stop offset=".12" stop-color="#3B261E"/>
+              <stop offset=".58" stop-color="#3B261E"/>
+              <stop offset=".76" stop-color="#D96C4D"/>
+              <stop offset="1" stop-color="#3B261E"/>
+            </linearGradient>
+            <pattern id="weave" width="7" height="7" patternUnits="userSpaceOnUse">
+              <path d="M0 1h7M1 0v7" stroke="#C9B99D" stroke-width=".35" opacity=".55"/>
+              <path d="M0 5h7M5 0v7" stroke="#FFFDF8" stroke-width=".35" opacity=".7"/>
+            </pattern>
+            <filter id="soft-shadow" x="-30%" y="-30%" width="170%" height="180%">
+              <feDropShadow dx="0" dy="9" stdDeviation="8" flood-color="#3B261E" flood-opacity=".18"/>
+            </filter>
+            <filter id="shoe-shadow" x="-40%" y="-40%" width="190%" height="200%">
+              <feDropShadow dx="2" dy="7" stdDeviation="5" flood-color="#3B261E" flood-opacity=".28"/>
+            </filter>
+          </defs>
+
+          <rect width="420" height="316" fill="url(#table)"/>
+          <path d="M305-18 420 11v160L342 92Z" fill="#FFFDF8" opacity=".72"/>
+          <path d="M0 236 420 121v10L0 259Z" fill="#D96C4D" opacity=".08"/>
+          <path d="M0 244 420 129" stroke="#D96C4D" stroke-width="1" opacity=".34"/>
+
+          <!-- wide-leg trousers -->
+          <g transform="translate(78 112) rotate(-8 92 94)" filter="url(#soft-shadow)">
+            <path d="M24 9Q91-2 158 11l-1 32-26 151-52 4 10-139-7-2-15 139-54-3L23 43Z" fill="url(#trouser)" stroke="#3B261E" stroke-opacity=".12"/>
+            <path d="M24 9Q91-2 158 11l-3 27Q91 29 21 40Z" fill="#C9B99D" stroke="#3B261E" stroke-opacity=".18"/>
+            <path d="m42 7 4 27m91-26-5 26" stroke="#3B261E" stroke-opacity=".27" fill="none"/>
+            <path d="M70 35 67 191M107 34l23 158" stroke="#FFFDF8" stroke-width="2.2" opacity=".52" fill="none"/>
+            <path d="M82 36q15 19 7 43M102 35q-10 23-5 45" stroke="#3B261E" stroke-opacity=".18" fill="none"/>
+            <path d="M23 43q20 2 44-2M112 39q25 4 43 0" stroke="#3B261E" stroke-opacity=".13" fill="none"/>
+            <path d="M19 183q25 8 50 2M79 186q27 8 53-1" stroke="#3B261E" stroke-opacity=".15" fill="none"/>
+            <path d="M31 17h12v10H31zm102-1h12v11h-12z" fill="none" stroke="#3B261E" stroke-opacity=".32"/>
+          </g>
+
+          <!-- linen shirt -->
+          <g transform="translate(204 30) rotate(7 85 82)" filter="url(#soft-shadow)">
+            <path d="m53 13 29-8 31 7 22 18 39 24-22 47-24-13 8 75q-49 20-104 1l8-75-24 13L0 53l42-25Z" fill="url(#linen)" stroke="#3B261E" stroke-opacity=".14"/>
+            <path d="m53 13 29 26 31-27-13-5-18 23L65 7Z" fill="#FFFDF8" stroke="#3B261E" stroke-opacity=".16"/>
+            <path d="M82 39v121" stroke="#C9B99D" stroke-width="2.2"/>
+            <path d="M84 39v121" stroke="#FFFDF8" stroke-width="1" opacity=".85"/>
+            <path d="M42 28 57 77 32 166M123 29l-15 50 20 84" stroke="#C9B99D" stroke-opacity=".34" fill="none"/>
+            <path d="M21 51q18 14 26 36M145 49q-17 15-24 38" stroke="#FFFDF8" stroke-width="2" opacity=".8" fill="none"/>
+            <path d="M12 87q15 4 27 14m124-14q-15 5-28 15" stroke="#3B261E" stroke-opacity=".18" fill="none"/>
+            <path d="M102 83h20v31h-20z" fill="none" stroke="#C9B99D" stroke-width="1.1"/>
+            <path d="M107 87q5 4 10 0" stroke="#C9B99D" fill="none"/>
+            <path d="M54 18q7 25 28 21m31-21q-8 23-29 21" stroke="#3B261E" stroke-opacity=".12" fill="none"/>
+            <g fill="#C9B99D" stroke="#FFFDF8" stroke-width=".7">
+              <circle cx="83" cy="59" r="2.2"/><circle cx="83" cy="81" r="2.2"/><circle cx="83" cy="103" r="2.2"/><circle cx="83" cy="125" r="2.2"/><circle cx="83" cy="147" r="2.2"/>
+            </g>
+            <path d="M7 52h160v111H8Z" fill="url(#weave)" opacity=".23"/>
+            <path d="M32 164q52-9 104-1" stroke="#3B261E" stroke-opacity=".16" fill="none"/>
+          </g>
+
+          <!-- loafers -->
+          <g transform="translate(267 204) rotate(-13)" filter="url(#shoe-shadow)">
+            <path d="M7 42Q6 13 30 3q22-8 37 9 8 10 6 39-2 28-19 37-18 10-34-1Q7 78 7 42Z" fill="#3B261E" stroke="#3B261E" stroke-width="4"/>
+            <path d="M12 40Q12 17 31 8q17-6 29 8 7 8 7 34-1 22-15 31-15 8-28-1-12-9-12-40Z" fill="url(#leather)" stroke="#C9B99D" stroke-opacity=".5"/>
+            <path d="M20 18q20 13 39 2l2 27q-19-8-43 1Z" fill="#3B261E" stroke="#C9B99D" stroke-opacity=".28"/>
+            <path d="M21 31q18 6 37 0M19 51q20 7 42-1" stroke="#C9B99D" stroke-width="1.2" stroke-dasharray="2 2" opacity=".74" fill="none"/>
+            <path d="M19 69q17 15 37-2" stroke="#FFFDF8" stroke-opacity=".24" stroke-width="2" fill="none"/>
+          </g>
+          <g transform="translate(333 194) rotate(8)" filter="url(#shoe-shadow)">
+            <path d="M7 42Q6 13 30 3q22-8 37 9 8 10 6 39-2 28-19 37-18 10-34-1Q7 78 7 42Z" fill="#3B261E" stroke="#3B261E" stroke-width="4"/>
+            <path d="M12 40Q12 17 31 8q17-6 29 8 7 8 7 34-1 22-15 31-15 8-28-1-12-9-12-40Z" fill="url(#leather)" stroke="#C9B99D" stroke-opacity=".5"/>
+            <path d="M20 18q20 13 39 2l2 27q-19-8-43 1Z" fill="#3B261E" stroke="#C9B99D" stroke-opacity=".28"/>
+            <path d="M21 31q18 6 37 0M19 51q20 7 42-1" stroke="#C9B99D" stroke-width="1.2" stroke-dasharray="2 2" opacity=".74" fill="none"/>
+            <path d="M19 69q17 15 37-2" stroke="#FFFDF8" stroke-opacity=".24" stroke-width="2" fill="none"/>
+          </g>
+        </svg>
+        <p class="outfit-caption">
+          <span><b>上装</b>米白亚麻衬衫</span>
+          <span><b>下装</b>浅卡其阔腿裤</span>
+          <span><b>鞋</b>深棕乐福鞋</span>
+        </p>
+      </section>
+
+      <section class="reasons" id="reasons" aria-label="推荐理由">
+        <article class="reason"><span class="source">天气</span><p>今天 28°，挑了透气亚麻</p></article>
+        <article class="reason"><span class="source">穿着记录</span><p>这条裤子你最近常穿，好搭</p></article>
+        <article class="reason"><span class="source">天气规则</span><p>避开浅色鞋，午后可能有阵雨</p></article>
+      </section>
+
+      <section class="actions" aria-label="穿搭操作">
+        <button class="primary" id="wear" type="button">穿这套</button>
+        <div class="secondary-actions">
+          <button type="button" data-action="swap">换一套</button>
+          <button type="button" data-action="dislike">不喜欢</button>
+          <button type="button" data-action="why">为什么</button>
+        </div>
+      </section>
+
+      <aside class="insight" aria-label="衣橱提醒">
+        <span class="insight-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M10 7.5c0-1.7 1-2.7 2.4-2.7 1.2 0 2.1.7 2.1 1.8 0 1.3-1 1.7-2 2.4l-.5.4v1.7m0 0L4.2 16a1.2 1.2 0 0 0 .6 2.2h14.4a1.2 1.2 0 0 0 .6-2.2L12 11.1Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <p>那件米白衬衫你三周没穿了，今天刚好合适。</p>
+      </aside>
+
+      <form class="context" id="context-form">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16-.8 4 4-.8L18.7 7.7a2.1 2.1 0 0 0-3-3L4 16Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="m13.9 6.5 3.6 3.6" stroke="currentColor" stroke-width="1.5"/></svg>
+        <label for="context" hidden>今天有什么特别的吗？</label>
+        <input id="context" autocomplete="off" placeholder="今天有什么特别的吗？（用户不填也可用）">
+        <button type="submit" aria-label="提交今天的特别安排"></button>
+      </form>
+    </main>
+
+    <nav class="tabbar" aria-label="主导航">
+      <button class="tab" type="button" aria-current="page">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h14v15H5zM8 2.8v3.4m8-3.4v3.4M5 8h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 11.5h3v3H8z" fill="currentColor"/></svg>
+        <span>今日</span>
+      </button>
+      <button class="tab" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 4.5h15v15h-15zM8.5 4.5v15M15.5 4.5v15M11.5 8.2h1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>衣橱</span>
+      </button>
+      <button class="tab" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a7.5 7.5 0 0 1 15 0c0 4.2-3.4 7.5-7.5 7.5-1.2 0-2.4-.3-3.4-.8L4 20l1.3-3.9A7.4 7.4 0 0 1 4 12Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        <span>Ask</span>
+      </button>
+      <button class="tab" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 20c.7-4 2.8-6 6.5-6s5.8 2 6.5 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span>我的</span>
+      </button>
+    </nav>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </article>
+
+  <script>
+    const toast = document.querySelector('#toast');
+    let toastTimer;
+
+    function announce(message) {
+      clearTimeout(toastTimer);
+      toast.textContent = message;
+      toast.classList.add('show');
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 1900);
+    }
+
+    document.querySelector('#wear').addEventListener('click', (event) => {
+      event.currentTarget.textContent = '今天就穿这套';
+      event.currentTarget.style.background = 'var(--clay)';
+      announce('已选好。祝你今天穿得自在。');
+    });
+
+    document.querySelector('[data-action="swap"]').addEventListener('click', () => {
+      announce('收到，正在为你换一套。');
+    });
+
+    document.querySelector('[data-action="dislike"]').addEventListener('click', (event) => {
+      event.currentTarget.textContent = '已记下';
+      event.currentTarget.setAttribute('aria-pressed', 'true');
+      announce('已记下你的感受，不会评判。');
+    });
+
+    document.querySelector('[data-action="why"]').addEventListener('click', () => {
+      const reasons = document.querySelector('#reasons');
+      reasons.classList.remove('attention');
+      requestAnimationFrame(() => reasons.classList.add('attention'));
+      reasons.querySelector('.reason').setAttribute('tabindex', '-1');
+      reasons.querySelector('.reason').focus({ preventScroll: true });
+    });
+
+    document.querySelector('#context-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const input = document.querySelector('#context');
+      announce(input.value.trim() ? '已把这件事考虑进今天的搭配。' : '不填也没关系，当前搭配依然可用。');
+    });
+
+    document.querySelectorAll('.tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        if (tab.hasAttribute('aria-current')) return;
+        announce(`${tab.textContent.trim()}是原型中的导航预览。`);
+      });
+    });
+  </script>
+</body>
+</html>
