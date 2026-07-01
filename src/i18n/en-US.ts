@@ -388,6 +388,62 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'firstOutfit.failed.body': 'It may be the network — try again in a moment.',
   'firstOutfit.failed.retry': 'Retry',
 
+  // --- Profile v2 (trust surface, brief §10) -------------------------------
+  'profile.title': 'Profile',
+  'profile.subtitle': 'Your wardrobe is yours alone.',
+  'profile.section.data': 'Your data',
+  'profile.section.preferences': 'Preferences & settings',
+  'profile.section.account': 'Account',
+  'profile.section.danger': 'Data & account',
+  'profile.row.dataTrust': 'Privacy & data',
+  'profile.row.memory': 'What Aidrobe remembers about you',
+  'profile.row.settings': 'More settings',
+  'profile.row.export': 'Export my data',
+  'profile.row.signOut': 'Sign out',
+  'profile.row.clearData': 'Clear all data',
+  'profile.row.deactivate': 'Delete account',
+  'profile.export.requested': "Export requested — we'll let you know when it's ready.",
+  'profile.clearData.title': 'Clear all data',
+  'profile.clearData.unavailable':
+    "There's no one-tap clear yet. You can delete items one by one from item detail; it'll live here later.",
+  'profile.deactivate.title': 'Delete account',
+  'profile.deactivate.body':
+    'This permanently deletes your account and all data, with no recovery. Are you sure?',
+  'profile.deactivate.confirm': 'Delete account',
+  'profile.deactivate.done': 'Your account has been deleted.',
+
+  // --- Privacy / data statement (copy: privacy-data-copy-v0.1 §A) ----------
+  'privacy.statement.title': 'Your wardrobe is yours alone',
+  'privacy.statement.intro':
+    'Aidrobe needs to understand your clothes and habits to help you decide faster and dress like yourself. This information serves only that.',
+  'privacy.statement.collect.title': 'What we use',
+  'privacy.statement.collect.clothes': 'The clothing photos you upload',
+  'privacy.statement.collect.behavior': 'Your wear / swap / dislike actions',
+  'privacy.statement.collect.inspiration': 'The style inspiration you save',
+  'privacy.statement.collect.location': 'Weather and rough location (with your permission)',
+  'privacy.statement.use.title': 'What we do with it',
+  'privacy.statement.use.recognize': 'Recognize and organize your clothes',
+  'privacy.statement.use.daily_outfit': 'Give you one trustworthy outfit each day',
+  'privacy.statement.use.preference': 'Remember your preferences so picks get sharper',
+  'privacy.statement.use.resurface': 'Help you wear forgotten pieces again',
+  'privacy.statement.notDo.title': "What we don't do",
+  'privacy.statement.notDo.no_training': "We don't use your photos or data to train models",
+  'privacy.statement.notDo.no_share': "We don't sell or share with third parties by default",
+  'privacy.statement.notDo.no_ad_profiling': "We don't build ad profiles from them",
+  'privacy.statement.control.title': 'You can anytime',
+  'privacy.statement.control.view': 'See what preferences Aidrobe remembers',
+  'privacy.statement.control.correct': 'Correct anything that’s wrong',
+  'privacy.statement.control.delete_item': 'Delete any item or any record',
+  'privacy.statement.control.delete_all': 'Delete all data or your account',
+  'privacy.statement.policyLink': 'Want the full legal terms? Read the Privacy Policy.',
+
+  // --- Memory management (brief §10.3; no fake entries) --------------------
+  'privacy.memory.title': 'What Aidrobe remembers about you',
+  'privacy.memory.subtitle':
+    "These are things Aidrobe learned from how you use it — not a form you filled in. Fix anything that's off.",
+  'privacy.memory.empty':
+    'Nothing learned to show yet. Use it a few more days and it will appear here — you can correct or delete anytime.',
+
   // --- Outfit detail -------------------------------------------------------
   'outfitDetail.download': 'Download / share',
   'outfitDetail.moreActions': 'More actions',
