@@ -444,6 +444,11 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'privacy.memory.empty':
     'Nothing learned to show yet. Use it a few more days and it will appear here — you can correct or delete anytime.',
 
+  // --- Commute exposure micro-question (brief §9.5) ------------------------
+  'commuteExposure.question': 'Your commute is mostly?',
+  'commuteExposure.more': 'More outdoors',
+  'commuteExposure.less': 'Less outdoors',
+
   // --- Outfit detail -------------------------------------------------------
   'outfitDetail.download': 'Download / share',
   'outfitDetail.moreActions': 'More actions',

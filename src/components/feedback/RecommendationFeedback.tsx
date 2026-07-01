@@ -4,9 +4,11 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { sendOutfitFeedback } from '@/api/recommendations';
 import { useT } from '@/hooks/useT';
+import { useTrack } from '@/hooks/useTrack';
 import { REASON_TAG_KEYS } from '@/i18n/domainLabels';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, type } from '@/theme/design';
+import { detectIndoorClimateSignal } from '@/utils/climateSignals';
 
 import { reasonChipToFeedback, type FeedbackChip } from './feedbackChips';
 
@@ -23,11 +25,16 @@ import { reasonChipToFeedback, type FeedbackChip } from './feedbackChips';
 
 interface Props {
   outfitId: string;
+  // Outdoor temperature at recommendation time, when known. Lets a too_cold /
+  // too_warm dislike that contradicts the weather be tracked as an indoor-climate
+  // signal (brief §9.2). Optional — omitted callers just skip the signal.
+  temperatureC?: number | null;
 }
 
-export function RecommendationFeedback({ outfitId }: Props) {
+export function RecommendationFeedback({ outfitId, temperatureC }: Props) {
   const { t, tEnum } = useT();
   const showToast = useToastStore((s) => s.show);
+  const track = useTrack();
   const [submittedChip, setSubmittedChip] = useState<FeedbackChip | null>(null);
 
   const mutation = useMutation({
@@ -35,6 +42,8 @@ export function RecommendationFeedback({ outfitId }: Props) {
     onSuccess: (_data, chip) => {
       setSubmittedChip(chip);
       showToast({ message: t('feedback.thanks'), kind: 'success' });
+      const signal = detectIndoorClimateSignal(chip, temperatureC);
+      if (signal) track('temperature_mismatch_reported', { outfitId, reason: chip, temperatureC, signal });
     },
     // On error: the apiClient interceptor already surfaces a global error toast,
     // so we don't add a second one. The mutation resets to idle (submittedChip

@@ -170,6 +170,7 @@ export function TodayV2Screen({ navigation }: Props) {
             reasons={tomorrowOriented ? [] : buildRecommendationReasons(outfit)}
             hint={tomorrowOriented ? t('today.v2.tomorrowPreview') : hint}
             wearLabelKey={wearLabelKeyForMode(mode)}
+            temperatureC={weather?.temperatureC ?? null}
             onWear={() => {
               track('outfit_worn', { outfitId: outfit.id });
               navigation.navigate('OutfitDetail', { outfitId: outfit.id });
