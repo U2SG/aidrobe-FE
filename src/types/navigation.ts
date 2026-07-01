@@ -42,6 +42,9 @@ export type WardrobeStackParamList = {
       | 'recognition_failed'
       | 'network_error';
   };
+  // V2: after the last import confirm, land on the First Outfit activation
+  // gate instead of popping back to the list (gated by enableMvpV2Ui).
+  FirstOutfit: undefined;
 };
 
 export type SettingsStackParamList = {

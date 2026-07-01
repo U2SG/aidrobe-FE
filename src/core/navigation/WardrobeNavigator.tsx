@@ -5,6 +5,7 @@ import { ImportConfirmScreen } from '@/screens/wardrobe/ImportConfirmScreen';
 import { ImportFailureScreen } from '@/screens/wardrobe/ImportFailureScreen';
 import { ItemDetailScreen } from '@/screens/wardrobe/ItemDetailScreen';
 import { WardrobeListScreen } from '@/screens/wardrobe/WardrobeListScreen';
+import { FirstOutfitScreen } from '@/screens/onboarding-v2/FirstOutfitScreen';
 import { colors } from '@/theme/design';
 import type { WardrobeStackParamList } from '@/types/navigation';
 
@@ -44,6 +45,11 @@ export function WardrobeNavigator() {
         name="ImportFailure"
         component={ImportFailureScreen}
         options={{ title: '导入失败', headerShown: false }}
+      />
+      <Stack.Screen
+        name="FirstOutfit"
+        component={FirstOutfitScreen}
+        options={{ headerShown: false, gestureEnabled: false }}
       />
     </Stack.Navigator>
   );

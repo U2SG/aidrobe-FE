@@ -10,6 +10,7 @@ import { GarmentSvg } from '@/components/ui/GarmentSvg';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
+import { enableMvpV2Ui } from '@/lib/featureFlags';
 import { invalidateAfterConfirmImport } from '@/state/invalidation';
 import { phaseFromFlags } from '@/state/operationState';
 import { useImportDraftStore } from '@/store/importDraft';
@@ -53,6 +54,10 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
     const nextId = queue && queue[idx + 1];
     if (nextId) {
       navigation.replace('ImportConfirm', { taskId: nextId, queue, queueIndex: idx + 1 });
+    } else if (enableMvpV2Ui) {
+      // V2: after the last item, land on the First Outfit activation gate
+      // instead of dropping the user back onto the list.
+      navigation.replace('FirstOutfit');
     } else {
       navigation.popToTop();
     }
