@@ -49,6 +49,11 @@ export type WardrobeStackParamList = {
 
 export type SettingsStackParamList = {
   Settings: undefined;
+  // V2 Profile trust surface (brief §10). The existing Settings screen stays
+  // reachable from ProfileV2 for language / departure / city / notifications.
+  ProfileV2: undefined;
+  DataTrust: undefined;
+  Memory: undefined;
 };
 
 // Ask promoted to a primary tab in V2 (redesign brief v0.9 §3.1). Params mirror
