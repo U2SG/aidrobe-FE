@@ -17,6 +17,12 @@ const API_BASE_URL =
 const DEV_USER_ID =
   process.env.DEV_USER_ID ?? '00000000-0000-4000-8000-000000000001';
 
+// MVP V2 redesign shell master switch. Off by default so the existing UI keeps
+// running; flip to 'true' to opt this build into the V2 IA / Today experience.
+// Single coarse flag — this is a system-level experience rewrite, not a per-
+// feature rollout, so no gradual gating (see redesign brief v0.9 §3.3).
+const ENABLE_MVP_V2_UI = (process.env.ENABLE_MVP_V2_UI ?? 'false') === 'true';
+
 const androidConfig: NonNullable<ExpoConfig['android']> & {
   usesCleartextTraffic?: boolean;
 } = {
@@ -99,6 +105,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     APP_ENV,
     API_BASE_URL,
     DEV_USER_ID,
+    ENABLE_MVP_V2_UI,
     eas: {
       projectId: '8c50e01b-2844-473e-adec-3668fc2c2e9c',
     },
