@@ -48,6 +48,14 @@ export type SettingsStackParamList = {
   Settings: undefined;
 };
 
+// Ask promoted to a primary tab in V2 (redesign brief v0.9 §3.1). Params mirror
+// the Discover-hosted `AskAidrobe` entry so the same screen mounts in both the
+// V1 Discover stack and this V2 stack. `focusedItemId` scopes to one item
+// (scope=item); `scope: 'today'` flows from Today; absent → global.
+export type AskStackParamList = {
+  AskAidrobe: { focusedItemId?: string; scope?: 'today' } | undefined;
+};
+
 // V4 — Discover hub: wardrobe tools + seasonal insights.
 export type DiscoverStackParamList = {
   DiscoverHub: undefined;
@@ -69,6 +77,16 @@ export type MainTabsParamList = {
   WardrobeTab: NavigatorScreenParams<WardrobeStackParamList>;
   DiscoverTab: NavigatorScreenParams<DiscoverStackParamList>;
   SettingsTab: NavigatorScreenParams<SettingsStackParamList>;
+};
+
+// V2 primary tabs (redesign brief v0.9 §3.1): Discover is demoted out of the
+// primary bar (its tools become contextual entrances later), Ask is promoted,
+// and Profile replaces the Settings label. Gated by `enableMvpV2Ui`.
+export type MainTabsV2ParamList = {
+  TodayTab: NavigatorScreenParams<TodayStackParamList>;
+  WardrobeTab: NavigatorScreenParams<WardrobeStackParamList>;
+  AskTab: NavigatorScreenParams<AskStackParamList>;
+  ProfileTab: NavigatorScreenParams<SettingsStackParamList>;
 };
 
 // ---------------------------------------------------------------------------

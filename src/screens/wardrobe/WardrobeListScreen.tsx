@@ -25,6 +25,7 @@ import { SystemIcon } from '@/components/ui/SystemIcon';
 import { Tag } from '@/components/ui/Tag';
 import { WardrobeShowcaseEmpty } from '@/components/wardrobe/WardrobeShowcaseEmpty';
 import { useT, type UseT } from '@/hooks/useT';
+import { enableMvpV2Ui } from '@/lib/featureFlags';
 import { resolveItemDisplayName, SEASON_VALUES, tColorFilterLabel } from '@/i18n/domainLabels';
 import { colors, radius, shadow } from '@/theme/design';
 import type { ItemCategory, ItemStatus, WardrobeItem } from '@/types/api';
@@ -320,6 +321,13 @@ export function WardrobeListScreen({ navigation }: Props) {
   };
 
   const openInsights = () => {
+    if (enableMvpV2Ui) {
+      // Insights is no longer a primary tab under V2. Until the contextual-entry
+      // phase wires a dedicated host, surface wardrobe questions through Ask so
+      // the banner never dead-ends on a missing DiscoverTab.
+      navigation.getParent()?.navigate('AskTab' as never);
+      return;
+    }
     navigation.getParent<MainTabsNavigation>()?.navigate('DiscoverTab', { screen: 'Insights' });
   };
 
