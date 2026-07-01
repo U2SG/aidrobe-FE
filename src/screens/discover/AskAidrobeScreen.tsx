@@ -26,10 +26,13 @@ import { useTrack } from '@/hooks/useTrack';
 import { useWardrobeItemNames } from '@/hooks/useWardrobeItemNames';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { AskHistoryEntry, AskItemRefSnapshot, AskScope } from '@/types/api';
-import type { DiscoverStackParamList } from '@/types/navigation';
+import type { AskStackParamList } from '@/types/navigation';
 import { httpStatus } from '@/utils/http';
 
-type Props = NativeStackScreenProps<DiscoverStackParamList, 'AskAidrobe'>;
+// Typed against the narrow AskStackParamList so this screen mounts in both the
+// V2 Ask tab (exact match) and the V1 Discover stack (its wider navigation is
+// assignable to this narrower requirement). It only ever calls goBack().
+type Props = NativeStackScreenProps<AskStackParamList, 'AskAidrobe'>;
 
 type Turn = {
   id: string;
