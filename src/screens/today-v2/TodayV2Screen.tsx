@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
 import { getTodayRecommendation, refreshTodayRecommendation } from '@/api/recommendations';
@@ -16,7 +16,7 @@ import { useT } from '@/hooks/useT';
 import type { I18nKey } from '@/i18n';
 import { useTrack } from '@/hooks/useTrack';
 import { todayBoardMode } from '@/screens/today/todayBoard';
-import { deriveTodayMode, wearLabelKeyForMode, type TodayMode } from '@/screens/today-v2/todayMode';
+import { deriveTodayMode, isTomorrowOriented, wearLabelKeyForMode, type TodayMode } from '@/screens/today-v2/todayMode';
 import { buildRecommendationReasons } from '@/screens/today-v2/todayReasons';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, type } from '@/theme/design';
@@ -172,10 +172,18 @@ export function TodayV2Screen({ navigation }: Props) {
 
   const modeCopy = MODE_COPY[mode];
   // Evening / late-night switch focus to tomorrow. The BE has no tomorrow
-  // endpoint yet (API_GAP): we surface today's outfit as a tomorrow *preview*,
-  // and — critically — the CTA copy flips (wearLabelKeyForMode) so no stale
-  // "wear today" text shows at night (brief §4.4). Swap into a real tomorrow
+  // endpoint yet (API_GAP): we surface today's outfit as a tomorrow *preview*.
+  // The CTA copy flips (wearLabelKeyForMode) AND today-framed reasons + the
+  // live weather hint are dropped in favour of a neutral preview label, so no
+  // stale "today" framing shows at night (brief §4.4). Swap into a real tomorrow
   // feed when the contract lands.
+  const tomorrowOriented = isTomorrowOriented(mode);
+
+  // Today impression tracking — parity with V1 TodayScreen (fires on mode change
+  // too, so evening/tomorrow views aren't undercounted).
+  useEffect(() => {
+    if (hasRecommendation) track('today_viewed', { mode });
+  }, [mode, hasRecommendation, track]);
 
   const submitOverride = (payload: string) => {
     track('context_override_submitted', { payload, surface: 'today' });
@@ -201,8 +209,8 @@ export function TodayV2Screen({ navigation }: Props) {
           <DecisionOutfitCard
             outfit={outfit}
             pieces={resolvePieces(outfit, itemById)}
-            reasons={buildRecommendationReasons(outfit)}
-            hint={hint}
+            reasons={tomorrowOriented ? [] : buildRecommendationReasons(outfit)}
+            hint={tomorrowOriented ? t('today.v2.tomorrowPreview') : hint}
             wearLabelKey={wearLabelKeyForMode(mode)}
             onWear={() => {
               track('outfit_worn', { outfitId: outfit.id });

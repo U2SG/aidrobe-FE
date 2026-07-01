@@ -333,6 +333,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'today.v2.dislike': 'Not for me',
   'today.v2.why': 'Why',
   'today.v2.prepHint': '{minutes} min to prep',
+  'today.v2.tomorrowPreview': 'Tomorrow preview · set aside',
   'today.override.prompt': 'Anything special today?',
   'today.override.placeholder': 'Or just type it out',
   'today.override.submit': 'Redo with this',

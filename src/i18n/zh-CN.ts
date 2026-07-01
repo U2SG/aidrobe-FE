@@ -325,6 +325,7 @@ export const zhCN = {
   'today.v2.dislike': '不喜欢',
   'today.v2.why': '为什么',
   'today.v2.prepHint': '准备 {minutes} 分',
+  'today.v2.tomorrowPreview': '明日预览 · 先放这儿',
   'today.override.prompt': '今天有什么特别的吗？',
   'today.override.placeholder': '也可以直接打字说说',
   'today.override.submit': '按这个再看',
