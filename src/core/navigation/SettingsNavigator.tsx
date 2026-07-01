@@ -4,6 +4,7 @@ import { SettingsScreen } from '@/screens/settings/SettingsScreen';
 import { ProfileV2Screen } from '@/screens/profile-v2/ProfileV2Screen';
 import { DataTrustScreen } from '@/screens/profile-v2/DataTrustScreen';
 import { MemoryManagementScreen } from '@/screens/profile-v2/MemoryManagementScreen';
+import { useT } from '@/hooks/useT';
 import { enableMvpV2Ui } from '@/lib/featureFlags';
 import { colors } from '@/theme/design';
 import type { SettingsStackParamList } from '@/types/navigation';
@@ -14,6 +15,7 @@ const Stack = createNativeStackNavigator<SettingsStackParamList>();
 // Settings screen becomes a reachable sub-page. Flag off keeps Settings as the
 // entry, unchanged.
 export function SettingsNavigator() {
+  const { t } = useT();
   return (
     <Stack.Navigator
       initialRouteName={enableMvpV2Ui ? 'ProfileV2' : 'Settings'}
@@ -28,8 +30,18 @@ export function SettingsNavigator() {
       {enableMvpV2Ui ? (
         <>
           <Stack.Screen name="ProfileV2" component={ProfileV2Screen} options={{ headerShown: false }} />
-          <Stack.Screen name="DataTrust" component={DataTrustScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Memory" component={MemoryManagementScreen} options={{ headerShown: false }} />
+          {/* Sub-pages keep a native header so there is always a visible back
+              control (web / Android hardware back / no gesture). */}
+          <Stack.Screen
+            name="DataTrust"
+            component={DataTrustScreen}
+            options={{ headerShown: true, title: t('profile.row.dataTrust') }}
+          />
+          <Stack.Screen
+            name="Memory"
+            component={MemoryManagementScreen}
+            options={{ headerShown: true, title: t('profile.row.memory') }}
+          />
         </>
       ) : null}
     </Stack.Navigator>

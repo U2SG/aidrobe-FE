@@ -435,7 +435,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'privacy.statement.control.correct': 'Correct anything that’s wrong',
   'privacy.statement.control.delete_item': 'Delete any item or any record',
   'privacy.statement.control.delete_all': 'Delete all data or your account',
-  'privacy.statement.policyLink': 'Want the full legal terms? Read the Privacy Policy.',
+  'privacy.statement.policyLink': 'The full Privacy Policy legal terms will ship with the public release.',
 
   // --- Memory management (brief §10.3; no fake entries) --------------------
   'privacy.memory.title': 'What Aidrobe remembers about you',

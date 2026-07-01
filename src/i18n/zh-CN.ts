@@ -423,7 +423,7 @@ export const zhCN = {
   'privacy.statement.control.correct': '纠正不准的判断',
   'privacy.statement.control.delete_item': '删除任何一件衣物、任何一条记录',
   'privacy.statement.control.delete_all': '删除全部数据或注销账号',
-  'privacy.statement.policyLink': '想看完整法律条款？阅读《隐私政策》。',
+  'privacy.statement.policyLink': '完整《隐私政策》法律条款将随正式发布一同提供。',
 
   // --- Memory management (brief §10.3; no fake entries) --------------------
   'privacy.memory.title': 'Aidrobe 记住的关于你',

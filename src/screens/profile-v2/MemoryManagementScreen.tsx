@@ -13,7 +13,7 @@ export function MemoryManagementScreen() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
-      contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 64, paddingBottom: 48, gap: 20 }}
+      contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 48, gap: 20 }}
       showsVerticalScrollIndicator={false}
     >
       <View style={{ gap: 8 }}>

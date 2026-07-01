@@ -7,6 +7,7 @@ import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
 import type { I18nKey } from '@/i18n';
 import { useAuthStore } from '@/store/auth';
+import { useOnboardingStore } from '@/store/onboarding';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, type } from '@/theme/design';
 import type { SettingsStackParamList } from '@/types/navigation';
@@ -66,6 +67,15 @@ export function ProfileV2Screen({ navigation }: Props) {
   const { t } = useT();
   const showToast = useToastStore((s) => s.show);
   const clearAuth = useAuthStore((s) => s.clear);
+  const setOnboardingCompleted = useOnboardingStore((s) => s.setCompleted);
+
+  // Clearing auth must also reset the onboarding flag so RootNavigator sends the
+  // user back to sign-in/onboarding — otherwise they stay mounted in the main app
+  // with no tokens (parity with SettingsScreen.signOut).
+  const resetToSignedOut = async () => {
+    await clearAuth();
+    setOnboardingCompleted(false);
+  };
 
   const exportMutation = useMutation({
     mutationFn: requestDataExport,
@@ -75,7 +85,7 @@ export function ProfileV2Screen({ navigation }: Props) {
     mutationFn: deactivateAccount,
     onSuccess: async () => {
       showToast({ message: t('profile.deactivate.done'), kind: 'success' });
-      await clearAuth();
+      await resetToSignedOut();
     },
   });
 
@@ -90,7 +100,7 @@ export function ProfileV2Screen({ navigation }: Props) {
     ]);
 
   const signOut = () => {
-    void clearAuth();
+    void resetToSignedOut();
   };
 
   return (
