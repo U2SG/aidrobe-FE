@@ -7,6 +7,7 @@ import { RecommendationFeedback } from '@/components/feedback/RecommendationFeed
 import { AIOrb } from '@/components/ui/AIOrb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
+import type { I18nKey } from '@/i18n';
 import { colors, radius, shadow, type } from '@/theme/design';
 import type { OutfitSummary, RecommendationReason } from '@/types/api';
 
@@ -18,6 +19,9 @@ type Props = {
   reasons: RecommendationReason[];
   /** e.g. "28° 多云 · 准备 5 分" — real weather/time hint, may be null. */
   hint?: string | null;
+  /** Primary CTA label — mode-aware ("try today" vs "set for tomorrow") so
+   *  evening/late-night never shows stale "wear today" copy (brief §4.4). */
+  wearLabelKey?: I18nKey;
   onWear: () => void;
   onSwap: () => void;
   onViewDetail: () => void;
@@ -35,6 +39,7 @@ export function DecisionOutfitCard({
   pieces,
   reasons,
   hint,
+  wearLabelKey = 'today.v2.wear',
   onWear,
   onSwap,
   onViewDetail,
@@ -80,7 +85,7 @@ export function DecisionOutfitCard({
           opacity: pressed ? 0.88 : 1,
         })}
       >
-        <Text style={{ ...type.headline, color: colors.inverse }}>{t('today.v2.wear')}</Text>
+        <Text style={{ ...type.headline, color: colors.inverse }}>{t(wearLabelKey)}</Text>
       </Pressable>
 
       {/* Secondary actions: swap (fallback) / dislike / why. */}

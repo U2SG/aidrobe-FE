@@ -16,7 +16,7 @@ import { useT } from '@/hooks/useT';
 import type { I18nKey } from '@/i18n';
 import { useTrack } from '@/hooks/useTrack';
 import { todayBoardMode } from '@/screens/today/todayBoard';
-import { deriveTodayMode, type TodayMode } from '@/screens/today-v2/todayMode';
+import { deriveTodayMode, wearLabelKeyForMode, type TodayMode } from '@/screens/today-v2/todayMode';
 import { buildRecommendationReasons } from '@/screens/today-v2/todayReasons';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, type } from '@/theme/design';
@@ -171,6 +171,11 @@ export function TodayV2Screen({ navigation }: Props) {
   const resurfaceInsight: ResurfaceInsight | null = null;
 
   const modeCopy = MODE_COPY[mode];
+  // Evening / late-night switch focus to tomorrow. The BE has no tomorrow
+  // endpoint yet (API_GAP): we surface today's outfit as a tomorrow *preview*,
+  // and — critically — the CTA copy flips (wearLabelKeyForMode) so no stale
+  // "wear today" text shows at night (brief §4.4). Swap into a real tomorrow
+  // feed when the contract lands.
 
   const submitOverride = (payload: string) => {
     track('context_override_submitted', { payload, surface: 'today' });
@@ -198,6 +203,7 @@ export function TodayV2Screen({ navigation }: Props) {
             pieces={resolvePieces(outfit, itemById)}
             reasons={buildRecommendationReasons(outfit)}
             hint={hint}
+            wearLabelKey={wearLabelKeyForMode(mode)}
             onWear={() => {
               track('outfit_worn', { outfitId: outfit.id });
               navigation.navigate('OutfitDetail', { outfitId: outfit.id });

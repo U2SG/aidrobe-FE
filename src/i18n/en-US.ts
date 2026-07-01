@@ -328,6 +328,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'today.mode.cold.subtitle': 'Add a top, bottom and shoes for better picks',
   'today.v2.outfitTitle': "Today's look",
   'today.v2.wear': 'Try this today',
+  'today.v2.wearTomorrow': 'Set this for tomorrow',
   'today.v2.swap': 'Swap',
   'today.v2.dislike': 'Not for me',
   'today.v2.why': 'Why',

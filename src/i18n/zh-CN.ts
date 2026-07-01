@@ -320,6 +320,7 @@ export const zhCN = {
   'today.mode.cold.subtitle': '补齐上衣、下装和鞋，推荐会更准',
   'today.v2.outfitTitle': '今日一套',
   'today.v2.wear': '今天先试这套',
+  'today.v2.wearTomorrow': '明天先按这套',
   'today.v2.swap': '换一套',
   'today.v2.dislike': '不喜欢',
   'today.v2.why': '为什么',
