@@ -267,6 +267,24 @@ export interface ServerI18nMessage {
   fallback_text: string;
 }
 
+// Where a recommendation reason came from — drives the small provenance label
+// on each reason row (redesign brief v0.9 §9.3). Optional everywhere: the BE
+// currently returns reasons as plain text, so `source` is undefined until the
+// contract adds it, in which case the label is simply not rendered.
+export type RecommendationReasonSource =
+  | 'weather_rule'
+  | 'wardrobe_history'
+  | 'preference_memory'
+  | 'style_memory'
+  | 'indoor_climate_inference'
+  | 'llm';
+
+export interface RecommendationReason {
+  text: string;
+  source?: RecommendationReasonSource;
+  referencedItemIds?: string[];
+}
+
 export interface OutfitObstacle {
   kind: ObstacleKind;
   itemId: string;

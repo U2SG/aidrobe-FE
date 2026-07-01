@@ -33,6 +33,20 @@ export type TodayMode =
   | 'late_night_tomorrow'
   | 'empty_or_cold_start';
 
+/** True when the mode is tomorrow-oriented (evening / late night). */
+export function isTomorrowOriented(mode: TodayMode): boolean {
+  return mode === 'evening_tomorrow' || mode === 'late_night_tomorrow';
+}
+
+/**
+ * i18n key for the primary CTA, mode-aware so evening/late-night never shows the
+ * stale "wear today" copy (brief §4.4). The Today v2 screen reads its CTA label
+ * from here, so this single assertion covers the screen wiring too.
+ */
+export function wearLabelKeyForMode(mode: TodayMode): 'today.v2.wear' | 'today.v2.wearTomorrow' {
+  return isTomorrowOriented(mode) ? 'today.v2.wearTomorrow' : 'today.v2.wear';
+}
+
 /** Parse "HH:mm[:ss]" into minutes-of-day, or null if absent/malformed. */
 export function parseDepartureMinutes(departureTime?: string | null): number | null {
   if (!departureTime) return null;

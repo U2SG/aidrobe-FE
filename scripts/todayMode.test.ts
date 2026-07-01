@@ -8,6 +8,7 @@ import {
   deriveTodayMode,
   isMorningPrepWindow,
   parseDepartureMinutes,
+  wearLabelKeyForMode,
 } from '../src/screens/today-v2/todayMode.ts';
 
 // Local-time Date at HH:mm on a fixed day (month/day are irrelevant to the mode).
@@ -122,4 +123,16 @@ assert.equal(isMorningPrepWindow(at(5, 0), '08:30'), false, '210 min before depa
 assert.equal(isMorningPrepWindow(at(9, 0), '08:30'), false, 'after departure → not in prep window');
 assert.equal(isMorningPrepWindow(at(8, 0), null), false, 'unknown departure → false');
 
-console.log('todayMode: 26/26 cases passed');
+// --- CTA label is mode-aware (brief §4.4: no stale "wear today" copy at night) -
+// This is the exact key the Today v2 screen feeds its primary button, so it
+// covers the screen wiring, not just the enum.
+assert.equal(wearLabelKeyForMode('morning_today'), 'today.v2.wear', 'morning → wear today');
+assert.equal(wearLabelKeyForMode('daytime_today'), 'today.v2.wear', 'daytime → wear today');
+assert.equal(wearLabelKeyForMode('evening_tomorrow'), 'today.v2.wearTomorrow', 'evening → set for tomorrow');
+assert.equal(
+  wearLabelKeyForMode('late_night_tomorrow'),
+  'today.v2.wearTomorrow',
+  'late night → set for tomorrow (never "wear today")',
+);
+
+console.log('todayMode: 30/30 cases passed');
