@@ -41,6 +41,8 @@ export const ANALYTICS_EVENTS = {
   outfit_obstacle_ignored: 'outfit_obstacle_ignored',
   // Today v2: user submitted a context override (chip or free text).
   context_override_submitted: 'context_override_submitted',
+  // First Outfit activation reached the ready/single state.
+  first_outfit_generated: 'first_outfit_generated',
 } as const;
 
 export type AnalyticsEvent = keyof typeof ANALYTICS_EVENTS;

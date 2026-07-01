@@ -7,7 +7,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { getTodayRecommendation, refreshTodayRecommendation } from '@/api/recommendations';
 import { getUserSettings } from '@/api/settings';
 import { getWardrobeItem } from '@/api/wardrobe';
-import type { GarmentKind, GarmentPiece } from '@/components/outfit/garments';
+import { resolveOutfitPieces } from '@/components/outfit/resolvePieces';
 import { ContextOverrideBar, type ContextOverrideSuggestion } from '@/components/product/ContextOverrideBar';
 import { DecisionOutfitCard } from '@/components/product/DecisionOutfitCard';
 import { ResurfaceInsightCard, type ResurfaceInsight } from '@/components/product/ResurfaceInsightCard';
@@ -20,19 +20,10 @@ import { deriveTodayMode, isTomorrowOriented, wearLabelKeyForMode, type TodayMod
 import { buildRecommendationReasons } from '@/screens/today-v2/todayReasons';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, type } from '@/theme/design';
-import type { ItemCategory, OutfitSummary, WardrobeItem } from '@/types/api';
+import type { WardrobeItem } from '@/types/api';
 import type { TodayStackParamList } from '@/types/navigation';
 
 type Props = NativeStackScreenProps<TodayStackParamList, 'Today'>;
-
-// Neutral flat-lay layout for the single V2 outfit board (no per-strategy preset).
-const V2_LAYOUT: Pick<GarmentPiece, 'x' | 'y' | 'scale' | 'rotate'>[] = [
-  { x: 8, y: 14, scale: 1.12, rotate: '-7deg' },
-  { x: 128, y: 128, scale: 1.24, rotate: '2deg' },
-  { x: 8, y: 284, scale: 0.72, rotate: '7deg' },
-  { x: 208, y: 292, scale: 0.78, rotate: '-5deg' },
-  { x: 184, y: 18, scale: 0.86, rotate: '5deg' },
-];
 
 // Context override chips (brief v0.9 §5.4). labelKey → i18n; payload is the free
 // text an override represents (tracked + sent to refresh).
@@ -45,39 +36,6 @@ const OVERRIDE_SUGGESTIONS: ContextOverrideSuggestion[] = [
   { id: 'coldOffice', labelKey: 'today.override.chip.coldOffice', payload: '办公室有点冷' },
   { id: 'stayIn', labelKey: 'today.override.chip.stayIn', payload: '不怎么出门' },
 ];
-
-function categoryToGarment(cat?: ItemCategory | string | null): GarmentKind {
-  switch (cat) {
-    case 'top':
-      return 'shirt';
-    case 'bottom':
-      return 'trousers';
-    case 'outerwear':
-      return 'blazer';
-    case 'dress':
-      return 'dress';
-    case 'shoes':
-      return 'sneaker';
-    case 'accessory':
-      return 'bag';
-    default:
-      return 'shirt';
-  }
-}
-
-function resolvePieces(outfit: OutfitSummary, itemById: Map<string, WardrobeItem>): GarmentPiece[] {
-  return outfit.items.map((brief, index) => {
-    const item = itemById.get(brief.id);
-    const layout = V2_LAYOUT[index] ?? V2_LAYOUT[index % V2_LAYOUT.length]!;
-    return {
-      ...layout,
-      itemId: brief.id,
-      kind: categoryToGarment(item?.category ?? brief.category),
-      imageUrl: item?.imageUrl ?? brief.thumbUrl ?? null,
-      name: item?.name ?? brief.name ?? null,
-    };
-  });
-}
 
 const MODE_COPY: Record<TodayMode, { title: I18nKey; subtitle: I18nKey }> = {
   morning_today: { title: 'today.mode.morning.title', subtitle: 'today.mode.morning.subtitle' },
@@ -208,7 +166,7 @@ export function TodayV2Screen({ navigation }: Props) {
         <>
           <DecisionOutfitCard
             outfit={outfit}
-            pieces={resolvePieces(outfit, itemById)}
+            pieces={resolveOutfitPieces(outfit, itemById)}
             reasons={tomorrowOriented ? [] : buildRecommendationReasons(outfit)}
             hint={tomorrowOriented ? t('today.v2.tomorrowPreview') : hint}
             wearLabelKey={wearLabelKeyForMode(mode)}

@@ -16,6 +16,9 @@ export const colors = {
   successBg: '#EDF4EE',
   warning: '#C8924A',
   warningBg: '#F8E9C8',
+  // Deeper amber for low-confidence / missing-slot text + icons (readable as a
+  // foreground where `warning` is a fill/background). From the V2 handoff.
+  cautionAmber: '#9A682E',
   danger: '#B85C4A',
   dangerBg: '#F6DDD6',
   inverse: '#FFFFFF',
