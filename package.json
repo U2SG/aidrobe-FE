@@ -16,7 +16,7 @@
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,json}\"",
     "typecheck": "tsc --noEmit",
-    "test": "node scripts/check-node.cjs && node scripts/run-regressions.ts"
+    "test": "node scripts/check-node.cjs && node scripts/run-regressions.ts && node scripts/check-copy-denylist.ts"
   },
   "dependencies": {
     "@babel/runtime": "^7.29.7",

@@ -67,6 +67,11 @@ export const enUS: Record<keyof typeof zhCN, string> = {
 
   // --- Wardrobe list -------------------------------------------------------
   'wardrobe.title': 'My wardrobe',
+  'wardrobe.empty.title': 'Your wardrobe is empty',
+  'wardrobe.empty.subtitle':
+    'Browse the example wardrobe — tap any piece to see its detail and "build a look with this", then add your own when ready.',
+  'wardrobe.empty.subtitleV2': 'Snap something you wear often and you can start.',
+  'wardrobe.empty.addFirst': 'Add my first item',
   'wardrobe.stored': 'Stored',
   'wardrobe.itemUnit': 'items',
   'wardrobe.searchPlaceholder': 'Search items · color · category',

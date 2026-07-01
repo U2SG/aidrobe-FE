@@ -65,6 +65,10 @@ export const zhCN = {
 
   // --- Wardrobe list -------------------------------------------------------
   'wardrobe.title': '我的衣橱',
+  'wardrobe.empty.title': '衣橱还是空的',
+  'wardrobe.empty.subtitle': '先看看示例衣橱 —— 点任意一件感受单品详情和「用这件搭一套」，准备好就添加你自己的。',
+  'wardrobe.empty.subtitleV2': '拍一件你现在常穿的，就能开始。',
+  'wardrobe.empty.addFirst': '添加我的第一件衣物',
   'wardrobe.stored': '已收纳',
   'wardrobe.itemUnit': '件',
   'wardrobe.searchPlaceholder': '搜索衣物 · 颜色 · 品类',
