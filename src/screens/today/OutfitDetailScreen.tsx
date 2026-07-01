@@ -30,6 +30,7 @@ import type {
   OutfitObstacle,
   OutfitReplacementCandidate,
   OutfitScores,
+  TodayRecommendation,
   WardrobeItem,
 } from '@/types/api';
 import type { TodayStackParamList } from '@/types/navigation';
@@ -770,7 +771,15 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
 
         {!isLocal ? (
           <View style={{ marginTop: 20 }}>
-            <RecommendationFeedback outfitId={outfitId} />
+            {/* Carry the current outdoor temperature (from the today cache) so a
+                too_cold/too_warm dislike here still emits the indoor-climate
+                mismatch signal (brief §9.2), matching the Today card. */}
+            <RecommendationFeedback
+              outfitId={outfitId}
+              temperatureC={
+                qc.getQueryData<TodayRecommendation>(['todayRecommendation'])?.context?.weather?.temperatureC ?? null
+              }
+            />
           </View>
         ) : null}
       </ScrollView>

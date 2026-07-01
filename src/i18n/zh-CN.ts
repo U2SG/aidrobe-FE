@@ -430,6 +430,11 @@ export const zhCN = {
   'privacy.memory.subtitle': '这些是 Aidrobe 从你的使用里学到的，不是你填的表。不准的地方，随时改。',
   'privacy.memory.empty': '还没有学到可展示的偏好。多用几天，这里会慢慢出现，你随时可以纠正或删除。',
 
+  // --- Commute exposure micro-question (brief §9.5) ------------------------
+  'commuteExposure.question': '出门通勤，主要是？',
+  'commuteExposure.more': '多接触室外',
+  'commuteExposure.less': '少接触室外',
+
   // --- Outfit detail -------------------------------------------------------
   'outfitDetail.download': '下载 / 分享',
   'outfitDetail.moreActions': '更多操作',

@@ -28,6 +28,8 @@ type Props = {
   /** Hidden in the single-outfit cold-start state (swap would always fail). */
   showSwap?: boolean;
   swapBusy?: boolean;
+  /** Outdoor temperature, passed to feedback for indoor-climate signal (§9.2). */
+  temperatureC?: number | null;
 };
 
 // The one decision outfit for Today v2 (brief v0.9 §5): a single real outfit, its
@@ -45,6 +47,7 @@ export function DecisionOutfitCard({
   onViewDetail,
   showSwap = true,
   swapBusy,
+  temperatureC,
 }: Props) {
   const { t } = useT();
   const [showFeedback, setShowFeedback] = useState(false);
@@ -115,7 +118,7 @@ export function DecisionOutfitCard({
 
       {showFeedback ? (
         <View style={{ borderTopWidth: 1, borderTopColor: colors.separatorSoft, paddingTop: 14 }}>
-          <RecommendationFeedback outfitId={outfit.id} />
+          <RecommendationFeedback outfitId={outfit.id} temperatureC={temperatureC} />
         </View>
       ) : null}
     </View>

@@ -1,18 +1,21 @@
 import { useNavigation } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { API_BASE_URL, APP_ENV } from '@/api/client';
 import { updateUserSettings } from '@/api/settings';
 import { OperationBanner } from '@/components/feedback/OperationBanner';
 import { WheelTimePicker } from '@/components/forms/WheelTimePicker';
+import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
+import { enableMvpV2Ui } from '@/lib/featureFlags';
 import { invalidateAfterUpdateDepartureTime } from '@/state/invalidation';
 import { phaseFromFlags } from '@/state/operationState';
+import { useCommuteExposureStore, type CommuteExposure } from '@/store/commuteExposure';
 import { useOnboardingStore } from '@/store/onboarding';
 import { useToastStore } from '@/store/toast';
-import { colors, shadow } from '@/theme/design';
+import { colors, radius, shadow, type as typeScale } from '@/theme/design';
 import { httpStatus } from '@/utils/http';
 
 const T = {
@@ -36,6 +39,13 @@ export function DepartureTimeScreen() {
   const setCompleted = useOnboardingStore((state) => state.setCompleted);
   const showToast = useToastStore((state) => state.show);
   const track = useTrack();
+  const { t } = useT();
+  const exposure = useCommuteExposureStore((s) => s.exposure);
+  const setExposure = useCommuteExposureStore((s) => s.setExposure);
+  const selectExposure = (value: CommuteExposure) => {
+    setExposure(value);
+    track('commute_exposure_selected', { exposure: value });
+  };
 
   const finish = () => {
     setCompleted(true);
@@ -85,14 +95,19 @@ export function DepartureTimeScreen() {
         ))}
       </View>
 
-      <View
-        style={{
-          flex: 1,
+      {/* Scrollable so the optional commute question + pinned CTAs still fit on
+          shorter viewports (space-between preserved on tall screens). */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          flexGrow: 1,
           paddingHorizontal: 28,
           paddingTop: 32,
           paddingBottom: 36,
           justifyContent: 'space-between',
         }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <View>
           <Text
@@ -165,6 +180,46 @@ export function DepartureTimeScreen() {
               <WheelTimePicker value={time.slice(0, 5)} onChange={(v) => setTime(`${v}:00`)} />
             </View>
           </View>
+
+          {/* Optional commute-exposure micro-question (brief §9.5) — the single
+              sanctioned active question, attached to the existing departure
+              context. V2 only; skippable by simply not choosing. */}
+          {enableMvpV2Ui ? (
+            <View style={{ marginTop: 24, gap: 10 }}>
+              <Text style={{ ...typeScale.footnote, color: T.ink2 }}>{t('commuteExposure.question')}</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {(['more_outdoor', 'less_outdoor'] as const).map((value) => {
+                  const selected = exposure === value;
+                  return (
+                    <Pressable
+                      key={value}
+                      onPress={() => selectExposure(value)}
+                      style={{
+                        flex: 1,
+                        minHeight: 44,
+                        borderRadius: radius.pill,
+                        borderWidth: 1,
+                        borderColor: selected ? T.ink : T.divider,
+                        backgroundColor: selected ? T.ink : T.card,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text
+                        style={{
+                          ...typeScale.callout,
+                          fontWeight: '600',
+                          color: selected ? colors.inverse : T.ink2,
+                        }}
+                      >
+                        {t(value === 'more_outdoor' ? 'commuteExposure.more' : 'commuteExposure.less')}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
         </View>
 
         <View style={{ gap: 10 }}>
@@ -197,7 +252,7 @@ export function DepartureTimeScreen() {
             <Text style={{ fontSize: 12, color: T.ink3 }}>跳过</Text>
           </Pressable>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 }

@@ -43,6 +43,11 @@ export const ANALYTICS_EVENTS = {
   context_override_submitted: 'context_override_submitted',
   // First Outfit activation reached the ready/single state.
   first_outfit_generated: 'first_outfit_generated',
+  // Indoor climate P1.5: a too_cold/too_warm feedback contradicted the outdoor
+  // temperature (medium indoor-climate signal). Never labels the user.
+  temperature_mismatch_reported: 'temperature_mismatch_reported',
+  // Optional departure micro-question: how much outdoor exposure the commute has.
+  commute_exposure_selected: 'commute_exposure_selected',
 } as const;
 
 export type AnalyticsEvent = keyof typeof ANALYTICS_EVENTS;
