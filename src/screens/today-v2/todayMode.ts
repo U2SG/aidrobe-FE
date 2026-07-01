@@ -87,7 +87,9 @@ export function deriveTodayMode(input: TodayStateInput): TodayMode {
   if (!hasTodayRecommendation) return 'empty_or_cold_start';
 
   const depMin = parseDepartureMinutes(departureTime);
-  const nowMin = hour * 60 + now.getMinutes();
   if (depMin == null) return hour < 12 ? 'morning_today' : 'daytime_today';
-  return nowMin <= depMin ? 'morning_today' : 'daytime_today';
+  // Morning only inside the prep window before departure — so a late (e.g. 17:00)
+  // departure doesn't pin the screen to "getting ready" all day; before the
+  // window (and after departure) is daytime.
+  return isMorningPrepWindow(now, departureTime) ? 'morning_today' : 'daytime_today';
 }

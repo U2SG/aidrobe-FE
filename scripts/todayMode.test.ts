@@ -58,6 +58,18 @@ assert.equal(
   'one minute past departure → daytime',
 );
 
+// A late departure must not pin morning all day — before the prep window is daytime.
+assert.equal(
+  deriveTodayMode({ now: at(9, 0), departureTime: '17:00', ...ready }),
+  'daytime_today',
+  '09:00 with a 17:00 departure is outside the prep window → daytime, not morning',
+);
+assert.equal(
+  deriveTodayMode({ now: at(15, 0), departureTime: '17:00', ...ready }),
+  'morning_today',
+  '15:00 with a 17:00 departure is inside the 180-min prep window → morning',
+);
+
 // --- No departure known: noon is the morning/daytime fallback split ------------
 assert.equal(
   deriveTodayMode({ now: at(9), departureTime: null, ...ready }),
@@ -110,4 +122,4 @@ assert.equal(isMorningPrepWindow(at(5, 0), '08:30'), false, '210 min before depa
 assert.equal(isMorningPrepWindow(at(9, 0), '08:30'), false, 'after departure → not in prep window');
 assert.equal(isMorningPrepWindow(at(8, 0), null), false, 'unknown departure → false');
 
-console.log('todayMode: 24/24 cases passed');
+console.log('todayMode: 26/26 cases passed');
