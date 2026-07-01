@@ -6,10 +6,16 @@ import { OutfitCalendarScreen } from '@/screens/today/OutfitCalendarScreen';
 import { OutfitDetailScreen } from '@/screens/today/OutfitDetailScreen';
 import { OutfitPlanPickerScreen } from '@/screens/today/OutfitPlanPickerScreen';
 import { TodayScreen } from '@/screens/today/TodayScreen';
+import { TodayV2Screen } from '@/screens/today-v2/TodayV2Screen';
+import { enableMvpV2Ui } from '@/lib/featureFlags';
 import { colors } from '@/theme/design';
 import type { TodayStackParamList } from '@/types/navigation';
 
 const Stack = createNativeStackNavigator<TodayStackParamList>();
+
+// V2 swaps the Today screen for the redesigned single-outfit decision surface;
+// the rest of the stack (detail, calendar, poster) is shared. Flag off → V1.
+const TodayHome = enableMvpV2Ui ? TodayV2Screen : TodayScreen;
 
 export function TodayNavigator() {
   return (
@@ -21,7 +27,7 @@ export function TodayNavigator() {
         headerTitleStyle: { fontWeight: '700' },
       }}
     >
-      <Stack.Screen name="Today" component={TodayScreen} options={{ title: '今日', headerShown: false }} />
+      <Stack.Screen name="Today" component={TodayHome} options={{ title: '今日', headerShown: false }} />
       <Stack.Screen
         name="OutfitDetail"
         component={OutfitDetailScreen}

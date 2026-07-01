@@ -39,6 +39,8 @@ export const ANALYTICS_EVENTS = {
   ootd_poster_shared: 'ootd_poster_shared',
   outfit_item_replaced: 'outfit_item_replaced',
   outfit_obstacle_ignored: 'outfit_obstacle_ignored',
+  // Today v2: user submitted a context override (chip or free text).
+  context_override_submitted: 'context_override_submitted',
 } as const;
 
 export type AnalyticsEvent = keyof typeof ANALYTICS_EVENTS;
