@@ -12,6 +12,7 @@ import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { enableMvpV2Ui } from '@/lib/featureFlags';
 import { invalidateAfterConfirmImport } from '@/state/invalidation';
+import { confirmationBudgetForImport } from '@/utils/timeUX';
 import { phaseFromFlags } from '@/state/operationState';
 import { useImportDraftStore } from '@/store/importDraft';
 import { colors, shadow } from '@/theme/design';
@@ -186,6 +187,21 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
             ? t('import.confidence', { pct: confidencePct })
             : t('import.confidenceUnknown')}
         </Text>
+
+        {/* Late-night low-friction hint (brief §6.4): past the confirmation
+            budget, nudge "先收下，之后再整理" instead of pressing for edits. */}
+        {confirmationBudgetForImport(new Date()) === 0 ? (
+          <View
+            style={{
+              backgroundColor: colors.secondaryElevated,
+              borderRadius: 12,
+              padding: 12,
+              marginBottom: 18,
+            }}
+          >
+            <Text style={{ fontSize: 13, color: T.ink2, lineHeight: 19 }}>{t('import.lateNightHint')}</Text>
+          </View>
+        ) : null}
 
         {/* Image */}
         <View
