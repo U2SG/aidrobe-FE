@@ -54,7 +54,10 @@ export function FirstOutfitScreen({ navigation }: Props) {
 
   const goToday = () => {
     track('first_outfit_generated', { outfitCount: outfits.length });
-    // Cross-tab jump into Today (this screen lives in the Wardrobe stack).
+    // Pop the activation gate off the Wardrobe stack first, so returning to the
+    // Wardrobe tab later lands on the list — not back on this headerless gate —
+    // then cross-tab jump into Today.
+    navigation.popToTop();
     navigation.getParent()?.navigate('TodayTab' as never);
   };
 

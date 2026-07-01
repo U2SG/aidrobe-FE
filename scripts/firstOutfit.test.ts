@@ -45,6 +45,7 @@ assert.equal(
 assert.deepEqual(missingCoreSlots({ top: 3, shoes: 1 }), ['bottom'], 'top+shoes, no bottom → missing bottom');
 assert.deepEqual(missingCoreSlots({ top: 1, bottom: 1, shoes: 1 }), [], 'separates complete → nothing missing');
 assert.deepEqual(missingCoreSlots({ dress: 1, shoes: 1 }), [], 'dress + shoes → nothing missing');
+assert.deepEqual(missingCoreSlots({ dress: 1 }), ['shoes'], 'dress but no shoes → prompt shoes, not top');
 assert.deepEqual(missingCoreSlots({}), ['top', 'bottom', 'shoes'], 'empty wardrobe → all three core slots');
 assert.deepEqual(missingCoreSlots({ top: 2, bottom: 1 }), ['shoes'], 'no shoes → missing shoes');
 
@@ -55,4 +56,4 @@ assert.deepEqual(
   'counts per category, ignores null',
 );
 
-console.log('firstOutfit: 12/12 cases passed');
+console.log('firstOutfit: 13/13 cases passed');

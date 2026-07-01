@@ -38,6 +38,11 @@ export function missingCoreSlots(counts: Partial<Record<ItemCategory, number>>):
   const separatesCombo = has('top') && has('bottom') && has('shoes');
   if (dressCombo || separatesCombo) return [];
 
+  // With a dress already in the wardrobe the nearest viable combo is dress +
+  // shoes, so the only gap to prompt is shoes — never "add a top" (which
+  // wouldn't unlock an outfit). SlotGap's CTA uses missingSlots[0].
+  if (has('dress')) return ['shoes'];
+
   const missing: CoreSlot[] = [];
   if (!has('top')) missing.push('top');
   if (!has('bottom')) missing.push('bottom');
