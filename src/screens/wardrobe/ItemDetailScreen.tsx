@@ -32,6 +32,7 @@ import {
   resolveItemDisplayName,
   SEASON_VALUES,
 } from '@/i18n/domainLabels';
+import { enableMvpV2Ui } from '@/lib/featureFlags';
 import { invalidateAfterWardrobeItemChange } from '@/state/invalidation';
 import { colors, radius, shadow, type } from '@/theme/design';
 import type {
@@ -474,11 +475,18 @@ export function ItemDetailScreen({ navigation, route }: Props) {
       { text: t('common.delete'), style: 'destructive', onPress: () => remove.mutate() },
     ]);
 
-  const openAskWithItem = () =>
-    navigation.getParent()?.navigate('DiscoverTab', {
+  const openAskWithItem = () => {
+    // V2 promotes Ask to its own tab; V1 reaches it through Discover. The parent
+    // tab navigator differs by flag, so use a loose cast rather than two route
+    // param lists.
+    const parent = navigation.getParent() as
+      | { navigate: (name: string, params?: object) => void }
+      | undefined;
+    parent?.navigate(enableMvpV2Ui ? 'AskTab' : 'DiscoverTab', {
       screen: 'AskAidrobe',
       params: { focusedItemId: itemId },
-    } as never);
+    });
+  };
 
   const categoryOptions: PickerOption[] = CATEGORY_OPTIONS.map((c) => ({
     value: c.key,
