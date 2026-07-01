@@ -30,10 +30,13 @@ export type SceneTag = (typeof SCENE_VALUES)[number];
 // live here.
 export const REASON_TAG_KEYS = [
   'too_formal',
+  'too_casual',
   'too_warm',
+  'too_cold',
   'wrong_color',
   'wrong_fit',
   'not_my_style',
+  'just_worn',
 ] as const;
 export type ReasonTagKey = (typeof REASON_TAG_KEYS)[number];
 
@@ -213,17 +216,23 @@ const COLOR: Record<AppLocale, Record<string, string>> = {
 const REASON_TAG: LocaleMap<ReasonTagKey> = {
   'zh-CN': {
     too_formal: '太正式',
+    too_casual: '太休闲',
     too_warm: '偏热',
+    too_cold: '偏冷',
     wrong_color: '颜色不喜欢',
     wrong_fit: '版型不合适',
     not_my_style: '不是我的风格',
+    just_worn: '刚穿过',
   },
   'en-US': {
     too_formal: 'Too formal',
+    too_casual: 'Too casual',
     too_warm: 'Too warm',
+    too_cold: 'Too cold',
     wrong_color: 'Wrong color',
     wrong_fit: 'Wrong fit',
     not_my_style: 'Not my style',
+    just_worn: 'Just wore it',
   },
 };
 
