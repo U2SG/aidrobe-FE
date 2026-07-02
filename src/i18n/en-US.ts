@@ -600,4 +600,11 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'feedback.loveIt': 'Love it',
   'feedback.thanks': 'Thanks — tomorrow’s picks will be sharper',
   'feedback.submitted': 'Thanks, your feedback is recorded!',
+  // FeedbackSheetScreen v2 restyle (v2-visual)
+  'feedback.sheet.title': "What doesn't work about this outfit?",
+  'feedback.sheet.subtitle': "Pick the main reason and I'll adjust.",
+  'feedback.sheet.freeTextPlaceholder': 'Anything else? (optional)',
+  'feedback.sheet.submitSwap': 'Submit & swap',
+  'feedback.sheet.submitOnly': 'Just submit feedback',
+  'feedback.sheet.errorNoReason': 'Please pick a reason first',
 };

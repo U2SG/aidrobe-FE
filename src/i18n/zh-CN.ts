@@ -592,6 +592,13 @@ export const zhCN = {
   'feedback.loveIt': '很喜欢',
   'feedback.thanks': '感谢反馈，明天推荐会更准',
   'feedback.submitted': '已记录你的反馈，谢谢！',
+  // FeedbackSheetScreen v2 restyle (v2-visual)
+  'feedback.sheet.title': '这套哪里不合适？',
+  'feedback.sheet.subtitle': '选一个最主要的原因，我会调整一下。',
+  'feedback.sheet.freeTextPlaceholder': '还有别的原因？（可选）',
+  'feedback.sheet.submitSwap': '提交并换一套',
+  'feedback.sheet.submitOnly': '只提交反馈',
+  'feedback.sheet.errorNoReason': '请先选一个原因',
 } as const;
 
 export type I18nKey = keyof typeof zhCN;
