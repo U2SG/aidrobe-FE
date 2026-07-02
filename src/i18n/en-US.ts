@@ -186,6 +186,21 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'add.albumPermission': 'Photo library permission needed',
   'add.someSkipped': '{count} could not be imported and were skipped',
 
+  // --- Import failure ------------------------------------------------------
+  'import.failure.title': 'Import failed',
+  'import.failure.retake': 'Choose another photo',
+  'import.failure.backToWardrobe': 'Back to wardrobe',
+  'import.failure.label.upload_failed': 'Upload interrupted',
+  'import.failure.label.unsupported_format': 'Unsupported format',
+  'import.failure.label.too_large': 'Image too large',
+  'import.failure.label.recognition_failed': 'Not recognised',
+  'import.failure.label.network_error': 'Network dropped',
+  'import.failure.hint.upload_failed': 'The upload channel did not complete. Try another photo or check your connection.',
+  'import.failure.hint.unsupported_format': 'Use a JPEG, PNG, or WebP instead.',
+  'import.failure.hint.too_large': 'Compress to under 10 MB then try again.',
+  'import.failure.hint.recognition_failed': 'Try a photo with a cleaner background and the full garment in view.',
+  'import.failure.hint.network_error': 'Try again once your connection is back.',
+
   // --- Import confirm ------------------------------------------------------
   'import.recognizing': 'Recognizing item',
   'import.progress': 'Recognized {current} / {total}',

@@ -176,6 +176,21 @@ export const zhCN = {
   'add.albumPermission': '需要相册权限',
   'add.someSkipped': '{count} 张未能导入，已跳过',
 
+  // --- Import failure ------------------------------------------------------
+  'import.failure.title': '导入失败',
+  'import.failure.retake': '重选图片',
+  'import.failure.backToWardrobe': '回到衣橱',
+  'import.failure.label.upload_failed': '上传中断',
+  'import.failure.label.unsupported_format': '格式不合适',
+  'import.failure.label.too_large': '图片太大',
+  'import.failure.label.recognition_failed': '没认出来',
+  'import.failure.label.network_error': '网络断开',
+  'import.failure.hint.upload_failed': '上传通道没有完成，请重选一张或换个网络。',
+  'import.failure.hint.unsupported_format': '换成 JPEG、PNG 或 WebP。',
+  'import.failure.hint.too_large': '压缩到 10MB 以内再导入。',
+  'import.failure.hint.recognition_failed': '换一张背景更干净、衣物更完整的照片。',
+  'import.failure.hint.network_error': '网络恢复后再试一次。',
+
   // --- Import confirm ------------------------------------------------------
   'import.recognizing': '正在识别衣物',
   'import.progress': '识别 {current} / {total}',
