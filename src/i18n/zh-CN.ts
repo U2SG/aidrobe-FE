@@ -85,6 +85,9 @@ export const zhCN = {
   'wardrobe.insights.mainColor': '主色调',
   'wardrobe.insights.mostWorn': '最常穿',
   'wardrobe.insights.idle': '闲置',
+  'wardrobe.idle.hint': '有 {count} 件衣服一个月没出现，看看它们。',
+  'wardrobe.item.wornDaysAgo': '{days} 天前穿过',
+  'wardrobe.item.notWornDays': '{days} 天没穿了',
 
   // --- Item detail ---------------------------------------------------------
   'item.name': '名称',
@@ -215,6 +218,15 @@ export const zhCN = {
   'ask.history.answerFallback': '这次问答还没有保存答案',
   'ask.error.unavailable': '问答功能正在接入中，稍后再试。',
   'ask.error.generic': '出错了，请稍后再试。',
+  'ask.v2.subtitle': '特殊场合、旅行、购物，直接说一句就行。',
+  'ask.v2.cardTitle': '今天想怎么调整？',
+  'ask.v2.cardSub': '我会基于你的真实衣橱来回答。',
+  'ask.v2.placeholder': '说说今天想怎么调整…',
+  'ask.v2.inputHint': '可输入场合、天气、心情或单品。',
+  'ask.v2.s1': '今晚有聚会，想有精神一点',
+  'ask.v2.s2': '今天要走很多路，换双舒服的鞋',
+  'ask.v2.s3': '下周出去玩，帮我准备衣服',
+  'ask.v2.s4': '这件米白衬衫还能怎么搭',
 
   // --- Shopping sense-check ------------------------------------------------
   'sense_check.skip.duplicate': '衣橱里已有 {count} 件相近的{color}{category}，容易重复。',

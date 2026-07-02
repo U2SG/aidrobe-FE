@@ -88,6 +88,9 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'wardrobe.insights.mainColor': 'Main color',
   'wardrobe.insights.mostWorn': 'Most worn',
   'wardrobe.insights.idle': 'Idle',
+  'wardrobe.idle.hint': '{count} items missing for a month — take a look.',
+  'wardrobe.item.wornDaysAgo': 'Worn {days}d ago',
+  'wardrobe.item.notWornDays': 'Not worn {days}d',
 
   // --- Item detail ---------------------------------------------------------
   'item.name': 'Name',
@@ -219,6 +222,15 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'ask.history.answerFallback': 'No answer was saved for this Ask.',
   'ask.error.unavailable': 'Q&A is still being set up, please try later.',
   'ask.error.generic': 'Something went wrong, please try again later.',
+  'ask.v2.subtitle': 'Special occasions, travel, shopping — just say it.',
+  'ask.v2.cardTitle': 'What would you like to adjust today?',
+  'ask.v2.cardSub': "I'll answer based on your real wardrobe.",
+  'ask.v2.placeholder': 'Tell me how you want to dress today…',
+  'ask.v2.inputHint': 'Enter occasion, weather, mood, or a specific item.',
+  'ask.v2.s1': 'I have a party tonight, I want to look sharp',
+  'ask.v2.s2': "I'll be walking a lot today, help me find comfy shoes",
+  'ask.v2.s3': "I'm going on a trip next week, help me pack",
+  'ask.v2.s4': 'What else can I do with my off-white shirt',
 
   // --- Shopping sense-check ------------------------------------------------
   'sense_check.skip.duplicate':
