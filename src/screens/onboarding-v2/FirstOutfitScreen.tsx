@@ -8,6 +8,7 @@ import { resolveOutfitPieces } from '@/components/outfit/resolvePieces';
 import { FirstOutfitActivationCard } from '@/components/product/FirstOutfitActivationCard';
 import { SlotGapEmptyState } from '@/components/product/SlotGapEmptyState';
 import { AIOrb } from '@/components/ui/AIOrb';
+import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
 import type { I18nKey } from '@/i18n';
 import { useTrack } from '@/hooks/useTrack';
@@ -20,6 +21,44 @@ import { buildRecommendationReasons } from '@/screens/today-v2/todayReasons';
 import { colors, radius, type } from '@/theme/design';
 import type { WardrobeItem } from '@/types/api';
 import type { WardrobeStackParamList } from '@/types/navigation';
+
+// Visual-only progress bar: static chrome matching prototype 4/6 — step state
+// is not wired (no onboarding step tracker exists yet; this is a visual pass only).
+const PROGRESS_STEPS = 6;
+const PROGRESS_ACTIVE = 4;
+
+function OnboardingProgressBar({ onBack }: { onBack?: () => void }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+      {onBack ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="返回"
+          onPress={onBack}
+          hitSlop={8}
+          style={{ padding: 4 }}
+        >
+          <SystemIcon name="chevronLeft" size={22} color={colors.label} strokeWidth={1.8} />
+        </Pressable>
+      ) : (
+        <View style={{ width: 30 }} />
+      )}
+      <View style={{ flex: 1, flexDirection: 'row', gap: 4 }}>
+        {Array.from({ length: PROGRESS_STEPS }).map((_, i) => (
+          <View
+            key={i}
+            style={{
+              flex: 1,
+              height: 3,
+              borderRadius: 2,
+              backgroundColor: i < PROGRESS_ACTIVE ? colors.accent : colors.separatorSoft,
+            }}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'FirstOutfit'>;
 
@@ -67,7 +106,7 @@ export function FirstOutfitScreen({ navigation }: Props) {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
-      contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 72, paddingBottom: 48, gap: 20 }}
+      contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 56, paddingBottom: 48, gap: 20 }}
       showsVerticalScrollIndicator={false}
     >
       {state === 'processing' ? (
@@ -106,6 +145,7 @@ export function FirstOutfitScreen({ navigation }: Props) {
 
       {state === 'no_outfit' ? (
         <View style={{ gap: 20 }}>
+          <OnboardingProgressBar onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined} />
           <View style={{ gap: 6 }}>
             <Text style={{ ...type.title1, color: colors.label }}>{t('firstOutfit.gap.title')}</Text>
             <Text style={{ ...type.body, color: colors.tertiaryLabel }}>{t('firstOutfit.gap.subtitle')}</Text>
@@ -119,6 +159,7 @@ export function FirstOutfitScreen({ navigation }: Props) {
 
       {state === 'single_outfit' || state === 'ready' ? (
         <View style={{ gap: 20 }}>
+          <OnboardingProgressBar onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined} />
           <View style={{ gap: 6 }}>
             <Text style={{ ...type.title1, color: colors.label }}>{t('firstOutfit.ready.title')}</Text>
             <Text style={{ ...type.body, color: colors.tertiaryLabel }}>{t('firstOutfit.ready.subtitle')}</Text>
@@ -129,6 +170,7 @@ export function FirstOutfitScreen({ navigation }: Props) {
             reasons={buildRecommendationReasons(outfits[0]!)}
             isSingle={state === 'single_outfit'}
             onWear={goToday}
+            onAddMore={() => navigation.navigate('AddItem')}
           />
         </View>
       ) : null}
