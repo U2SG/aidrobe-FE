@@ -1,16 +1,22 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
-import { getTodayRecommendation, refreshTodayRecommendation } from '@/api/recommendations';
+import {
+  favoriteOutfit,
+  getTodayRecommendation,
+  refreshTodayRecommendation,
+  unfavoriteOutfit,
+} from '@/api/recommendations';
 import { getUserSettings } from '@/api/settings';
 import { getWardrobeItem } from '@/api/wardrobe';
 import { resolveOutfitPieces } from '@/components/outfit/resolvePieces';
 import { ContextOverrideBar, type ContextOverrideSuggestion } from '@/components/product/ContextOverrideBar';
 import { DecisionOutfitCard } from '@/components/product/DecisionOutfitCard';
 import { ResurfaceInsightCard, type ResurfaceInsight } from '@/components/product/ResurfaceInsightCard';
+import { CountdownRing } from '@/components/ui/CountdownRing';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
 import type { I18nKey } from '@/i18n';
@@ -36,6 +42,19 @@ const OVERRIDE_SUGGESTIONS: ContextOverrideSuggestion[] = [
   { id: 'coldOffice', labelKey: 'today.override.chip.coldOffice', payload: '办公室有点冷' },
   { id: 'stayIn', labelKey: 'today.override.chip.stayIn', payload: '不怎么出门' },
 ];
+
+const SCENE_LABEL: Record<string, string> = { commute: '通勤', formal: '正式', casual: '休闲' };
+
+// Minutes until departure, clamped to the ring's [0, 90] range; null if unknown.
+function remainingMinutes(departureTime: string | null): number | null {
+  if (!departureTime) return null;
+  const [h, m] = departureTime.split(':');
+  const now = new Date();
+  const dep = new Date(now);
+  dep.setHours(Number(h ?? 8), Number(m ?? 30), 0, 0);
+  const diff = Math.round((dep.getTime() - now.getTime()) / 60000);
+  return Math.max(0, Math.min(90, diff));
+}
 
 const MODE_COPY: Record<TodayMode, { title: I18nKey; subtitle: I18nKey }> = {
   morning_today: { title: 'today.mode.morning.title', subtitle: 'today.mode.morning.subtitle' },
@@ -137,6 +156,25 @@ export function TodayV2Screen({ navigation }: Props) {
   // feed when the contract lands.
   const tomorrowOriented = isTomorrowOriented(mode);
 
+  const scene = SCENE_LABEL[todayQuery.data?.context?.scene ?? 'commute'] ?? '通勤';
+  const remaining = remainingMinutes(departureTime);
+  // The departure countdown ring is a morning "getting ready" affordance only —
+  // not after departure and not at night.
+  const showRing = mode === 'morning_today' && remaining != null && remaining > 0;
+  const headerSubtitle = showRing
+    ? t('today.v2.departureCountdown', { minutes: remaining as number, scene })
+    : t(modeCopy.subtitle);
+
+  // Favorite (heart) — optimistic local state backed by the outfit API.
+  const [favorited, setFavorited] = useState(false);
+  useEffect(() => setFavorited(outfit?.isFavorited ?? false), [outfit?.id, outfit?.isFavorited]);
+  const toggleFavorite = () => {
+    if (!outfit?.id) return;
+    const next = !favorited;
+    setFavorited(next);
+    (next ? favoriteOutfit(outfit.id) : unfavoriteOutfit(outfit.id)).catch(() => setFavorited(!next));
+  };
+
   // Today impression tracking — parity with V1 TodayScreen (fires on mode change
   // too, so evening/tomorrow views aren't undercounted).
   useEffect(() => {
@@ -157,9 +195,14 @@ export function TodayV2Screen({ navigation }: Props) {
       contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 64, paddingBottom: 120, gap: 20 }}
       showsVerticalScrollIndicator={false}
     >
-      <View style={{ gap: 6 }}>
-        <Text style={{ ...type.title1, color: colors.label }}>{t(modeCopy.title)}</Text>
-        <Text style={{ ...type.body, color: colors.tertiaryLabel }}>{t(modeCopy.subtitle)}</Text>
+      {/* Header: mode-aware greeting + departure subtitle, with the countdown
+          ring on the right (morning/today only). Matches the handoff Today. */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <View style={{ flex: 1, gap: 6 }}>
+          <Text style={{ ...type.largeTitle, color: colors.label }}>{t(modeCopy.title)}</Text>
+          <Text style={{ ...type.footnote, color: colors.tertiaryLabel }}>{headerSubtitle}</Text>
+        </View>
+        {showRing && remaining != null ? <CountdownRing minutes={remaining} /> : null}
       </View>
 
       {hasRecommendation && outfit ? (
@@ -169,6 +212,9 @@ export function TodayV2Screen({ navigation }: Props) {
             pieces={resolveOutfitPieces(outfit, itemById)}
             reasons={tomorrowOriented ? [] : buildRecommendationReasons(outfit)}
             hint={tomorrowOriented ? t('today.v2.tomorrowPreview') : hint}
+            quote={tomorrowOriented ? null : todayQuery.data?.guidanceText ?? null}
+            isFavorited={favorited}
+            onToggleFavorite={toggleFavorite}
             wearLabelKey={wearLabelKeyForMode(mode)}
             temperatureC={weather?.temperatureC ?? null}
             onWear={() => {

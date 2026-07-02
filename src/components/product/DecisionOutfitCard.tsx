@@ -4,7 +4,6 @@ import { Pressable, Text, View } from 'react-native';
 import { OutfitBoard } from '@/components/outfit/OutfitBoard';
 import type { GarmentPiece } from '@/components/outfit/garments';
 import { RecommendationFeedback } from '@/components/feedback/RecommendationFeedback';
-import { AIOrb } from '@/components/ui/AIOrb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
 import type { I18nKey } from '@/i18n';
@@ -19,6 +18,10 @@ type Props = {
   reasons: RecommendationReason[];
   /** e.g. "28° 多云 · 准备 5 分" — real weather/time hint, may be null. */
   hint?: string | null;
+  /** Warm one-line rationale shown in the quote box (from guidanceText). */
+  quote?: string | null;
+  isFavorited?: boolean;
+  onToggleFavorite?: () => void;
   /** Primary CTA label — mode-aware ("try today" vs "set for tomorrow") so
    *  evening/late-night never shows stale "wear today" copy (brief §4.4). */
   wearLabelKey?: I18nKey;
@@ -32,15 +35,18 @@ type Props = {
   temperatureC?: number | null;
 };
 
-// The one decision outfit for Today v2 (brief v0.9 §5): a single real outfit, its
-// reasons, and soft-language actions. No strategy rail, no candidate menu — swap
-// is a fallback, not a picker. "不喜欢" reveals the structured feedback chips
-// inline; "为什么" opens the full reasoning in the detail screen.
+// The one decision outfit for Today v2 (brief v0.9 §5; visual = design handoff
+// Today baseline): "今日一套" header + favorite, weather line, flat-lay board,
+// 2–3 reasons with source, a warm quote box, one black CTA, and soft text links
+// (查看详情 / 不喜欢 / 换一套). "不喜欢" reveals the feedback chips inline.
 export function DecisionOutfitCard({
   outfit,
   pieces,
   reasons,
   hint,
+  quote,
+  isFavorited,
+  onToggleFavorite,
   wearLabelKey = 'today.v2.wear',
   onWear,
   onSwap,
@@ -64,9 +70,29 @@ export function DecisionOutfitCard({
         ...shadow.elevated,
       }}
     >
-      <View style={{ gap: 3 }}>
-        <Text style={{ ...type.title2, color: colors.label }}>{outfit.title || t('today.v2.outfitTitle')}</Text>
-        {hint ? <Text style={{ ...type.footnote, color: colors.tertiaryLabel }}>{hint}</Text> : null}
+      {/* Header: 今日一套 + favorite heart */}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <View style={{ flex: 1, gap: 3 }}>
+          <Text style={{ ...type.title2, color: colors.label }}>{t('today.v2.outfitTitle')}</Text>
+          {hint ? <Text style={{ ...type.footnote, color: colors.tertiaryLabel }}>{hint}</Text> : null}
+        </View>
+        {onToggleFavorite ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t(isFavorited ? 'today.v2.unfavorite' : 'today.v2.favorite')}
+            onPress={onToggleFavorite}
+            hitSlop={8}
+            style={{ padding: 2 }}
+          >
+            <SystemIcon
+              name="heart"
+              size={22}
+              color={isFavorited ? colors.accent : colors.quaternaryLabel}
+              strokeWidth={1.8}
+              fill={isFavorited ? colors.accent : 'none'}
+            />
+          </Pressable>
+        ) : null}
       </View>
 
       <OutfitBoard pieces={pieces} />
@@ -74,6 +100,23 @@ export function DecisionOutfitCard({
       <View style={{ height: 1, backgroundColor: colors.separatorSoft }} />
 
       <RecommendationReasonList reasons={reasons} />
+
+      {/* Warm quote box — soft-accent surface, gold quotation mark. */}
+      {quote ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            gap: 8,
+            borderRadius: radius.md,
+            backgroundColor: colors.accentSoft,
+            paddingVertical: 12,
+            paddingHorizontal: 14,
+          }}
+        >
+          <Text style={{ ...type.title2, color: colors.agentGlow, lineHeight: 20 }}>&ldquo;</Text>
+          <Text style={{ flex: 1, ...type.callout, color: colors.secondaryLabel, fontStyle: 'italic' }}>{quote}</Text>
+        </View>
+      ) : null}
 
       {/* Primary action — soft language, never "you must wear this". */}
       <Pressable
@@ -91,29 +134,25 @@ export function DecisionOutfitCard({
         <Text style={{ ...type.headline, color: colors.inverse }}>{t(wearLabelKey)}</Text>
       </Pressable>
 
-      {/* Secondary actions: swap (fallback) / dislike / why. */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
-        {showSwap ? (
-          <Pressable
-            accessibilityRole="button"
-            disabled={swapBusy}
-            onPress={onSwap}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-          >
-            {swapBusy ? (
-              <AIOrb variant="thinking" size={18} />
-            ) : (
-              <SystemIcon name="refresh" size={16} color={colors.tertiaryLabel} strokeWidth={2} />
-            )}
-            <Text style={{ ...type.callout, color: colors.tertiaryLabel }}>{t('today.v2.swap')}</Text>
-          </Pressable>
-        ) : null}
-        <Pressable accessibilityRole="button" onPress={() => setShowFeedback((v) => !v)}>
+      {/* Secondary text links: 查看详情 | 不喜欢 | 换一套 */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+        <Pressable accessibilityRole="button" onPress={onViewDetail} hitSlop={6}>
+          <Text style={{ ...type.callout, color: colors.tertiaryLabel }}>{t('today.v2.viewDetail')}</Text>
+        </Pressable>
+        <Text style={{ ...type.callout, color: colors.separator, marginHorizontal: 12 }}>|</Text>
+        <Pressable accessibilityRole="button" onPress={() => setShowFeedback((v) => !v)} hitSlop={6}>
           <Text style={{ ...type.callout, color: colors.tertiaryLabel }}>{t('today.v2.dislike')}</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={onViewDetail}>
-          <Text style={{ ...type.callout, color: colors.tertiaryLabel }}>{t('today.v2.why')}</Text>
-        </Pressable>
+        {showSwap ? (
+          <>
+            <Text style={{ ...type.callout, color: colors.separator, marginHorizontal: 12 }}>|</Text>
+            <Pressable accessibilityRole="button" disabled={swapBusy} onPress={onSwap} hitSlop={6}>
+              <Text style={{ ...type.callout, color: swapBusy ? colors.quaternaryLabel : colors.tertiaryLabel }}>
+                {t('today.v2.swap')}
+              </Text>
+            </Pressable>
+          </>
+        ) : null}
       </View>
 
       {showFeedback ? (
