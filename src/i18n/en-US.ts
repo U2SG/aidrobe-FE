@@ -18,6 +18,13 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   // --- Onboarding ----------------------------------------------------------
   'onboarding.privacyPolicy': 'View privacy policy',
   'onboarding.privacyPolicyOpenFailed': "Couldn't open the privacy policy. Please try again later.",
+  'permission.stepLabel': '02',
+  'permission.title': 'Let Aidrobe get to know your wardrobe',
+  'permission.body':
+    'Photographing items and picking from your photos both need these. You can enable them later in settings too.',
+  'permission.cta': 'Allow access',
+  'permission.skip': 'Maybe later',
+  'permission.footnote': 'You can change permissions anytime in Profile.',
 
   // --- Welcome screen (v2 restyle) -----------------------------------------
   'welcome.title': 'Dress like yourself, today.',

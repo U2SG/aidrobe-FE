@@ -473,6 +473,14 @@ export const zhCN = {
   'privacy.memory.subtitle': '这些是 Aidrobe 从你的使用里学到的，不是你填的表。不准的地方，随时改。',
   'privacy.memory.empty': '还没有学到可展示的偏好。多用几天，这里会慢慢出现，你随时可以纠正或删除。',
 
+  // --- Permission rationale onboarding screen ------------------------------
+  'permission.stepLabel': '02',
+  'permission.title': '让 Aidrobe 认识你的衣橱',
+  'permission.body': '拍照识别衣物、从相册选图，都需要这两项权限。也可以稍后在设置里开启。',
+  'permission.cta': '允许访问',
+  'permission.skip': '稍后再说',
+  'permission.footnote': '你可以随时在「我的」里更改权限。',
+
   // --- Departure time onboarding screen ------------------------------------
   'departure.stepLabel': '03',
   'departure.title': '设置你的出门时间',
