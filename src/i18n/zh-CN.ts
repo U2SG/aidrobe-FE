@@ -152,6 +152,8 @@ export const zhCN = {
   'item.bulk.addSeason': '加季节',
   'item.bulk.addOccasion': '加场合',
   'item.bulk.setCategory': '设品类',
+  'item.change': '改一下',
+  'item.edit': '编辑',
   'common.done': '完成',
 
   // --- Add item ------------------------------------------------------------

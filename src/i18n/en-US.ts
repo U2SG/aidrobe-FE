@@ -155,6 +155,8 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'item.bulk.addSeason': 'Add season',
   'item.bulk.addOccasion': 'Add occasion',
   'item.bulk.setCategory': 'Set category',
+  'item.change': 'Change',
+  'item.edit': 'Edit',
   'common.done': 'Done',
 
   // --- Add item ------------------------------------------------------------
