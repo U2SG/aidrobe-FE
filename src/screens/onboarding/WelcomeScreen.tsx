@@ -1,57 +1,47 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useEffect, useState } from 'react';
-import { Linking, Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { loginWithApple } from '@/api/auth';
 import { APP_ENV } from '@/api/client';
-import { GarmentSvg } from '@/components/ui/GarmentSvg';
+import { OutfitBoard } from '@/components/outfit/OutfitBoard';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useTrack } from '@/hooks/useTrack';
 import { useT } from '@/hooks/useT';
 import { useAuthStore } from '@/store/auth';
 import { useToastStore } from '@/store/toast';
-import { colors, shadow } from '@/theme/design';
+import { colors, radius, shadow, type as typeTokens } from '@/theme/design';
 import type { OnboardingStackParamList } from '@/types/navigation';
+import type { GarmentPiece } from '@/components/outfit/garments';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Welcome'>;
 
 const PRIVACY_POLICY_URL = 'https://aidrobe.app/privacy';
 
+// Bridge to design tokens — no local hex.
 const T = {
   bg: colors.groupedBackground,
   ink: colors.label,
   ink2: colors.secondaryLabel,
   ink3: colors.tertiaryLabel,
-  ink4: colors.quaternaryLabel,
   accent: colors.accent,
-  card: colors.elevated,
-  cardInner: colors.background,
   divider: colors.separator,
+  inverse: colors.inverse,
   shadowSm: shadow.soft,
 };
 
-const HERO_PIECES: {
-  kind: 'blazer' | 'shirt' | 'trousers' | 'loafer';
-  x: number;
-  y: number;
-  scale: number;
-  rot: number;
-}[] = [
-  { kind: 'blazer', x: 30, y: 0, scale: 1.2, rot: -6 },
-  { kind: 'shirt', x: 175, y: 30, scale: 1.0, rot: 4 },
-  { kind: 'trousers', x: 90, y: 110, scale: 0.95, rot: 0 },
-  { kind: 'loafer', x: 200, y: 175, scale: 0.7, rot: 8 },
-];
+// Onboarding has 3 screens: Welcome → Permission → DepartureTime.
+const TOTAL_STEPS = 3;
+const CURRENT_STEP = 1;
 
-const BENEFITS: {
-  icon: 'clock' | 'sparkle' | 'wardrobe';
-  title: string;
-  body: string;
-}[] = [
-  { icon: 'clock', title: '省时间', body: '出门前直接看 3 套方案' },
-  { icon: 'sparkle', title: '少纠结', body: '稳妥、省时、有风格各一套' },
-  { icon: 'wardrobe', title: '能落地', body: '只用你找得到、能穿的衣服' },
+// Hero flat-lay using real wardrobe cutout assets (no loafer PNG in assets;
+// shoes-white-canvas used as substitute for the brown loafer in the prototype).
+const HERO_PIECES: GarmentPiece[] = [
+  { kind: 'shirt',    x: 28,  y: 18,  scale: 1.05, rotate: '-5deg' },
+  { kind: 'sweater',  x: 165, y: 8,   scale: 0.98, rotate: '4deg'  },
+  { kind: 'trousers', x: 88,  y: 110, scale: 0.95, rotate: '0deg'  },
+  { kind: 'sneaker',  x: 195, y: 195, scale: 0.65, rotate: '6deg'  },
 ];
 
 export function WelcomeScreen({ navigation }: Props) {
@@ -100,120 +90,99 @@ export function WelcomeScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: T.bg }}>
-      {/* Progress dots */}
+    <ScrollView
+      style={{ flex: 1, backgroundColor: T.bg }}
+      contentContainerStyle={{ flexGrow: 1 }}
+      bounces={false}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* ── Progress bar ── */}
       <View
         style={{
-          flexDirection: 'row',
-          gap: 6,
           paddingHorizontal: 24,
           paddingTop: 60,
+          gap: 8,
         }}
       >
-        {[1, 2, 3, 4].map((i) => (
-          <View
-            key={i}
-            style={{
-              flex: 1,
-              height: 3,
-              borderRadius: 2,
-              backgroundColor: i === 1 ? T.ink : T.divider,
-            }}
-          />
-        ))}
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          {Array.from({ length: TOTAL_STEPS }, (_, i) => (
+            <View
+              key={i}
+              style={{
+                flex: 1,
+                height: 2,
+                backgroundColor: i < CURRENT_STEP ? T.ink : T.divider,
+              }}
+            />
+          ))}
+        </View>
+        <Text
+          style={{
+            ...typeTokens.caption,
+            color: T.ink3,
+            letterSpacing: 0.4,
+          }}
+        >
+          {String(CURRENT_STEP).padStart(2, '0')}
+        </Text>
       </View>
 
+      {/* ── Main content ── */}
       <View
         style={{
           flex: 1,
-          paddingHorizontal: 28,
-          paddingTop: 32,
+          paddingHorizontal: 24,
+          paddingTop: 28,
           paddingBottom: 36,
           justifyContent: 'space-between',
         }}
       >
-        {/* Copy */}
+        {/* Title + subtitle */}
         <View>
           <Text
             style={{
-              fontSize: 11,
-              fontFamily: 'monospace',
-              letterSpacing: 1.2,
-              color: T.accent,
-              marginBottom: 16,
+              ...typeTokens.largeTitle,
+              color: T.ink,
             }}
           >
-            AIDROBE · 01
+            {t('welcome.title')}
           </Text>
           <Text
             style={{
-              fontSize: 36,
-              fontWeight: '600',
-              color: T.ink,
-              lineHeight: 44,
-              letterSpacing: -0.5,
+              ...typeTokens.callout,
+              color: T.ink2,
+              marginTop: 14,
+              lineHeight: 22,
             }}
           >
-            不是更多衣服，{'\n'}而是每天{'\n'}更快穿对。
+            {t('welcome.subtitle')}
           </Text>
-          <Text style={{ marginTop: 20, fontSize: 14, color: T.ink2, lineHeight: 23 }}>
-            基于你真实拥有、现在能穿、找得到、来得及拿的衣服，给出 3 套穿搭决策。
-          </Text>
-          <View style={{ marginTop: 18, gap: 8 }}>
-            {BENEFITS.map((item) => (
-              <View
-                key={item.title}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: 12,
-                  borderRadius: 14,
-                  backgroundColor: 'rgba(255,255,255,0.72)',
-                  borderWidth: 1,
-                  borderColor: T.divider,
-                }}
-              >
-                <View
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 10,
-                    backgroundColor: colors.accentSoft,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <SystemIcon name={item.icon} size={17} color={T.accent} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: T.ink }}>{item.title}</Text>
-                  <Text style={{ marginTop: 2, fontSize: 11, color: T.ink3 }}>{item.body}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
         </View>
 
-        {/* Hero illustration */}
-        <View style={{ height: 220, position: 'relative', marginHorizontal: -20 }}>
-          {HERO_PIECES.map((p, i) => (
-            <View
-              key={i}
-              style={{
-                position: 'absolute',
-                left: p.x,
-                top: p.y,
-                transform: [{ scale: p.scale }, { rotate: `${p.rot}deg` }],
-              }}
-            >
-              <GarmentSvg kind={p.kind} size={100} />
-            </View>
-          ))}
+        {/* Hero outfit board */}
+        <View style={{ height: 280, marginHorizontal: -4, marginTop: 28, marginBottom: 8 }}>
+          <OutfitBoard pieces={HERO_PIECES} />
+        </View>
+
+        {/* Sparkle hint row */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
+            marginTop: 12,
+            marginBottom: 28,
+          }}
+        >
+          <SystemIcon name="sparkle" size={15} color={T.accent} />
+          <Text style={{ ...typeTokens.footnote, color: T.ink3, flex: 1 }}>
+            {t('welcome.sparkleHint')}
+          </Text>
         </View>
 
         {/* CTAs */}
-        <View style={{ gap: 10 }}>
+        <View style={{ gap: 4 }}>
+          {/* Primary CTA: "开始整理衣橱" */}
           {APP_ENV === 'production' ? (
             <Pressable
               onPress={signInWithApple}
@@ -221,15 +190,15 @@ export function WelcomeScreen({ navigation }: Props) {
               android_ripple={signingIn ? undefined : { color: 'rgba(255,255,255,0.14)' }}
               style={{
                 height: 54,
-                borderRadius: 14,
+                borderRadius: radius.md,
                 backgroundColor: T.ink,
                 alignItems: 'center',
                 justifyContent: 'center',
                 opacity: signingIn ? 0.75 : 1,
               }}
             >
-              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.inverse }}>
-                使用 Apple 登录
+              <Text style={{ ...typeTokens.headline, color: T.inverse }}>
+                {t('welcome.cta')}
               </Text>
             </Pressable>
           ) : (
@@ -238,23 +207,44 @@ export function WelcomeScreen({ navigation }: Props) {
               android_ripple={{ color: 'rgba(255,255,255,0.14)' }}
               style={{
                 height: 54,
-                borderRadius: 14,
+                borderRadius: radius.md,
                 backgroundColor: T.ink,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.inverse }}>开始使用</Text>
+              <Text style={{ ...typeTokens.headline, color: T.inverse }}>
+                {t('welcome.cta')}
+              </Text>
             </Pressable>
           )}
+
+          {/* Secondary: "登录已有账号" — calls signInWithApple in both envs */}
+          <Pressable
+            onPress={signInWithApple}
+            disabled={signingIn}
+            style={{
+              height: 48,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ ...typeTokens.callout, color: T.ink2 }}>
+              {t('welcome.loginExisting')}
+            </Text>
+          </Pressable>
+
+          {/* Privacy link */}
           <Pressable
             onPress={openPrivacyPolicy}
             style={{ height: 44, alignItems: 'center', justifyContent: 'center' }}
           >
-            <Text style={{ fontSize: 12, color: T.ink3 }}>{t('onboarding.privacyPolicy')}</Text>
+            <Text style={{ ...typeTokens.caption, color: T.ink3 }}>
+              {t('onboarding.privacyPolicy')}
+            </Text>
           </Pressable>
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 }

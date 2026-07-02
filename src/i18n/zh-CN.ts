@@ -19,6 +19,13 @@ export const zhCN = {
   'onboarding.privacyPolicy': '了解隐私政策',
   'onboarding.privacyPolicyOpenFailed': '无法打开隐私政策，请稍后重试',
 
+  // --- Welcome screen (v2 restyle) -----------------------------------------
+  'welcome.title': '今天，穿成喜欢的自己',
+  'welcome.subtitle': '不用维护一套衣物数据库。把常穿的衣服交给 Aidrobe，每天少一点纠结。',
+  'welcome.sparkleHint': '先加几件常穿的，就能看到第一套。',
+  'welcome.cta': '开始整理衣橱',
+  'welcome.loginExisting': '登录已有账号',
+
   // --- Settings ------------------------------------------------------------
   'settings.title': '设置',
   'settings.subtitle': 'Aidrobe 只保留 V1 Slim 必要设置：出门时间、数据说明和隐私信息。',

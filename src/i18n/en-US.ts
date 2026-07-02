@@ -19,6 +19,13 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'onboarding.privacyPolicy': 'View privacy policy',
   'onboarding.privacyPolicyOpenFailed': "Couldn't open the privacy policy. Please try again later.",
 
+  // --- Welcome screen (v2 restyle) -----------------------------------------
+  'welcome.title': 'Dress like yourself, today.',
+  'welcome.subtitle': 'No wardrobe spreadsheet needed. Hand Aidrobe your everyday pieces and spend a little less time deciding.',
+  'welcome.sparkleHint': 'Add a few regulars and your first look is ready.',
+  'welcome.cta': 'Start organising your wardrobe',
+  'welcome.loginExisting': 'Sign in to existing account',
+
   // --- Settings ------------------------------------------------------------
   'settings.title': 'Settings',
   'settings.subtitle':
