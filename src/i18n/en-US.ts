@@ -521,6 +521,11 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'outfitDetail.overflowTitle': 'More actions',
   'outfitDetail.overflowShare': 'Share this look',
   'outfitDetail.overflowFeedback': 'Wear and give feedback',
+  'outfitDetail.screenTitle': 'Outfit detail',
+  'outfitDetail.sectionWhy': 'Why it works today',
+  'outfitDetail.sectionContains': 'What\'s in this look',
+  'outfitDetail.dislikeSwap': 'Not feeling it · Try another',
+  'outfitDetail.wearToday': 'Wear this today',
 
   // --- OOTD poster (AI, selfie-based) --------------------------------------
   'ootd.fromOutfit': 'From the look "{title}"',

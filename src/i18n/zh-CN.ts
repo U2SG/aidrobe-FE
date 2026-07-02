@@ -506,6 +506,11 @@ export const zhCN = {
   'outfitDetail.overflowTitle': '更多操作',
   'outfitDetail.overflowShare': '分享这套',
   'outfitDetail.overflowFeedback': '穿着并反馈',
+  'outfitDetail.screenTitle': '搭配详情',
+  'outfitDetail.sectionWhy': '为什么适合今天',
+  'outfitDetail.sectionContains': '这套包含',
+  'outfitDetail.dislikeSwap': '不喜欢 · 换一套',
+  'outfitDetail.wearToday': '今天穿这套',
 
   // --- OOTD poster (AI, selfie-based) --------------------------------------
   'ootd.fromOutfit': '来自这套搭配「{title}」',
