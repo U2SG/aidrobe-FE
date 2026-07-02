@@ -487,6 +487,17 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'privacy.memory.empty':
     'Nothing learned to show yet. Use it a few more days and it will appear here — you can correct or delete anytime.',
 
+  // --- Departure time onboarding screen ------------------------------------
+  'departure.stepLabel': '03',
+  'departure.title': 'Set your departure time',
+  'departure.subtitle': 'Tell us when you usually head out so we can give you sharper outfit picks.',
+  'departure.saving': 'Saving your departure time…',
+  'departure.saved': 'Saved',
+  'departure.saveFailed': 'Save failed, please retry',
+  'departure.saveTime': 'Save time',
+  'departure.skip': 'Skip',
+  'departure.footnote': 'You can change this any time in Profile.',
+
   // --- Commute exposure micro-question (brief §9.5) ------------------------
   'commuteExposure.question': 'Your commute is mostly?',
   'commuteExposure.more': 'More outdoors',

@@ -473,6 +473,17 @@ export const zhCN = {
   'privacy.memory.subtitle': '这些是 Aidrobe 从你的使用里学到的，不是你填的表。不准的地方，随时改。',
   'privacy.memory.empty': '还没有学到可展示的偏好。多用几天，这里会慢慢出现，你随时可以纠正或删除。',
 
+  // --- Departure time onboarding screen ------------------------------------
+  'departure.stepLabel': '03',
+  'departure.title': '设置你的出门时间',
+  'departure.subtitle': '告诉我们你通常几点出门，帮助我们更好地为你推荐穿搭。',
+  'departure.saving': '正在保存出门时间…',
+  'departure.saved': '已保存',
+  'departure.saveFailed': '保存失败，请重试',
+  'departure.saveTime': '保存时间',
+  'departure.skip': '跳过',
+  'departure.footnote': '之后可以在「我的」里修改。',
+
   // --- Commute exposure micro-question (brief §9.5) ------------------------
   'commuteExposure.question': '出门通勤，主要是？',
   'commuteExposure.more': '多接触室外',
