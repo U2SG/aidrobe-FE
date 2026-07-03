@@ -826,10 +826,11 @@ export type AskScope = 'global' | 'item' | 'today';
 export interface AskBody {
   question: string;
   context?: AskContext;
-  // Scope the ask to one wardrobe item ("style an outfit around this").
   focusedItemId?: string;
-  // BCP-47 locale controlling the answer language (e.g. "en-US", "zh-CN").
   locale?: string;
+  // Thread id for multi-turn continuity. Pass the conversation_id returned by
+  // the previous turn so the backend can include prior exchange context.
+  conversationId?: string | null;
 }
 
 // BE#29 — denormalized snapshot of a referenced wardrobe item, already
@@ -853,6 +854,7 @@ export interface AskItemRefSnapshot {
 
 export interface AskResult {
   askSessionId: string;
+  conversationId: string | null;
   answer: string;
   itemRefs: string[];
   itemRefSnapshots: AskItemRefSnapshot[];
@@ -861,6 +863,7 @@ export interface AskResult {
 
 export interface ServerAskResponse {
   ask_session_id: string;
+  conversation_id?: string | null;
   answer: string;
   item_refs: string[];
   item_ref_snapshots?: ServerAskItemRefSnapshot[];

@@ -33,9 +33,11 @@ export async function askAidrobe(body: AskBody): Promise<AskResult> {
       : null,
     focused_item_id: body.focusedItemId ?? null,
     locale: body.locale ?? null,
+    conversation_id: body.conversationId ?? null,
   });
   return {
     askSessionId: data.ask_session_id,
+    conversationId: data.conversation_id ?? null,
     answer: data.answer,
     itemRefs: data.item_refs,
     itemRefSnapshots: mapSnapshots(data.item_ref_snapshots),

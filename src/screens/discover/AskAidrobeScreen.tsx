@@ -291,6 +291,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   const focusedNames = useWardrobeItemNames(focusedItemId ? [focusedItemId] : []);
   const focusedName = focusedItemId ? focusedNames.get(focusedItemId) : undefined;
   const [turns, setTurns] = useState<Turn[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [historyVisible, setHistoryVisible] = useState(false);
   const [composerHeight, setComposerHeight] = useState(0);
@@ -315,19 +316,20 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     retry: 1,
   });
 
-  // If the scope / focused item changes while the screen stays mounted (e.g.
-  // a global Ask tab, then opening Ask from an item-detail CTA), drop the
-  // previous scope's live turns so they don't bleed into the new visit.
+  // If the scope / focused item changes while the screen stays mounted, drop
+  // the previous session's turns and conversation thread.
   useEffect(() => {
     setTurns([]);
+    setConversationId(null);
   }, [scope, focusedItemId]);
 
   const askMutation = useMutation({
-    mutationFn: (vars: { tempId: string; question: string }) =>
+    mutationFn: (vars: { tempId: string; question: string; conversationId: string | null }) =>
       askAidrobe({
         question: vars.question,
         focusedItemId,
         locale,
+        conversationId: vars.conversationId,
       }),
     onMutate: (vars) => {
       // Idempotent on tempId: a retry reuses the failed turn's own id (already
@@ -349,6 +351,9 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
       );
     },
     onSuccess: (result, vars) => {
+      // Thread the conversation forward so subsequent sends continue the same
+      // multi-turn session on the backend.
+      setConversationId(result.conversationId);
       setTurns((t) =>
         t.map((x) =>
           x.id === vars.tempId
@@ -386,7 +391,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     const q = input.trim();
     if (!q || askMutation.isPending) return;
     setInput('');
-    askMutation.mutate({ tempId: `local-${Date.now()}`, question: q });
+    askMutation.mutate({ tempId: `local-${Date.now()}`, question: q, conversationId });
   };
 
   // Retry a failed turn without re-typing: reset it to pending in place
@@ -400,7 +405,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         x.id === turn.id ? { ...x, pending: true, failed: false, answer: null } : x,
       ),
     );
-    askMutation.mutate({ tempId: turn.id, question: turn.question });
+    askMutation.mutate({ tempId: turn.id, question: turn.question, conversationId });
   };
 
   const isEmpty = turns.length === 0;
