@@ -291,9 +291,10 @@ interface MenuActionProps {
   onPress: () => void;
   disabled?: boolean;
   destructive?: boolean;
+  cardWidth: number;
 }
 
-function MenuAction({ label, icon, onPress, disabled = false, destructive = false }: MenuActionProps) {
+function MenuAction({ label, icon, onPress, disabled = false, destructive = false, cardWidth }: MenuActionProps) {
   const color = disabled ? T.ink4 : destructive ? colors.danger : T.ink;
   return (
     <Pressable
@@ -301,15 +302,27 @@ function MenuAction({ label, icon, onPress, disabled = false, destructive = fals
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: 48,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
+        width: cardWidth,
         opacity: disabled ? 0.45 : pressed ? 0.68 : 1,
       })}
     >
-      <SystemIcon name={icon} size={18} color={color} strokeWidth={1.9} />
-      <Text style={{ ...type.callout, fontWeight: '600', color }}>{label}</Text>
+      <View
+        style={{
+          backgroundColor: T.cardSoft,
+          borderRadius: 12,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: 16,
+          paddingHorizontal: 8,
+          gap: 8,
+          minHeight: 80,
+        }}
+      >
+        <SystemIcon name={icon} size={22} color={color} strokeWidth={1.9} />
+        <Text style={{ fontSize: 11, fontWeight: '600', color, textAlign: 'center' }} numberOfLines={2}>
+          {label}
+        </Text>
+      </View>
     </Pressable>
   );
 }
@@ -806,15 +819,23 @@ export function ItemDetailScreen({ navigation, route }: Props) {
       ) : null}
 
       <BottomSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('item.moreActions')}>
-        <View style={{ gap: 2 }}>
+        {/* 2×2 action grid — card cells, icon above label */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           <MenuAction
+            cardWidth={(width - 48 - 10) / 2}
             label={t('item.action.reidentify')}
             icon="refresh"
             disabled={reidentifyDisabled}
             onPress={() => undefined}
           />
-          <MenuAction label={t('item.action.moveLocation')} icon="wardrobe" onPress={focusLocation} />
           <MenuAction
+            cardWidth={(width - 48 - 10) / 2}
+            label={t('item.action.moveLocation')}
+            icon="wardrobe"
+            onPress={focusLocation}
+          />
+          <MenuAction
+            cardWidth={(width - 48 - 10) / 2}
             label={
               draft.status === 'unavailable'
                 ? t('item.action.markWearable')
@@ -828,6 +849,7 @@ export function ItemDetailScreen({ navigation, route }: Props) {
             }}
           />
           <MenuAction
+            cardWidth={(width - 48 - 10) / 2}
             label={t('common.delete')}
             icon="trash"
             destructive

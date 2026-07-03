@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 
 import {
   favoriteOutfit,
@@ -145,6 +145,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
   const [overflowOpen, setOverflowOpen] = useState(false);
   const [autoReplacingItemId, setAutoReplacingItemId] = useState<string | null>(null);
 
+  const { width: screenWidth } = useWindowDimensions();
   const outfitQuery = useQuery({
     queryKey: ['outfitDetail', outfitId],
     queryFn: () => getOutfitDetail(outfitId),
@@ -599,12 +600,14 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
           </View>
         </View>
 
-        <Text style={{ marginTop: 18, fontSize: 12, color: T.ink3, marginBottom: 8 }}>
+        <Text style={{ marginTop: 18, fontSize: 12, color: T.ink3, marginBottom: 10 }}>
           {t('outfitDetail.itemCount', { count: displayItems.length })}
         </Text>
-        <View style={{ gap: 8 }}>
+        {/* 2-column grid — each card: image above, details below */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           {displayItems.map((it) => {
             const isLaundry = it.status !== 'wearable';
+            const cardWidth = (screenWidth - 24 * 2 - 10) / 2;
             return (
               <Pressable
                 key={it.slotItemId}
@@ -612,104 +615,91 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                   screen: 'ItemDetail',
                   params: { itemId: it.id },
                 } as never)}
+                style={{ width: cardWidth }}
               >
                 <View
                   style={{
                     backgroundColor: T.card,
-                    borderRadius: 14,
-                    padding: 12,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 12,
+                    borderRadius: 16,
+                    overflow: 'hidden',
                     ...T.shadowSm,
                     borderWidth: isLaundry ? 1 : 0,
                     borderColor: isLaundry ? '#E5D2A8' : 'transparent',
-                    opacity: isLaundry ? 0.85 : 1,
+                    opacity: isLaundry ? 0.88 : 1,
                   }}
                 >
+                  {/* Image area */}
                   <View
                     style={{
-                      width: 56,
-                      height: 56,
+                      height: cardWidth * 0.9,
                       backgroundColor: T.cardInner,
-                      borderRadius: 10,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      position: 'relative',
-                      overflow: 'hidden',
                     }}
                   >
                     <ImageThumb
                       uri={it.imageUrl ?? undefined}
-                      size={56}
-                      cornerRadius={10}
-                      icon={<GarmentSvg kind={categoryToGarment(it.category)} size={44} />}
+                      size={cardWidth * 0.72}
+                      cornerRadius={0}
+                      icon={<GarmentSvg kind={categoryToGarment(it.category)} size={cardWidth * 0.58} />}
                     />
                     {isLaundry && (
                       <View
                         style={{
                           position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          backgroundColor: 'rgba(242,242,247,0.68)',
-                          borderRadius: 10,
+                          top: 8,
+                          right: 8,
+                          width: 26,
+                          height: 26,
+                          borderRadius: 13,
+                          backgroundColor: 'rgba(255,255,255,0.9)',
                           alignItems: 'center',
                           justifyContent: 'center',
                         }}
                       >
-                        <SystemIcon name="recycle" size={19} color={T.warn} />
+                        <SystemIcon name="recycle" size={14} color={T.warn} />
                       </View>
                     )}
                   </View>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: T.ink, marginBottom: 2 }} numberOfLines={1}>
+                  {/* Details + replace */}
+                  <View style={{ padding: 10, gap: 6 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: T.ink }} numberOfLines={1}>
                       {it.name}
                     </Text>
-                    <Text style={{ fontSize: 10, color: T.ink3, marginBottom: 4 }} numberOfLines={1}>
-                      {[it.sizeLabel, it.fitIntent, it.location].filter(Boolean).join(' · ') || it.color || '—'}
+                    <Text style={{ fontSize: 10, color: T.ink3 }} numberOfLines={1}>
+                      {it.color || [it.sizeLabel, it.location].filter(Boolean).join(' · ') || '—'}
                     </Text>
-                    <View style={{ flexDirection: 'row', gap: 4 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
                       {isLaundry ? (
-                        <View
-                          style={{
-                            paddingHorizontal: 6,
-                            paddingVertical: 2,
-                            borderRadius: 999,
-                            backgroundColor: '#F4E8D1',
-                          }}
-                        >
+                        <View style={{ paddingHorizontal: 5, paddingVertical: 2, borderRadius: 999, backgroundColor: '#F4E8D1' }}>
                           <Text style={{ fontSize: 9, color: '#7A5C2F', fontWeight: '600' }}>{String(it.status)}</Text>
                         </View>
                       ) : (
-                        <Tag style={{ paddingHorizontal: 6, paddingVertical: 2 }}>
+                        <Tag style={{ paddingHorizontal: 5, paddingVertical: 2 }}>
                           {it.fitStatus ? tEnum('fitStatus', it.fitStatus) : t('outfitDetail.fitGood')}
                         </Tag>
                       )}
-                      {it.location ? (
-                        <Tag style={{ paddingHorizontal: 6, paddingVertical: 2 }}>{it.location}</Tag>
-                      ) : null}
                     </View>
+                    <Pressable
+                      onPress={(event) => {
+                        event.stopPropagation();
+                        openReplacementSheet(it);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('outfitDetail.replaceItem', { name: it.name })}
+                      style={{
+                        marginTop: 4,
+                        paddingVertical: 6,
+                        backgroundColor: isLaundry ? T.ink : T.bgAlt,
+                        borderRadius: 8,
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: isLaundry ? colors.inverse : T.ink2 }}>
+                        {t('outfitDetail.replace')}
+                      </Text>
+                    </Pressable>
                   </View>
-                  <Pressable
-                    onPress={(event) => {
-                      event.stopPropagation();
-                      openReplacementSheet(it);
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('outfitDetail.replaceItem', { name: it.name })}
-                    style={{
-                      paddingHorizontal: 10,
-                      paddingVertical: 6,
-                      backgroundColor: isLaundry ? T.ink : T.bgAlt,
-                      borderRadius: 8,
-                    }}
-                  >
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: isLaundry ? colors.inverse : T.ink2 }}>
-                      {t('outfitDetail.replace')}
-                    </Text>
-                  </Pressable>
                 </View>
               </Pressable>
             );

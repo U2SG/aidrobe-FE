@@ -443,7 +443,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         keyboardShouldPersistTaps="handled"
       >
         {isEmpty ? (
-          <View style={{ paddingVertical: 48, alignItems: 'center' }}>
+          <View style={{ paddingVertical: 48, alignItems: 'center', paddingHorizontal: 24 }}>
             <AIOrb variant="vivid" size={140} />
             <Text style={{ ...type.headline, color: T.ink, marginTop: 12, textAlign: 'center' }}>
               {t('ask.emptyTitle')}
@@ -451,6 +451,24 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
             <Text style={{ ...type.callout, color: T.ink3, marginTop: 6, textAlign: 'center' }}>
               {t('ask.emptyHint')}
             </Text>
+            {/* Suggestion chips — tapping populates the input */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 20 }}>
+              {(['ask.chip.commute', 'ask.chip.occasion', 'ask.chip.shoes', 'ask.chip.weather'] as const).map((key) => (
+                <Pressable
+                  key={key}
+                  onPress={() => setInput(t(key))}
+                  style={({ pressed }) => ({
+                    paddingHorizontal: 14,
+                    paddingVertical: 8,
+                    backgroundColor: T.card,
+                    borderRadius: 999,
+                    opacity: pressed ? 0.65 : 1,
+                  })}
+                >
+                  <Text style={{ fontSize: 13, color: T.ink2, fontWeight: '500' }}>{t(key)}</Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
         ) : (
           turns.map((turn) => (
