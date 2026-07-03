@@ -242,12 +242,17 @@ export function DepartureTimeScreen() {
               opacity: saving || pressed ? 0.75 : 1,
             })}
           >
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>下一步</Text>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.inverse }}>下一步</Text>
           </Pressable>
           <Pressable
             onPress={finish}
             disabled={saving}
-            style={{ height: 44, alignItems: 'center', justifyContent: 'center' }}
+            style={({ pressed }) => ({
+              height: 44,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.55 : 1,
+            })}
           >
             <Text style={{ fontSize: 12, color: T.ink3 }}>跳过</Text>
           </Pressable>

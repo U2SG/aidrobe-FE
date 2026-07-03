@@ -169,7 +169,7 @@ export function WelcomeScreen({ navigation }: Props) {
                   gap: 10,
                   padding: 12,
                   borderRadius: 14,
-                  backgroundColor: 'rgba(255,255,255,0.72)',
+                  backgroundColor: colors.overlaySoft,
                   borderWidth: 1,
                   borderColor: T.divider,
                 }}
@@ -219,14 +219,14 @@ export function WelcomeScreen({ navigation }: Props) {
               onPress={signInWithApple}
               disabled={signingIn}
               android_ripple={signingIn ? undefined : { color: 'rgba(255,255,255,0.14)' }}
-              style={{
+              style={({ pressed }) => ({
                 height: 54,
                 borderRadius: 14,
                 backgroundColor: T.ink,
                 alignItems: 'center',
                 justifyContent: 'center',
-                opacity: signingIn ? 0.75 : 1,
-              }}
+                opacity: signingIn ? 0.75 : pressed ? 0.88 : 1,
+              })}
             >
               <Text style={{ fontSize: 15, fontWeight: '600', color: colors.inverse }}>
                 使用 Apple 登录
@@ -236,20 +236,26 @@ export function WelcomeScreen({ navigation }: Props) {
             <Pressable
               onPress={() => navigation.navigate('Permission')}
               android_ripple={{ color: 'rgba(255,255,255,0.14)' }}
-              style={{
+              style={({ pressed }) => ({
                 height: 54,
                 borderRadius: 14,
                 backgroundColor: T.ink,
                 alignItems: 'center',
                 justifyContent: 'center',
-              }}
+                opacity: pressed ? 0.88 : 1,
+              })}
             >
               <Text style={{ fontSize: 15, fontWeight: '600', color: colors.inverse }}>开始使用</Text>
             </Pressable>
           )}
           <Pressable
             onPress={openPrivacyPolicy}
-            style={{ height: 44, alignItems: 'center', justifyContent: 'center' }}
+            style={({ pressed }) => ({
+              height: 44,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.55 : 1,
+            })}
           >
             <Text style={{ fontSize: 12, color: T.ink3 }}>{t('onboarding.privacyPolicy')}</Text>
           </Pressable>

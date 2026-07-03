@@ -252,6 +252,7 @@ export const zhCN = {
   'sense_check.consider.preference_conflict': '你之前说过不喜欢{color}，买之前先斟酌一下。',
   'sense_check.price.label': '价格（可选，用于性价比提示）',
   'sense_check.price.placeholder': '如 299',
+  'sense_check.history.loadFailed': '最近检查加载失败',
   // --- Discover empty states ----------------------------------------------
   'discover.inspirations.empty.title': '还没有风格灵感',
   'discover.inspirations.empty.subtitle':

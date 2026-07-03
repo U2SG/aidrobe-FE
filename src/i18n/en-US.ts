@@ -261,6 +261,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
     'You said you dislike {color}, so weigh it before buying.',
   'sense_check.price.label': 'Price (optional — for the cost-per-wear hint)',
   'sense_check.price.placeholder': 'e.g. 299',
+  'sense_check.history.loadFailed': 'Failed to load recent checks',
   // --- Discover empty states ----------------------------------------------
   'discover.inspirations.empty.title': 'No style inspiration yet',
   'discover.inspirations.empty.subtitle':

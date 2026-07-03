@@ -19,6 +19,15 @@ export const colors = {
   // Deeper amber for low-confidence / missing-slot text + icons (readable as a
   // foreground where `warning` is a fill/background). From the V2 handoff.
   cautionAmber: '#9A682E',
+  // Warm inks/borders paired with `warningBg` surfaces (obstacle banner,
+  // laundry markers) — same amber family, extracted from OutfitDetail.
+  warningBorder: '#E5D2A8',
+  warningBorderStrong: '#D4B687',
+  warningInk: '#5C4F3F',
+  warningInkMuted: '#7A6A55',
+  // Translucent white scrims laid over imagery/illustration surfaces.
+  overlaySoft: 'rgba(255,255,255,0.72)',
+  overlayStrong: 'rgba(255,255,255,0.9)',
   danger: '#B85C4A',
   dangerBg: '#F6DDD6',
   inverse: '#FFFFFF',
