@@ -223,6 +223,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'ask.history.answerFallback': 'No answer was saved for this Ask.',
   'ask.error.unavailable': 'Q&A is still being set up, please try later.',
   'ask.error.generic': 'Something went wrong, please try again later.',
+  'ask.appliedConstraints': 'Carried over: {list}',
 
   // --- Shopping sense-check ------------------------------------------------
   'sense_check.skip.duplicate':

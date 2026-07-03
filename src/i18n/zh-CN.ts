@@ -219,6 +219,7 @@ export const zhCN = {
   'ask.history.answerFallback': '这次问答还没有保存答案',
   'ask.error.unavailable': '问答功能正在接入中，稍后再试。',
   'ask.error.generic': '出错了，请稍后再试。',
+  'ask.appliedConstraints': '已延续：{list}',
 
   // --- Shopping sense-check ------------------------------------------------
   'sense_check.skip.duplicate': '衣橱里已有 {count} 件相近的{color}{category}，容易重复。',

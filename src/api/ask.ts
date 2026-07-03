@@ -42,6 +42,13 @@ export async function askAidrobe(body: AskBody): Promise<AskResult> {
     itemRefs: data.item_refs,
     itemRefSnapshots: mapSnapshots(data.item_ref_snapshots),
     tokensUsed: data.tokens_used,
+    hasWardrobeContext: data.has_wardrobe_context ?? false,
+    deltas: data.deltas
+      ? {
+          reasoning: data.deltas.reasoning ?? null,
+          appliedConstraints: data.deltas.applied_constraints ?? [],
+        }
+      : null,
   };
 }
 

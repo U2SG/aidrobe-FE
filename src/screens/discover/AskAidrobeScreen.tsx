@@ -42,6 +42,9 @@ type Turn = {
   itemRefSnapshots: AskItemRefSnapshot[];
   pending: boolean;
   failed?: boolean;
+  // Constraints the multi-turn conversation carried into this answer (BE
+  // deltas.applied_constraints) — shown so continuity is visible, not silent.
+  appliedConstraints?: string[];
 };
 
 const FALLBACK_COMPOSER_HEIGHT = 112;
@@ -81,6 +84,7 @@ function formatHistoryDate(value: string, locale: string) {
 }
 
 function TurnView({ turn, onRetry, retryBusy }: { turn: Turn; onRetry: () => void; retryBusy: boolean }) {
+  const { t } = useT();
   return (
     <View style={{ width: '100%', gap: 10, flexShrink: 0, marginBottom: 16 }}>
       {/* Question bubble */}
@@ -123,6 +127,11 @@ function TurnView({ turn, onRetry, retryBusy }: { turn: Turn; onRetry: () => voi
             <Text style={{ ...type.body, color: turn.failed ? T.ink3 : T.ink2, lineHeight: 22 }}>
               {turn.answer}
             </Text>
+            {!turn.failed && turn.appliedConstraints?.length ? (
+              <Text style={{ ...type.caption, color: T.ink3, marginTop: 6 }} numberOfLines={2}>
+                {t('ask.appliedConstraints', { list: turn.appliedConstraints.join(' · ') })}
+              </Text>
+            ) : null}
             {turn.failed ? (
               // Retry re-fires the original question (kept on the turn), so the
               // user never has to retype.
@@ -364,6 +373,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
                 itemRefs: result.itemRefs,
                 itemRefSnapshots: result.itemRefSnapshots,
                 pending: false,
+                appliedConstraints: result.deltas?.appliedConstraints ?? [],
               }
             : x,
         ),

@@ -505,6 +505,34 @@ export interface ServerOutfitHistoryResponse {
   offset: number;
 }
 
+// Wear-history record for one date (GET /v1/outfit-history/{worn_date}); also
+// the target of the OOTD photo attach (POST /v1/outfit-history/{id}/ootd).
+export interface WearHistoryEntry {
+  wearHistoryId: string;
+  wornDate: string;
+  outfit: {
+    outfitId: string;
+    outfitType: string;
+    title: string | null;
+    reasonText: string | null;
+  } | null;
+  ootdImageUrl: string | null;
+  selectedAt: string;
+}
+
+export interface ServerWearHistoryEntry {
+  wear_history_id: string;
+  worn_date: string;
+  outfit?: {
+    outfit_id: string;
+    outfit_type: string;
+    title?: string | null;
+    reason_text?: string | null;
+  } | null;
+  ootd_image_url?: string | null;
+  selected_at: string;
+}
+
 export interface OutfitHistoryQuery {
   startDate?: string;
   endDate?: string;
@@ -852,6 +880,12 @@ export interface AskItemRefSnapshot {
   thumbnailUrl: string | null;
 }
 
+// Multi-turn reasoning deltas — what the conversation carried into this answer.
+export interface AskDeltas {
+  reasoning: string | null;
+  appliedConstraints: string[];
+}
+
 export interface AskResult {
   askSessionId: string;
   conversationId: string | null;
@@ -859,6 +893,13 @@ export interface AskResult {
   itemRefs: string[];
   itemRefSnapshots: AskItemRefSnapshot[];
   tokensUsed: number;
+  hasWardrobeContext: boolean;
+  deltas: AskDeltas | null;
+}
+
+export interface ServerAskDeltas {
+  reasoning?: string | null;
+  applied_constraints?: string[];
 }
 
 export interface ServerAskResponse {
@@ -868,6 +909,8 @@ export interface ServerAskResponse {
   item_refs: string[];
   item_ref_snapshots?: ServerAskItemRefSnapshot[];
   tokens_used: number;
+  has_wardrobe_context?: boolean;
+  deltas?: ServerAskDeltas | null;
 }
 
 export interface AskHistoryEntry {
