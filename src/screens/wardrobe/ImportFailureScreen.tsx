@@ -55,7 +55,11 @@ export function ImportFailureScreen({ navigation, route }: Props) {
         />
         <Button
           label={t('import.failure.backToWardrobe')}
-          onPress={() => navigation.popToTop()}
+          onPress={() =>
+            // In onboarding popToTop would land on Welcome (step 1); return to
+            // the AddWardrobe step instead.
+            onboarding ? navigation.navigate('AddWardrobe' as never) : navigation.popToTop()
+          }
           variant="secondary"
           style={styles.cta}
         />

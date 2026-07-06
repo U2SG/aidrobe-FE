@@ -243,7 +243,7 @@ export function OotdPosterScreen({ navigation, route }: Props) {
                     justifyContent: 'center',
                   }}
                 >
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={colors.inverse} />
                 </View>
               ) : null}
             </Pressable>

@@ -24,6 +24,7 @@ import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, type } from '@/theme/design';
 import type { LocalePref } from '@/types/api';
 import type { SettingsStackParamList } from '@/types/navigation';
+import { isCoords } from '@/utils/location';
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'ProfileV2'>;
 
@@ -356,7 +357,14 @@ export function ProfileV2Screen({ navigation }: Props) {
         />
         <Row
           labelKey="profile.row.location"
-          value={settings?.location ?? notSet}
+          // Raw "lng,lat" coords mean GPS mode — show the mode label, not coords.
+          value={
+            settings?.location
+              ? isCoords(settings.location)
+                ? t('settings.city.gps')
+                : settings.location
+              : notSet
+          }
           leadingIcon={<SystemIcon name="compass" size={18} color={colors.tertiaryLabel} />}
           onPress={() => setLocationOpen(true)}
         />
@@ -420,7 +428,14 @@ export function ProfileV2Screen({ navigation }: Props) {
         title={t('profile.row.location')}
         options={[]}
         allowCustom
-        customPlaceholder={t('settings.city.manualPlaceholder')}
+        // Surface the current city as the placeholder so the editor doesn't
+        // open looking blank (the sheet's input intentionally starts empty).
+        // Raw "lng,lat" coords are never shown — same guard as SettingsScreen.
+        customPlaceholder={
+          settings?.location && !isCoords(settings.location)
+            ? settings.location
+            : t('settings.city.manualPlaceholder')
+        }
         selected={settings?.location ?? null}
         onSelect={(value) => locationMutation.mutate(value)}
       />

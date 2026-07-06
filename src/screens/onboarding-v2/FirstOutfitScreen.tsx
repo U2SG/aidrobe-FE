@@ -162,6 +162,24 @@ export function FirstOutfitScreen({ navigation, route }: Props) {
             missingSlots={missingCoreSlots(countByCategory(items))}
             onAddItem={() => navigation.navigate((onboarding ? 'AddWardrobe' : 'AddItem') as never)}
           />
+          {onboarding ? (
+            // Forward path even with an incomplete wardrobe — onboarding must
+            // never dead-end; the user can finish the flow and add items later.
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => navigation.navigate('StyleMemory' as never)}
+              style={({ pressed }) => ({
+                height: 44,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? 0.6 : 1,
+              })}
+            >
+              <Text style={{ ...type.callout, color: colors.tertiaryLabel }}>
+                {t('onboarding.styleMemory.skip')}
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 

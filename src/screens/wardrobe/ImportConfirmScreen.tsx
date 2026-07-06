@@ -70,6 +70,13 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
       navigation.popToTop();
     }
   };
+  // Back/close/retake exits: in the wardrobe stack popToTop lands on the list;
+  // re-hosted in onboarding it would land on Welcome (step 1) — go back to the
+  // AddWardrobe step (2/6) instead.
+  const exitFlow = () => {
+    if (onboarding) navigation.navigate('AddWardrobe' as never);
+    else navigation.popToTop();
+  };
   const qc = useQueryClient();
   const resetDraft = useImportDraftStore((state) => state.reset);
   const localImageUri = useImportDraftStore((state) => state.localImageUri);
@@ -132,7 +139,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
         current={current}
         total={total}
         inQueue={inQueue}
-        onClose={() => navigation.popToTop()}
+        onClose={exitFlow}
         onAdvance={goNextOrExit}
       />
     );
@@ -176,7 +183,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
     <View style={{ flex: 1, backgroundColor: T.bg }}>
       {/* Nav */}
       <View style={{ paddingTop: 52, paddingHorizontal: 20, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Pressable onPress={() => navigation.popToTop()} hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+        <Pressable onPress={exitFlow} hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
           <SystemIcon name="chevronLeft" size={22} color={T.ink2} />
         </Pressable>
         <Text style={{ ...typeScale.footnote, color: T.ink3 }}>{t('import.progress', { current, total })}</Text>
@@ -335,7 +342,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
         saveLabel={t('import.save')}
         onSave={save}
         secondaryLabel={inQueue ? t('import.skip') : t('import.reshoot')}
-        onSecondary={() => (inQueue ? goNextOrExit() : navigation.popToTop())}
+        onSecondary={() => (inQueue ? goNextOrExit() : exitFlow())}
         errorText={t('import.saveBarError')}
       />
     </View>

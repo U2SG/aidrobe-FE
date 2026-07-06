@@ -58,6 +58,10 @@ const T = {
   ok: colors.success,
   warn: colors.warning,
   warnBg: colors.warningBg,
+  warnBorder: colors.warningBorder,
+  warnBorderStrong: colors.warningBorderStrong,
+  warnInk: colors.warningInk,
+  warnInk2: colors.warningInkMuted,
   red: colors.danger,
   shadowSm: shadow.soft,
   shadowMd: shadow.elevated,
@@ -433,7 +437,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                 borderRadius: 14,
                 backgroundColor: T.warnBg,
                 borderWidth: 1,
-                borderColor: '#E5D2A8',
+                borderColor: T.warnBorder,
                 flexDirection: 'row',
                 gap: 12,
               }}
@@ -448,13 +452,13 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                   justifyContent: 'center',
                 }}
               >
-                <SystemIcon name="exclamation" size={18} color="#fff" strokeWidth={2} />
+                <SystemIcon name="exclamation" size={18} color={colors.inverse} strokeWidth={2} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#5C4F3F', marginBottom: 4 }}>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: T.warnInk, marginBottom: 4 }}>
                   {renderI18n(primaryObstacle.title)}
                 </Text>
-                <Text style={{ fontSize: 11, color: '#7A6A55', lineHeight: 17, marginBottom: 8 }}>
+                <Text style={{ fontSize: 11, color: T.warnInk2, lineHeight: 17, marginBottom: 8 }}>
                   {t('outfitDetail.replacementHint')}
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -486,10 +490,10 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                       paddingVertical: 6,
                       borderRadius: 8,
                       borderWidth: 1,
-                      borderColor: '#D4B687',
+                      borderColor: T.warnBorderStrong,
                     }}
                   >
-                    <Text style={{ color: '#7A6A55', fontSize: 11 }}>{t('outfitDetail.ignoreObstacle')}</Text>
+                    <Text style={{ color: T.warnInk2, fontSize: 11 }}>{t('outfitDetail.ignoreObstacle')}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -545,7 +549,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                     gap: 12,
                     ...T.shadowSm,
                     borderWidth: isLaundry ? 1 : 0,
-                    borderColor: isLaundry ? '#E5D2A8' : 'transparent',
+                    borderColor: isLaundry ? T.warnBorder : 'transparent',
                     opacity: pressed ? 0.88 : isLaundry ? 0.85 : 1,
                   })}
                 >
@@ -599,10 +603,10 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                             paddingHorizontal: 6,
                             paddingVertical: 2,
                             borderRadius: 999,
-                            backgroundColor: '#F4E8D1',
+                            backgroundColor: T.warnBg,
                           }}
                         >
-                          <Text style={{ fontSize: 9, color: '#7A5C2F', fontWeight: '600' }}>{String(it.status)}</Text>
+                          <Text style={{ fontSize: 9, color: colors.cautionAmber, fontWeight: '600' }}>{String(it.status)}</Text>
                         </View>
                       ) : (
                         <Tag style={{ paddingHorizontal: 6, paddingVertical: 2 }}>
