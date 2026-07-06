@@ -16,6 +16,12 @@ export const zhCN = {
   'common.clear': '清除',
   'common.notSet': '未设置',
 
+  // --- V2 primary tabs ------------------------------------------------------
+  'tabs.today': '今日',
+  'tabs.wardrobe': '衣橱',
+  'tabs.ask': 'Ask',
+  'tabs.profile': '我的',
+
   // --- Onboarding ----------------------------------------------------------
   'onboarding.privacyPolicy': '了解隐私政策',
   'onboarding.privacyPolicyOpenFailed': '无法打开隐私政策，请稍后重试',
@@ -673,6 +679,7 @@ export const zhCN = {
   'onboarding.styleMemory.benefit2.hint': '更懂你的穿搭风格',
   'onboarding.styleMemory.benefit3.title': '影响以后推荐',
   'onboarding.styleMemory.benefit3.hint': '推荐以后会更贴合你',
+  'onboarding.styleMemory.cardHint': '选择你的照片',
   'onboarding.styleMemory.cta.pick': '选择一张照片',
   'onboarding.styleMemory.skip': '跳过',
   'onboarding.styleMemory.footnote': '随时可以在「我的」里查看、更换或删除灵感。',

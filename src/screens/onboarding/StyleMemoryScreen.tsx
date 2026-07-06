@@ -46,7 +46,7 @@ const BENEFIT_CHIPS = [
 ];
 
 // Placeholder for the large image-pick card shown before a photo is chosen.
-function InspirationCardPlaceholder() {
+function InspirationCardPlaceholder({ hint }: { hint: string }) {
   return (
     <View
       style={{
@@ -74,9 +74,7 @@ function InspirationCardPlaceholder() {
         }}
       />
       <SystemIcon name="photo" size={32} color={colors.tertiaryLabel} strokeWidth={1.4} />
-      <Text style={{ ...typeTokens.callout, color: T.ink2 }}>
-        {'选择你的照片'}
-      </Text>
+      <Text style={{ ...typeTokens.callout, color: T.ink2 }}>{hint}</Text>
     </View>
   );
 }
@@ -190,7 +188,7 @@ export function StyleMemoryScreen({ navigation }: Props) {
             opacity: uploading || pressed ? 0.8 : 1,
           })}
         >
-          <InspirationCardPlaceholder />
+          <InspirationCardPlaceholder hint={t('onboarding.styleMemory.cardHint')} />
         </Pressable>
 
         {/* ── Three benefit chips ── */}

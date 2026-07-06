@@ -11,18 +11,20 @@ import {
   unfavoriteOutfit,
 } from '@/api/recommendations';
 import { getUserSettings } from '@/api/settings';
-import { getWardrobeItem } from '@/api/wardrobe';
+import { getWardrobeItem, listWardrobeItems } from '@/api/wardrobe';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { resolveOutfitPieces } from '@/components/outfit/resolvePieces';
 import { ContextOverrideBar, type ContextOverrideSuggestion } from '@/components/product/ContextOverrideBar';
 import { DecisionOutfitCard } from '@/components/product/DecisionOutfitCard';
 import { ResurfaceInsightCard, type ResurfaceInsight } from '@/components/product/ResurfaceInsightCard';
+import { SlotGapEmptyState } from '@/components/product/SlotGapEmptyState';
 import { CountdownRing } from '@/components/ui/CountdownRing';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
 import type { I18nKey } from '@/i18n';
 import { useTrack } from '@/hooks/useTrack';
+import { countByCategory, missingCoreSlots } from '@/screens/onboarding-v2/firstOutfit';
 import { todayBoardMode } from '@/screens/today/todayBoard';
 import { deriveTodayMode, isTomorrowOriented, wearLabelKeyForMode, type TodayMode } from '@/screens/today-v2/todayMode';
 import { buildRecommendationReasons } from '@/screens/today-v2/todayReasons';
@@ -130,6 +132,24 @@ export function TodayV2Screen({ navigation }: Props) {
     hasApiOutfit: Boolean(outfit?.id),
   });
   const hasRecommendation = boardMode === 'real';
+
+  // Only fetch the full wardrobe list when the recommendation is absent — so
+  // normal days don't pay for the extra round-trip.
+  const wardrobeQuery = useQuery({
+    queryKey: ['wardrobeItems', 'coldStart'],
+    queryFn: () => listWardrobeItems({ limit: 100 }),
+    staleTime: 60 * 1000,
+    enabled: todayQuery.isSuccess && !(hasRecommendation && outfit),
+  });
+  const coldStartMissingSlots = useMemo(() => {
+    if (!wardrobeQuery.isSuccess) return null;
+    const { items: fetched, total } = wardrobeQuery.data;
+    // Only claim specific gaps when we've seen the WHOLE wardrobe — a partial
+    // page could miss a category that exists past the page boundary, and a
+    // fabricated "missing shoes" is worse than the generic copy.
+    if (total > fetched.length) return null;
+    return missingCoreSlots(countByCategory(fetched));
+  }, [wardrobeQuery.isSuccess, wardrobeQuery.data]);
   const departureTime = settingsQuery.data?.departureTime ?? null;
   const mode = deriveTodayMode({
     now: new Date(),
@@ -271,7 +291,16 @@ export function TodayV2Screen({ navigation }: Props) {
             disabled={refreshMutation.isPending}
           />
         </>
+      ) : coldStartMissingSlots && coldStartMissingSlots.length > 0 ? (
+        // Wardrobe has real gaps — point at exactly what to add.
+        <SlotGapEmptyState
+          missingSlots={coldStartMissingSlots}
+          onAddItem={() =>
+            navigation.getParent()?.navigate('WardrobeTab', { screen: 'AddItem' } as never)
+          }
+        />
       ) : (
+        // Wardrobe adequate (or query loading/failed) — keep honest generic copy.
         <View
           style={{
             borderRadius: radius.xl,

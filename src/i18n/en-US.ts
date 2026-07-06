@@ -16,6 +16,12 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'common.clear': 'Clear',
   'common.notSet': 'Not set',
 
+  // --- V2 primary tabs ------------------------------------------------------
+  'tabs.today': 'Today',
+  'tabs.wardrobe': 'Wardrobe',
+  'tabs.ask': 'Ask',
+  'tabs.profile': 'Me',
+
   // --- Onboarding ----------------------------------------------------------
   'onboarding.privacyPolicy': 'View privacy policy',
   'onboarding.privacyPolicyOpenFailed': "Couldn't open the privacy policy. Please try again later.",
@@ -686,6 +692,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'onboarding.styleMemory.benefit2.hint': 'Learns your style of dressing',
   'onboarding.styleMemory.benefit3.title': 'Shape future recommendations',
   'onboarding.styleMemory.benefit3.hint': 'Your picks become more personal over time',
+  'onboarding.styleMemory.cardHint': 'Pick your photo',
   'onboarding.styleMemory.cta.pick': 'Choose a photo',
   'onboarding.styleMemory.skip': 'Skip',
   'onboarding.styleMemory.footnote':

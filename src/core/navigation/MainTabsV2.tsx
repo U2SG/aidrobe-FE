@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useLocaleSync } from '@/hooks/useLocaleSync';
 import { useLocationSync } from '@/hooks/useLocationSync';
+import { useT } from '@/hooks/useT';
 import { colors, type } from '@/theme/design';
 import type { MainTabsV2ParamList } from '@/types/navigation';
 import { AskNavigator } from './AskNavigator';
@@ -34,6 +35,7 @@ function TabIcon({
 // stack until the Phase 7 trust surface lands. Mounted by RootNavigator only
 // when `enableMvpV2Ui` is on — the V1 MainTabs is otherwise unchanged.
 export function MainTabsV2() {
+  const { t } = useT();
   useLocaleSync();
   useLocationSync();
   return (
@@ -60,7 +62,7 @@ export function MainTabsV2() {
         name="TodayTab"
         component={TodayNavigator}
         options={{
-          title: '今日',
+          title: t('tabs.today'),
           tabBarIcon: ({ focused }) => <TabIcon name="home" active={focused} />,
         }}
       />
@@ -68,7 +70,7 @@ export function MainTabsV2() {
         name="WardrobeTab"
         component={WardrobeNavigator}
         options={{
-          title: '衣橱',
+          title: t('tabs.wardrobe'),
           tabBarIcon: ({ focused }) => <TabIcon name="wardrobe" active={focused} />,
         }}
       />
@@ -76,7 +78,7 @@ export function MainTabsV2() {
         name="AskTab"
         component={AskNavigator}
         options={{
-          title: 'Ask',
+          title: t('tabs.ask'),
           tabBarIcon: ({ focused }) => <TabIcon name="sparkle" active={focused} />,
         }}
       />
@@ -84,7 +86,7 @@ export function MainTabsV2() {
         name="ProfileTab"
         component={SettingsNavigator}
         options={{
-          title: '我的',
+          title: t('tabs.profile'),
           tabBarIcon: ({ focused }) => <TabIcon name="person" active={focused} />,
         }}
       />

@@ -13,6 +13,7 @@ import { useTrack } from '@/hooks/useTrack';
 import { enableMvpV2Ui } from '@/lib/featureFlags';
 import { invalidateAfterConfirmImport } from '@/state/invalidation';
 import { confirmationBudgetForImport } from '@/utils/timeUX';
+import { visibleImportFields } from './importConfirmFields';
 import { phaseFromFlags } from '@/state/operationState';
 import { useImportDraftStore } from '@/store/importDraft';
 import { colors, radius, shadow, type as typeScale } from '@/theme/design';
@@ -95,6 +96,11 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
   const [form, setForm] = useState<ConfirmImportTaskBody>({ name: '', category: 'top', color: '' });
   const [selectedFit, setSelectedFit] = useState('regular');
   const [saving, setSaving] = useState(false);
+  // Late-night low-friction: compute once on mount so the form doesn't
+  // reshuffle if the clock ticks past a threshold during editing.
+  const [budget] = useState(() => confirmationBudgetForImport(new Date()));
+  // Whether the user has tapped "改一下" to expand the collapsed fields.
+  const [expanded, setExpanded] = useState(false);
   // Surfaces save failure inline (in the SaveBar) instead of a 2.5s toast that
   // vanishes. The edited `form` state is never touched on failure, so retrying
   // resubmits the same content with no re-typing.
@@ -210,7 +216,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
 
         {/* Late-night low-friction hint (brief §6.4): past the confirmation
             budget, nudge "先收下，之后再整理" instead of pressing for edits. */}
-        {confirmationBudgetForImport(new Date()) === 0 ? (
+        {budget === 0 ? (
           <View
             style={{
               backgroundColor: T.cardSoft,
@@ -265,68 +271,108 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
           )}
         </View>
 
-        {/* Fields card: name + divider + category + divider + color + divider + fit */}
-        <View style={{ backgroundColor: T.card, borderRadius: T.rLg, ...T.shadowSm, marginBottom: 16, overflow: 'hidden' }}>
-          {/* Name */}
-          <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12 }}>
-            <Text style={{ ...typeScale.caption, color: T.ink3, marginBottom: 6 }}>{t('import.fieldName')}</Text>
-            <TextInput
-              value={form.name}
-              onChangeText={(name) => setForm((c) => ({ ...c, name }))}
-              placeholder={t('import.namePlaceholder')}
-              placeholderTextColor={T.ink4}
-              style={{ ...typeScale.headline, color: T.ink }}
-            />
-          </View>
-
-          <View style={{ height: 1, backgroundColor: T.divider, marginHorizontal: 16 }} />
-
-          {/* Category */}
-          <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14 }}>
-            <Text style={{ ...typeScale.caption, color: T.ink3, marginBottom: 10 }}>{t('import.fieldCategory')}</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-              {CATEGORY_OPTIONS.map((o) => (
-                <ChoiceChip
-                  key={o.id}
-                  active={form.category === o.id}
-                  onPress={() => setForm((c) => ({ ...c, category: o.id }))}
-                  label={o.label}
+        {/* Fields card: name always visible; category/color/fit conditionally
+            shown based on late-night budget. Dividers are leading elements of
+            each conditional block to avoid dangling separators. */}
+        {(() => {
+          const fields = visibleImportFields(budget);
+          const showExpander = !expanded && !(fields.category && fields.color && fields.fit);
+          const showCategory = fields.category || expanded;
+          const showColor = fields.color || expanded;
+          const showFit = fields.fit || expanded;
+          return (
+            <View style={{ backgroundColor: T.card, borderRadius: T.rLg, ...T.shadowSm, marginBottom: 16, overflow: 'hidden' }}>
+              {/* Name — always visible, no leading divider */}
+              <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12 }}>
+                <Text style={{ ...typeScale.caption, color: T.ink3, marginBottom: 6 }}>{t('import.fieldName')}</Text>
+                <TextInput
+                  value={form.name}
+                  onChangeText={(name) => setForm((c) => ({ ...c, name }))}
+                  placeholder={t('import.namePlaceholder')}
+                  placeholderTextColor={T.ink4}
+                  style={{ ...typeScale.headline, color: T.ink }}
                 />
-              ))}
+              </View>
+
+              {/* Expander row — visible when one or more fields are collapsed */}
+              {showExpander && (
+                <>
+                  <View style={{ height: 1, backgroundColor: T.divider, marginHorizontal: 16 }} />
+                  <Pressable
+                    onPress={() => setExpanded(true)}
+                    style={({ pressed }) => ({
+                      minHeight: 44,
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      opacity: pressed ? 0.6 : 1,
+                    })}
+                  >
+                    <Text style={{ ...typeScale.callout, color: T.accent }}>{t('item.change')}</Text>
+                  </Pressable>
+                </>
+              )}
+
+              {/* Category — leading divider + field */}
+              {showCategory && (
+                <>
+                  <View style={{ height: 1, backgroundColor: T.divider, marginHorizontal: 16 }} />
+                  <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14 }}>
+                    <Text style={{ ...typeScale.caption, color: T.ink3, marginBottom: 10 }}>{t('import.fieldCategory')}</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                      {CATEGORY_OPTIONS.map((o) => (
+                        <ChoiceChip
+                          key={o.id}
+                          active={form.category === o.id}
+                          onPress={() => setForm((c) => ({ ...c, category: o.id }))}
+                          label={o.label}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                </>
+              )}
+
+              {/* Color — leading divider + field */}
+              {showColor && (
+                <>
+                  <View style={{ height: 1, backgroundColor: T.divider, marginHorizontal: 16 }} />
+                  <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 }}>
+                    <Text style={{ ...typeScale.caption, color: T.ink3, marginBottom: 6 }}>{t('import.fieldColor')}</Text>
+                    <TextInput
+                      value={form.color}
+                      onChangeText={(color) => setForm((c) => ({ ...c, color }))}
+                      placeholder={t('import.colorPlaceholder')}
+                      placeholderTextColor={T.ink4}
+                      style={{ ...typeScale.body, color: T.ink }}
+                    />
+                  </View>
+                </>
+              )}
+
+              {/* Fit — leading divider + field */}
+              {showFit && (
+                <>
+                  <View style={{ height: 1, backgroundColor: T.divider, marginHorizontal: 16 }} />
+                  <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14 }}>
+                    <Text style={{ ...typeScale.caption, color: T.ink3, marginBottom: 10 }}>{t('import.fieldFit')}</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                      {FIT_OPTIONS.map((o) => (
+                        <ChoiceChip
+                          key={o.id}
+                          active={selectedFit === o.id}
+                          onPress={() => setSelectedFit(o.id)}
+                          label={o.label}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                </>
+              )}
             </View>
-          </View>
-
-          <View style={{ height: 1, backgroundColor: T.divider, marginHorizontal: 16 }} />
-
-          {/* Color */}
-          <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 }}>
-            <Text style={{ ...typeScale.caption, color: T.ink3, marginBottom: 6 }}>{t('import.fieldColor')}</Text>
-            <TextInput
-              value={form.color}
-              onChangeText={(color) => setForm((c) => ({ ...c, color }))}
-              placeholder={t('import.colorPlaceholder')}
-              placeholderTextColor={T.ink4}
-              style={{ ...typeScale.body, color: T.ink }}
-            />
-          </View>
-
-          <View style={{ height: 1, backgroundColor: T.divider, marginHorizontal: 16 }} />
-
-          {/* Fit */}
-          <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14 }}>
-            <Text style={{ ...typeScale.caption, color: T.ink3, marginBottom: 10 }}>{t('import.fieldFit')}</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-              {FIT_OPTIONS.map((o) => (
-                <ChoiceChip
-                  key={o.id}
-                  active={selectedFit === o.id}
-                  onPress={() => setSelectedFit(o.id)}
-                  label={o.label}
-                />
-              ))}
-            </View>
-          </View>
-        </View>
+          );
+        })()}
 
         {/* Info note */}
         <View style={{ paddingHorizontal: 14, paddingVertical: 11, backgroundColor: T.cardSoft, borderRadius: T.rMd }}>
