@@ -20,7 +20,7 @@ const Tok = {
 } as const;
 
 export function ImportFailureScreen({ navigation, route }: Props) {
-  const { reason } = route.params;
+  const { reason, onboarding } = route.params;
   const { t } = useT();
 
   const reasonLabel = t(`import.failure.label.${reason}` as I18nKey);
@@ -49,7 +49,7 @@ export function ImportFailureScreen({ navigation, route }: Props) {
       <View style={styles.actions}>
         <Button
           label={t('import.failure.retake')}
-          onPress={() => navigation.replace('AddItem')}
+          onPress={() => navigation.replace((onboarding ? 'AddWardrobe' : 'AddItem') as never)}
           variant="primary"
           style={styles.cta}
         />

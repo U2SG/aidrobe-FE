@@ -2,7 +2,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
   favoriteOutfit,
@@ -32,12 +32,13 @@ import type { TodayStackParamList } from '@/types/navigation';
 type Props = NativeStackScreenProps<TodayStackParamList, 'Today'>;
 
 // Context override chips (brief v0.9 §5.4). labelKey → i18n; payload is the free
-// text an override represents (tracked + sent to refresh).
+// text an override represents (tracked + sent to refresh). iconName is optional —
+// only assigned where a clean SystemIcon glyph exists; others are text-only.
 const OVERRIDE_SUGGESTIONS: ContextOverrideSuggestion[] = [
-  { id: 'meeting', labelKey: 'today.override.chip.meeting', payload: '今天有会' },
+  { id: 'meeting', labelKey: 'today.override.chip.meeting', payload: '今天有会', iconName: 'suitcase' },
   { id: 'comfy', labelKey: 'today.override.chip.comfy', payload: '想舒服一点' },
   { id: 'noSkirt', labelKey: 'today.override.chip.noSkirt', payload: '不想穿裙子' },
-  { id: 'walk', labelKey: 'today.override.chip.walk', payload: '要走很多路' },
+  { id: 'walk', labelKey: 'today.override.chip.walk', payload: '要走很多路', iconName: 'compass' },
   { id: 'lowKey', labelKey: 'today.override.chip.lowKey', payload: '想低调一点' },
   { id: 'coldOffice', labelKey: 'today.override.chip.coldOffice', payload: '办公室有点冷' },
   { id: 'stayIn', labelKey: 'today.override.chip.stayIn', payload: '不怎么出门' },
@@ -165,6 +166,9 @@ export function TodayV2Screen({ navigation }: Props) {
     ? t('today.v2.departureCountdown', { minutes: remaining as number, scene })
     : t(modeCopy.subtitle);
 
+  // Context override sheet open/close state.
+  const [overrideSheetOpen, setOverrideSheetOpen] = useState(false);
+
   // Favorite (heart) — optimistic local state backed by the outfit API.
   const [favorited, setFavorited] = useState(false);
   useEffect(() => setFavorited(outfit?.isFavorited ?? false), [outfit?.id, outfit?.isFavorited]);
@@ -228,7 +232,33 @@ export function TodayV2Screen({ navigation }: Props) {
 
           <ResurfaceInsightCard insight={resurfaceInsight} />
 
+          {/* Compact entry row — opens the context override sheet */}
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setOverrideSheetOpen(true)}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+              paddingVertical: 14,
+              paddingHorizontal: 16,
+              borderRadius: radius.md,
+              borderWidth: 1,
+              borderColor: colors.separator,
+              backgroundColor: colors.elevated,
+              opacity: pressed ? 0.8 : 1,
+            })}
+          >
+            <SystemIcon name="sparkle" size={16} color={colors.tertiaryLabel} strokeWidth={1.6} />
+            <Text style={{ flex: 1, ...type.callout, color: colors.tertiaryLabel }}>
+              {t('today.override.entryLabel')}
+            </Text>
+            <SystemIcon name="chevronRight" size={16} color={colors.quaternaryLabel} strokeWidth={1.6} />
+          </Pressable>
+
           <ContextOverrideBar
+            visible={overrideSheetOpen}
+            onClose={() => setOverrideSheetOpen(false)}
             suggestions={OVERRIDE_SUGGESTIONS}
             onSelectSuggestion={submitOverride}
             onSubmitText={submitOverride}

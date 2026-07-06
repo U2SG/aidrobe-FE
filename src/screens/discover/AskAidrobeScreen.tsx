@@ -21,10 +21,13 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { ItemRefsRow } from '@/components/wardrobe/ItemRefsRow';
+import type { ContextualEntry } from '@/components/discover/ContextualEntrySheet';
+import { ContextualEntrySheet } from '@/components/discover/ContextualEntrySheet';
 import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { useWardrobeItemNames } from '@/hooks/useWardrobeItemNames';
 import type { I18nKey } from '@/i18n';
+import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { AskHistoryEntry, AskItemRefSnapshot, AskScope } from '@/types/api';
 import type { AskStackParamList } from '@/types/navigation';
@@ -299,9 +302,11 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   const scope: AskScope = focusedItemId ? 'item' : route.params?.scope === 'today' ? 'today' : 'global';
   const focusedNames = useWardrobeItemNames(focusedItemId ? [focusedItemId] : []);
   const focusedName = focusedItemId ? focusedNames.get(focusedItemId) : undefined;
+  const showToast = useToastStore((s) => s.show);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState('');
   const [historyVisible, setHistoryVisible] = useState(false);
+  const [contextualSheetVisible, setContextualSheetVisible] = useState(false);
   const [composerHeight, setComposerHeight] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -416,6 +421,45 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     );
     askMutation.mutate({ tempId: turn.id, question: turn.question });
   };
+
+  // Contextual entry sheet entries. All 4 targets (Insights, SenseCheck,
+  // PackingList, StyleInspirations) live in DiscoverStack / SettingsStack —
+  // not reachable from the Ask tab's narrow AskStackParamList. Each shows a
+  // toast placeholder until cross-tab navigation is wired (see REPORT below).
+  const contextualEntries: ContextualEntry[] = [
+    {
+      key: 'shopping',
+      icon: 'bag',
+      labelKey: 'contextualEntry.shopping.label',
+      hintKey: 'contextualEntry.shopping.hint',
+      onPress: () =>
+        showToast({ message: t('contextualEntry.comingSoon'), kind: 'info' }),
+    },
+    {
+      key: 'trip',
+      icon: 'suitcase',
+      labelKey: 'contextualEntry.trip.label',
+      hintKey: 'contextualEntry.trip.hint',
+      onPress: () =>
+        showToast({ message: t('contextualEntry.comingSoon'), kind: 'info' }),
+    },
+    {
+      key: 'insights',
+      icon: 'chart',
+      labelKey: 'contextualEntry.insights.label',
+      hintKey: 'contextualEntry.insights.hint',
+      onPress: () =>
+        showToast({ message: t('contextualEntry.comingSoon'), kind: 'info' }),
+    },
+    {
+      key: 'style',
+      icon: 'bookmark',
+      labelKey: 'contextualEntry.style.label',
+      hintKey: 'contextualEntry.style.hint',
+      onPress: () =>
+        showToast({ message: t('contextualEntry.comingSoon'), kind: 'info' }),
+    },
+  ];
 
   const isEmpty = turns.length === 0;
   // Header sits in normal flow (repo standard — see SenseCheckScreen / ItemDetailScreen;
@@ -541,6 +585,39 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
                   <SystemIcon name="chevronRight" size={16} color={T.ink3} strokeWidth={1.7} />
                 </Pressable>
               ))}
+              {/* Contextual entry trigger — "more" affordance below suggestions */}
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: colors.separatorSoft,
+                  marginHorizontal: -20,
+                  marginTop: 2,
+                  marginBottom: 2,
+                }}
+              />
+              <Pressable
+                onPress={() => setContextualSheetVisible(true)}
+                accessibilityRole="button"
+                accessibilityLabel={t('contextualEntry.triggerA11y')}
+                android_ripple={{ color: colors.fill }}
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 13,
+                  paddingHorizontal: 4,
+                  opacity: pressed ? 0.65 : 1,
+                  minHeight: 44,
+                })}
+              >
+                <SystemIcon name="plus" size={18} color={T.ink3} strokeWidth={1.7} />
+                <Text
+                  style={{ ...type.body, color: T.ink2, flex: 1, marginLeft: 12 }}
+                  numberOfLines={1}
+                >
+                  {t('contextualEntry.trigger')}
+                </Text>
+                <SystemIcon name="chevronRight" size={16} color={T.ink3} strokeWidth={1.7} />
+              </Pressable>
             </View>
           </View>
         ) : (
@@ -647,6 +724,12 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         error={historyQuery.isError && !historyQuery.isFetching}
         onClose={() => setHistoryVisible(false)}
         onRetry={() => void historyQuery.refetch()}
+      />
+
+      <ContextualEntrySheet
+        visible={contextualSheetVisible}
+        onClose={() => setContextualSheetVisible(false)}
+        entries={contextualEntries}
       />
     </View>
   );

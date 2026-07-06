@@ -9,6 +9,7 @@ import {
   RefreshControl,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 
@@ -248,6 +249,7 @@ export function WardrobeListScreen({ navigation }: Props) {
   const [category, setCategory] = useState<ItemCategory | 'all'>('all');
   const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS);
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
+  const [search, setSearch] = useState('');
   const CATEGORIES = CATEGORY_KEYS.map((key) => ({
     key,
     label: key === 'all' ? t.t('common.all') : t.tEnum('category', key),
@@ -295,15 +297,25 @@ export function WardrobeListScreen({ navigation }: Props) {
   // API_GAP[untracked]: GET /v1/wardrobe-items lacks status/season/color filters.
   // Fallback: category is still server-side; these fields filter the fetched page locally.
   const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return items.filter((item) => {
       if (filters.status !== 'all' && item.status !== filters.status) return false;
       if (filters.season !== 'all' && !(item.seasonTags ?? []).includes(filters.season)) return false;
       if (filters.color !== 'all' && item.color.trim().toLowerCase() !== filters.color.toLowerCase()) {
         return false;
       }
+      if (q) {
+        const name = resolveItemDisplayName(t.locale, {
+          name: item.name,
+          nameSource: item.nameSource,
+          displayName: item.displayName,
+          localizedNames: item.localizedNames,
+        }).toLowerCase();
+        if (!name.includes(q) && !item.color.toLowerCase().includes(q)) return false;
+      }
       return true;
     });
-  }, [filters, items]);
+  }, [filters, items, search, t.locale]);
 
   const clientFilterCount =
     (filters.status !== 'all' ? 1 : 0) +
@@ -312,7 +324,9 @@ export function WardrobeListScreen({ navigation }: Props) {
   const activeFilterCount = clientFilterCount + (category !== 'all' ? 1 : 0);
   const hasActiveFilters = activeFilterCount > 0;
   const hasClientFilters = clientFilterCount > 0;
-  const displayedTotal = hasClientFilters ? filteredItems.length : (query.data?.total ?? 0);
+  const isSearching = search.trim().length > 0;
+  const displayedTotal =
+    hasClientFilters || isSearching ? filteredItems.length : (query.data?.total ?? 0);
 
   const idleCount = insightsQuery.data?.idleCount ?? 0;
   const showIdleHint = idleCount > 0;
@@ -400,7 +414,25 @@ export function WardrobeListScreen({ navigation }: Props) {
                 }}
               >
                 <SystemIcon name="search" size={17} color={T.ink3} />
-                <Text style={{ color: T.ink4, fontSize: 14 }}>{t.t('wardrobe.searchPlaceholder')}</Text>
+                <TextInput
+                  value={search}
+                  onChangeText={setSearch}
+                  placeholder={t.t('wardrobe.searchPlaceholder')}
+                  placeholderTextColor={T.ink4}
+                  returnKeyType="search"
+                  clearButtonMode="while-editing"
+                  style={{ flex: 1, color: T.ink, fontSize: 16, padding: 0 }}
+                />
+                {search.length > 0 ? (
+                  <Pressable
+                    onPress={() => setSearch('')}
+                    accessibilityRole="button"
+                    accessibilityLabel={t.t('common.clear')}
+                    hitSlop={8}
+                  >
+                    <SystemIcon name="x" size={16} color={T.ink3} />
+                  </Pressable>
+                ) : null}
               </View>
               <Pressable
                 accessibilityRole="button"

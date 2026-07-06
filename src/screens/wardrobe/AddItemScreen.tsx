@@ -18,6 +18,7 @@ import { createPresignedUpload, uploadFileUriToPresigned } from '@/api/uploads';
 import { Button } from '@/components/ui/Button';
 import { SiriOrb } from '@/components/ui/SiriOrb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
+import { AddSourceSheet } from '@/components/wardrobe/AddSourceSheet';
 import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { useImportDraftStore } from '@/store/importDraft';
@@ -68,6 +69,7 @@ export function AddItemScreen({ navigation }: Props) {
   const showToast = useToastStore((state) => state.show);
   const track = useTrack();
 
+  const [sourceSheetVisible, setSourceSheetVisible] = useState(true);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [submittingLink, setSubmittingLink] = useState(false);
@@ -276,6 +278,31 @@ export function AddItemScreen({ navigation }: Props) {
         </View>
       </ScrollView>
 
+      <AddSourceSheet
+        visible={sourceSheetVisible && !linkModalOpen}
+        onClose={() => {
+          setSourceSheetVisible(false);
+          navigation.goBack();
+        }}
+        onCamera={() => {
+          setSourceSheetVisible(false);
+          void pickFromCamera();
+        }}
+        onAlbum={() => {
+          setSourceSheetVisible(false);
+          void pickFromLibrary();
+        }}
+        onOutfit={() => {
+          // No dedicated outfit-extraction handler yet; reuses album picker.
+          // TODO: wire to outfit-extract flow once backend supports it.
+          setSourceSheetVisible(false);
+          void pickFromLibrary();
+        }}
+        onLink={() => {
+          setSourceSheetVisible(false);
+          setLinkModalOpen(true);
+        }}
+      />
       <LinkImportModal
         visible={linkModalOpen}
         value={linkUrl}

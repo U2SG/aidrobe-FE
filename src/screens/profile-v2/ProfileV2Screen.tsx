@@ -1,21 +1,31 @@
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { Alert, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { deactivateAccount, requestDataExport } from '@/api/account';
-import { getUserSettings } from '@/api/settings';
+import { refreshTodayRecommendation } from '@/api/recommendations';
+import { getUserSettings, updateUserSettings } from '@/api/settings';
+import { DepartureTimeSheet } from '@/components/settings/DepartureTimeSheet';
+import { DeleteDataSheet } from '@/components/product/DeleteDataSheet';
+import { OptionPickerSheet } from '@/components/ui/OptionPickerSheet';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
 import type { I18nKey } from '@/i18n';
+import {
+  invalidateAfterChangeLanguage,
+  invalidateAfterUpdateDepartureTime,
+  invalidateAfterUpdateLocation,
+} from '@/state/invalidation';
 import { useAuthStore } from '@/store/auth';
+import { useLocalePrefStore } from '@/store/localePref';
 import { useOnboardingStore } from '@/store/onboarding';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, type } from '@/theme/design';
-import type { MainTabsParamList, SettingsStackParamList } from '@/types/navigation';
+import type { LocalePref } from '@/types/api';
+import type { SettingsStackParamList } from '@/types/navigation';
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'ProfileV2'>;
-type MainTabsNav = BottomTabNavigationProp<MainTabsParamList>;
 
 // ── Section ─────────────────────────────────────────────────────────────────
 
@@ -163,12 +173,11 @@ function DataHintBanner({ text }: { text: string }) {
 //   • Avatar: person glyph — no name available from auth store (tokens only).
 //   • Name: omitted (no user profile API).
 //   • 使用第N天 / 风格灵感 saved-count: omitted (no API).
-//   • 出门时间 / 位置 / 语言: real values from getUserSettings(); null → 未设置.
+//   • 出门时间 / 位置 / 语言: real values from getUserSettings(); each row opens
+//     a focused editor sheet (no jump to the full V1 Settings screen).
 //
-// 风格灵感 navigates to DiscoverTab/StyleInspirations (same cross-tab pattern
-// as WardrobeListScreen). In V2 tab layout (MainTabsV2ParamList) DiscoverTab
-// is absent; the optional-chain on getParent() means the tap silently no-ops
-// rather than crashing — this is a known spec gap (no Discover tab in V2 nav).
+// 风格灵感 pushes StyleInspirations, which is mounted in this Settings stack
+// under V2 (no Discover tab exists in the V2 tab layout).
 //
 // Export row is kept under 隐私与数据 so the action remains reachable.
 // SignOut is kept as a trailing row in 隐私与数据 so the user can always exit.
@@ -185,6 +194,58 @@ export function ProfileV2Screen({ navigation }: Props) {
   });
 
   const settings = settingsQuery.data;
+
+  const queryClient = useQueryClient();
+  const langPref = useLocalePrefStore((s) => s.preference);
+  const setLangPref = useLocalePrefStore((s) => s.setPreference);
+
+  // 日常设置 rows edit ONE setting each via a focused sheet — no jump to the
+  // full (V1) Settings screen. Mutations mirror SettingsScreen so today
+  // regenerates and language/city stay in sync.
+  const [departureOpen, setDepartureOpen] = useState(false);
+  const [languageOpen, setLanguageOpen] = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
+  const [deleteDataOpen, setDeleteDataOpen] = useState(false);
+
+  const departureMutation = useMutation({
+    mutationFn: (value: string) => updateUserSettings({ departureTime: `${value}:00` }),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['userSettings'], data);
+      invalidateAfterUpdateDepartureTime(queryClient);
+      showToast({ message: t('settings.departureTimeSaved'), kind: 'success' });
+      setDepartureOpen(false);
+    },
+    onError: () => showToast({ message: t('settings.departureTimeSaveFailed'), kind: 'error' }),
+  });
+
+  const languageMutation = useMutation({
+    mutationFn: (locale: LocalePref) => updateUserSettings({ locale }),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['userSettings'], data);
+      invalidateAfterChangeLanguage(queryClient);
+    },
+    onError: () => showToast({ message: t('settings.language.saveFailed'), kind: 'error' }),
+  });
+
+  const selectLanguage = (locale: string) => {
+    if (locale === langPref) return;
+    setLangPref(locale as LocalePref);
+    languageMutation.mutate(locale as LocalePref);
+  };
+
+  const locationMutation = useMutation({
+    mutationFn: (value: string) => updateUserSettings({ location: value }),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['userSettings'], data);
+      // Regenerate today so city/weather follow the new location, then invalidate.
+      void refreshTodayRecommendation()
+        .catch(() => undefined)
+        .finally(() => invalidateAfterUpdateLocation(queryClient));
+      showToast({ message: t('settings.city.savedToast'), kind: 'success' });
+      setLocationOpen(false);
+    },
+    onError: () => showToast({ message: t('settings.city.saveFailed'), kind: 'error' }),
+  });
 
   // Clearing auth must also reset the onboarding flag so RootNavigator sends
   // the user back to sign-in/onboarding — parity with SettingsScreen.signOut.
@@ -206,26 +267,17 @@ export function ProfileV2Screen({ navigation }: Props) {
     },
   });
 
-  const confirmDeactivate = () =>
-    Alert.alert(t('profile.deactivate.title'), t('profile.deactivate.body'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('profile.deactivate.confirm'),
-        style: 'destructive',
-        onPress: () => deactivateMutation.mutate(),
-      },
-    ]);
+  const confirmDeactivate = () => setDeleteDataOpen(true);
 
   const signOut = () => {
     void resetToSignedOut();
   };
 
-  // Cross-tab navigation to StyleInspirations in the Discover stack.
-  // Uses the same getParent() pattern as WardrobeListScreen → Insights.
+  // StyleInspirations is mounted in this (Settings) stack under V2 — push it
+  // directly. (Previously navigated to a DiscoverTab that does not exist in the
+  // V2 tab layout, so the tap silently no-op'd.)
   const openInspirations = () => {
-    navigation.getParent<MainTabsNav>()?.navigate('DiscoverTab', {
-      screen: 'StyleInspirations',
-    } as never);
+    navigation.navigate('StyleInspirations');
   };
 
   // Language label: derive display string from locale pref.
@@ -239,7 +291,15 @@ export function ProfileV2Screen({ navigation }: Props) {
 
   const notSet = t('common.notSet');
 
+  const languageOptions = [
+    { value: 'system', label: t('settings.language.system') },
+    { value: 'zh-CN', label: t('settings.language.zh-CN') },
+    { value: 'en-US', label: t('settings.language.en-US') },
+  ];
+  const currentLocale = langPref ?? settings?.locale ?? null;
+
   return (
+    <>
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.groupedBackground }}
       contentContainerStyle={{
@@ -292,19 +352,19 @@ export function ProfileV2Screen({ navigation }: Props) {
           labelKey="profile.row.departureTime"
           value={settings?.departureTime ?? notSet}
           leadingIcon={<SystemIcon name="clock" size={18} color={colors.tertiaryLabel} />}
-          onPress={() => navigation.navigate('Settings')}
+          onPress={() => setDepartureOpen(true)}
         />
         <Row
           labelKey="profile.row.location"
           value={settings?.location ?? notSet}
           leadingIcon={<SystemIcon name="compass" size={18} color={colors.tertiaryLabel} />}
-          onPress={() => navigation.navigate('Settings')}
+          onPress={() => setLocationOpen(true)}
         />
         <Row
           labelKey="profile.row.language"
           value={localeLabel ?? notSet}
           leadingIcon={<SystemIcon name="chart" size={18} color={colors.tertiaryLabel} />}
-          onPress={() => navigation.navigate('Settings')}
+          onPress={() => setLanguageOpen(true)}
           last
         />
       </Section>
@@ -336,5 +396,40 @@ export function ProfileV2Screen({ navigation }: Props) {
         />
       </Section>
     </ScrollView>
+
+      <DepartureTimeSheet
+        visible={departureOpen}
+        initialValue={settings?.departureTime}
+        saving={departureMutation.isPending}
+        onSave={(value) => departureMutation.mutate(value)}
+        onClose={() => setDepartureOpen(false)}
+      />
+      <OptionPickerSheet
+        mode="single"
+        visible={languageOpen}
+        onClose={() => setLanguageOpen(false)}
+        title={t('settings.language')}
+        options={languageOptions}
+        selected={currentLocale}
+        onSelect={selectLanguage}
+      />
+      <OptionPickerSheet
+        mode="single"
+        visible={locationOpen}
+        onClose={() => setLocationOpen(false)}
+        title={t('profile.row.location')}
+        options={[]}
+        allowCustom
+        customPlaceholder={t('settings.city.manualPlaceholder')}
+        selected={settings?.location ?? null}
+        onSelect={(value) => locationMutation.mutate(value)}
+      />
+      <DeleteDataSheet
+        visible={deleteDataOpen}
+        loading={deactivateMutation.isPending}
+        onConfirm={() => deactivateMutation.mutate()}
+        onClose={() => setDeleteDataOpen(false)}
+      />
+    </>
   );
 }

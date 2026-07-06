@@ -139,7 +139,7 @@ export function OotdPosterScreen({ navigation, route }: Props) {
   // need expo-media-library, deferred.
   const handleShare = async () => {
     if (!posterUrl) return;
-    await shareWithAsset('我的今日穿搭 · Aidrobe', posterUrl);
+    await shareWithAsset('我的今日穿搭 · 衣然', posterUrl);
     track('ootd_poster_shared', {});
   };
 

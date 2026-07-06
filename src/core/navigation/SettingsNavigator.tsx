@@ -4,6 +4,8 @@ import { SettingsScreen } from '@/screens/settings/SettingsScreen';
 import { ProfileV2Screen } from '@/screens/profile-v2/ProfileV2Screen';
 import { DataTrustScreen } from '@/screens/profile-v2/DataTrustScreen';
 import { MemoryManagementScreen } from '@/screens/profile-v2/MemoryManagementScreen';
+import { StyleInspirationsScreen } from '@/screens/discover/StyleInspirationsScreen';
+import { AddInspirationScreen } from '@/screens/discover/AddInspirationScreen';
 import { useT } from '@/hooks/useT';
 import { enableMvpV2Ui } from '@/lib/featureFlags';
 import { colors } from '@/theme/design';
@@ -41,6 +43,20 @@ export function SettingsNavigator() {
             name="Memory"
             component={MemoryManagementScreen}
             options={{ headerShown: true, title: t('profile.row.memory') }}
+          />
+          {/* Reachable from ProfileV2 「风格灵感」. Screens are typed against the
+              Discover stack but only navigate within {StyleInspirations,
+              AddInspiration}, both mounted here — cast per the repo's cross-stack
+              convention. */}
+          <Stack.Screen
+            name="StyleInspirations"
+            component={StyleInspirationsScreen as never}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="AddInspiration"
+            component={AddInspirationScreen as never}
+            options={{ headerShown: false }}
           />
         </>
       ) : null}

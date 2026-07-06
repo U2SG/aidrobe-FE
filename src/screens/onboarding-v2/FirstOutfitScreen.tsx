@@ -68,9 +68,12 @@ const PROCESSING_STAGES: I18nKey[] = [
   'firstOutfit.stage.compose',
 ];
 
-export function FirstOutfitScreen({ navigation }: Props) {
+export function FirstOutfitScreen({ navigation, route }: Props) {
   const { t } = useT();
   const track = useTrack();
+  // When re-hosted inside the onboarding stack this is 4/6; its "done" and
+  // "add more" branches continue onboarding instead of the main app.
+  const onboarding = route.params?.onboarding ?? false;
 
   const todayQuery = useQuery({
     queryKey: ['todayRecommendation'],
@@ -93,6 +96,11 @@ export function FirstOutfitScreen({ navigation }: Props) {
 
   const goToday = () => {
     track('first_outfit_generated', { outfitCount: outfits.length });
+    if (onboarding) {
+      // Onboarding 4/6 → advance to the optional style-memory step (5/6).
+      navigation.navigate('StyleMemory' as never);
+      return;
+    }
     // Pop the activation gate off the Wardrobe stack first, so returning to the
     // Wardrobe tab later lands on the list — not back on this headerless gate —
     // then cross-tab jump into Today.
@@ -152,7 +160,7 @@ export function FirstOutfitScreen({ navigation }: Props) {
           </View>
           <SlotGapEmptyState
             missingSlots={missingCoreSlots(countByCategory(items))}
-            onAddItem={() => navigation.navigate('AddItem')}
+            onAddItem={() => navigation.navigate((onboarding ? 'AddWardrobe' : 'AddItem') as never)}
           />
         </View>
       ) : null}
@@ -170,7 +178,7 @@ export function FirstOutfitScreen({ navigation }: Props) {
             reasons={buildRecommendationReasons(outfits[0]!)}
             isSingle={state === 'single_outfit'}
             onWear={goToday}
-            onAddMore={() => navigation.navigate('AddItem')}
+            onAddMore={() => navigation.navigate((onboarding ? 'AddWardrobe' : 'AddItem') as never)}
           />
         </View>
       ) : null}

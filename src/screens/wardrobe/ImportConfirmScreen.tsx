@@ -50,7 +50,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
   const { t, tEnum } = useT();
   const CATEGORY_OPTIONS = CATEGORY_KEYS.map((id) => ({ id, label: tEnum('category', id) }));
   const FIT_OPTIONS = FIT_KEYS.map((id) => ({ id, label: tEnum('fitIntent', id) }));
-  const { taskId, queue, queueIndex } = route.params;
+  const { taskId, queue, queueIndex, onboarding } = route.params;
   // Multi-image batch: confirm this task, then advance to the next one.
   const queueLen = queue?.length ?? 0;
   const inQueue = queueLen > 1;
@@ -60,11 +60,12 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
   const goNextOrExit = () => {
     const nextId = queue && queue[idx + 1];
     if (nextId) {
-      navigation.replace('ImportConfirm', { taskId: nextId, queue, queueIndex: idx + 1 });
+      navigation.replace('ImportConfirm', { taskId: nextId, queue, queueIndex: idx + 1, onboarding });
     } else if (enableMvpV2Ui) {
       // V2: after the last item, land on the First Outfit activation gate
-      // instead of dropping the user back onto the list.
-      navigation.replace('FirstOutfit');
+      // instead of dropping the user back onto the list. Forward `onboarding`
+      // so First Outfit continues onboarding (→ StyleMemory) rather than Today.
+      navigation.replace('FirstOutfit', onboarding ? { onboarding: true } : undefined);
     } else {
       navigation.popToTop();
     }
@@ -102,7 +103,10 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
     const data = query.data;
     if (!data) return;
     if (data.status === 'failed') {
-      navigation.replace('ImportFailure', { reason: data.errorReason ?? 'recognition_failed' });
+      navigation.replace('ImportFailure', {
+        reason: data.errorReason ?? 'recognition_failed',
+        onboarding,
+      });
       return;
     }
     if (data.status === 'waiting_confirm' && data.recognized) {
@@ -112,7 +116,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
         color: data.recognized.color ?? '',
       });
     }
-  }, [query.data, navigation]);
+  }, [query.data, navigation, onboarding]);
 
   const data = query.data;
   if (!data || data.status !== 'waiting_confirm') {
