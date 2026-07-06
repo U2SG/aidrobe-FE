@@ -63,11 +63,17 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   // 衣然 YIRAN brand icon + splash (docs/design/brand/logo/final-v1). Warm-white
   // brand background #FAF7F0 to match the app's morning surface.
   icon: './assets/icon.png',
-  splash: {
-    image: './assets/splash-icon.png',
-    resizeMode: 'contain',
-    backgroundColor: '#FAF7F0',
-  },
+  // Spread-cast: expo honors a top-level `splash` at build time, but SDK 56
+  // dropped it from the ExpoConfig type (it moved to the expo-splash-screen
+  // plugin, which is not installed here). Spreading bypasses the excess-property
+  // check while keeping the branded launch screen.
+  ...({
+    splash: {
+      image: './assets/splash-icon.png',
+      resizeMode: 'contain',
+      backgroundColor: '#FAF7F0',
+    },
+  } as unknown as Partial<ExpoConfig>),
   ios: {
     supportsTablet: false,
     bundleIdentifier: 'app.aidrobe.ios',

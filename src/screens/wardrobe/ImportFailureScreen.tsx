@@ -49,7 +49,7 @@ export function ImportFailureScreen({ navigation, route }: Props) {
       <View style={styles.actions}>
         <Button
           label={t('import.failure.retake')}
-          onPress={() => navigation.replace((onboarding ? 'AddWardrobe' : 'AddItem') as never)}
+          onPress={() => navigation.replace(onboarding ? ('AddWardrobe' as never) : 'AddItem')}
           variant="primary"
           style={styles.cta}
         />
