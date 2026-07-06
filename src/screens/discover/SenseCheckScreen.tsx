@@ -454,7 +454,38 @@ export function SenseCheckScreen({ navigation }: Props) {
         {/* Current result */}
         {current ? <ResultCard result={current} t={t} /> : null}
 
-        {/* History */}
+        {/* History — a failed fetch must not silently hide the section. */}
+        {historyQuery.isError ? (
+          <View
+            style={{
+              backgroundColor: T.card,
+              borderRadius: radius.lg,
+              padding: 16,
+              alignItems: 'center',
+              gap: 10,
+              ...shadow.soft,
+            }}
+          >
+            <Text style={{ ...type.footnote, color: T.ink3 }}>{t.t('sense_check.history.loadFailed')}</Text>
+            <Pressable
+              onPress={() => historyQuery.refetch()}
+              accessibilityRole="button"
+              accessibilityLabel={t.t('common.retry')}
+              style={({ pressed }) => ({
+                minHeight: 44,
+                minWidth: 120,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: radius.md,
+                borderWidth: 1,
+                borderColor: T.divider,
+                opacity: pressed ? 0.62 : 1,
+              })}
+            >
+              <Text style={{ ...type.footnote, fontWeight: '600', color: T.ink2 }}>{t.t('common.retry')}</Text>
+            </Pressable>
+          </View>
+        ) : null}
         {historyQuery.data && historyQuery.data.length > 0 ? (
           <View>
             <Text style={{ ...type.headline, color: T.ink, marginBottom: 12 }}>最近检查</Text>

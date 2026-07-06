@@ -355,7 +355,12 @@ export function DepartureTimeScreen() {
           <Pressable
             onPress={finish}
             disabled={saving}
-            style={{ height: 44, alignItems: 'center', justifyContent: 'center' }}
+            style={({ pressed }) => ({
+              height: 44,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.55 : 1,
+            })}
           >
             <Text style={{ ...typeScale.footnote, color: T.ink3 }}>{t('departure.skip')}</Text>
           </Pressable>

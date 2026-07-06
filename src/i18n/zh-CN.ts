@@ -232,6 +232,10 @@ export const zhCN = {
   'ask.placeholderFocused': '想怎么搭这件？',
   'ask.emptyTitle': '问问你的衣橱',
   'ask.emptyHint': '比如「明天通勤穿什么」「这件配什么鞋」',
+  'ask.chip.commute': '明天通勤穿什么',
+  'ask.chip.occasion': '有个活动穿什么好',
+  'ask.chip.shoes': '这件配什么鞋',
+  'ask.chip.weather': '现在天气适合穿什么',
   'ask.focusedChip': '围绕「{name}」搭配',
   'ask.focusedFallback': '这件单品',
   'ask.history.open': '查看历史问答',
@@ -252,6 +256,7 @@ export const zhCN = {
   'ask.v2.s2': '今天要走很多路，换双舒服的鞋',
   'ask.v2.s3': '下周出去玩，帮我准备衣服',
   'ask.v2.s4': '这件米白衬衫还能怎么搭',
+  'ask.appliedConstraints': '已延续：{list}',
 
   // --- Shopping sense-check ------------------------------------------------
   'sense_check.skip.duplicate': '衣橱里已有 {count} 件相近的{color}{category}，容易重复。',
@@ -285,6 +290,7 @@ export const zhCN = {
   'sense_check.consider.preference_conflict': '你之前说过不喜欢{color}，买之前先斟酌一下。',
   'sense_check.price.label': '价格（可选，用于性价比提示）',
   'sense_check.price.placeholder': '如 299',
+  'sense_check.history.loadFailed': '最近检查加载失败',
   // --- Discover empty states ----------------------------------------------
   'discover.inspirations.empty.title': '还没有风格灵感',
   'discover.inspirations.empty.subtitle':

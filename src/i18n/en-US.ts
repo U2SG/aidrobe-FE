@@ -243,6 +243,10 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'ask.placeholderFocused': 'How should I wear this?',
   'ask.emptyTitle': 'Ask your wardrobe',
   'ask.emptyHint': 'e.g. "What to wear commuting tomorrow", "What shoes go with this"',
+  'ask.chip.commute': 'What to wear commuting tomorrow',
+  'ask.chip.occasion': 'Outfit for an event',
+  'ask.chip.shoes': 'What shoes go with this',
+  'ask.chip.weather': 'What suits the current weather',
   'ask.focusedChip': 'Styling around "{name}"',
   'ask.focusedFallback': 'this item',
   'ask.history.open': 'View Ask history',
@@ -263,6 +267,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'ask.v2.s2': "I'll be walking a lot today, help me find comfy shoes",
   'ask.v2.s3': "I'm going on a trip next week, help me pack",
   'ask.v2.s4': 'What else can I do with my off-white shirt',
+  'ask.appliedConstraints': 'Carried over: {list}',
 
   // --- Shopping sense-check ------------------------------------------------
   'sense_check.skip.duplicate':
@@ -301,6 +306,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
     'You said you dislike {color}, so weigh it before buying.',
   'sense_check.price.label': 'Price (optional — for the cost-per-wear hint)',
   'sense_check.price.placeholder': 'e.g. 299',
+  'sense_check.history.loadFailed': 'Failed to load recent checks',
   // --- Discover empty states ----------------------------------------------
   'discover.inspirations.empty.title': 'No style inspiration yet',
   'discover.inspirations.empty.subtitle':

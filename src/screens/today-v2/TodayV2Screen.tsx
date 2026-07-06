@@ -12,6 +12,8 @@ import {
 } from '@/api/recommendations';
 import { getUserSettings } from '@/api/settings';
 import { getWardrobeItem } from '@/api/wardrobe';
+import { ErrorState } from '@/components/feedback/ErrorState';
+import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { resolveOutfitPieces } from '@/components/outfit/resolvePieces';
 import { ContextOverrideBar, type ContextOverrideSuggestion } from '@/components/product/ContextOverrideBar';
 import { DecisionOutfitCard } from '@/components/product/DecisionOutfitCard';
@@ -209,7 +211,11 @@ export function TodayV2Screen({ navigation }: Props) {
         {showRing && remaining != null ? <CountdownRing minutes={remaining} /> : null}
       </View>
 
-      {hasRecommendation && outfit ? (
+      {todayQuery.isLoading ? (
+        <LoadingBlock />
+      ) : todayQuery.isError ? (
+        <ErrorState onRetry={() => todayQuery.refetch()} />
+      ) : hasRecommendation && outfit ? (
         <>
           <DecisionOutfitCard
             outfit={outfit}

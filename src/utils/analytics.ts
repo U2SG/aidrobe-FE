@@ -37,6 +37,9 @@ export const ANALYTICS_EVENTS = {
   ootd_poster_started: 'ootd_poster_started',
   ootd_poster_generated: 'ootd_poster_generated',
   ootd_poster_shared: 'ootd_poster_shared',
+  // Best-effort OOTD selfie attach onto today's wear-history record.
+  ootd_attached_to_history: 'ootd_attached_to_history',
+  ootd_attach_skipped: 'ootd_attach_skipped',
   outfit_item_replaced: 'outfit_item_replaced',
   outfit_obstacle_ignored: 'outfit_obstacle_ignored',
   // Today v2: user submitted a context override (chip or free text).

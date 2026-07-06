@@ -158,7 +158,7 @@ export function LandingPage({ onEnterApp }: Props) {
             right: 28,
             padding: 14,
             borderRadius: radius.lg,
-            backgroundColor: 'rgba(255,255,255,0.92)',
+            backgroundColor: colors.overlayStrong,
             borderWidth: 1,
             borderColor: colors.separatorSoft,
           }}

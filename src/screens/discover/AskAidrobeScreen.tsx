@@ -46,6 +46,9 @@ type Turn = {
   itemRefSnapshots: AskItemRefSnapshot[];
   pending: boolean;
   failed?: boolean;
+  // Constraints the multi-turn conversation carried into this answer (BE
+  // deltas.applied_constraints) — shown so continuity is visible, not silent.
+  appliedConstraints?: string[];
 };
 
 const FALLBACK_COMPOSER_HEIGHT = 112;
@@ -93,6 +96,7 @@ function formatHistoryDate(value: string, locale: string) {
 }
 
 function TurnView({ turn, onRetry, retryBusy }: { turn: Turn; onRetry: () => void; retryBusy: boolean }) {
+  const { t } = useT();
   return (
     <View style={{ width: '100%', gap: 10, flexShrink: 0, marginBottom: 16 }}>
       {/* Question bubble */}
@@ -135,6 +139,11 @@ function TurnView({ turn, onRetry, retryBusy }: { turn: Turn; onRetry: () => voi
             <Text style={{ ...type.body, color: turn.failed ? T.ink3 : T.ink2, lineHeight: 22 }}>
               {turn.answer}
             </Text>
+            {!turn.failed && turn.appliedConstraints?.length ? (
+              <Text style={{ ...type.caption, color: T.ink3, marginTop: 6 }} numberOfLines={2}>
+                {t('ask.appliedConstraints', { list: turn.appliedConstraints.join(' · ') })}
+              </Text>
+            ) : null}
             {turn.failed ? (
               // Retry re-fires the original question (kept on the turn), so the
               // user never has to retype.
@@ -304,6 +313,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   const focusedName = focusedItemId ? focusedNames.get(focusedItemId) : undefined;
   const showToast = useToastStore((s) => s.show);
   const [turns, setTurns] = useState<Turn[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [historyVisible, setHistoryVisible] = useState(false);
   const [contextualSheetVisible, setContextualSheetVisible] = useState(false);
@@ -329,19 +339,20 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     retry: 1,
   });
 
-  // If the scope / focused item changes while the screen stays mounted (e.g.
-  // a global Ask tab, then opening Ask from an item-detail CTA), drop the
-  // previous scope's live turns so they don't bleed into the new visit.
+  // If the scope / focused item changes while the screen stays mounted, drop
+  // the previous session's turns and conversation thread.
   useEffect(() => {
     setTurns([]);
+    setConversationId(null);
   }, [scope, focusedItemId]);
 
   const askMutation = useMutation({
-    mutationFn: (vars: { tempId: string; question: string }) =>
+    mutationFn: (vars: { tempId: string; question: string; conversationId: string | null }) =>
       askAidrobe({
         question: vars.question,
         focusedItemId,
         locale,
+        conversationId: vars.conversationId,
       }),
     onMutate: (vars) => {
       // Idempotent on tempId: a retry reuses the failed turn's own id (already
@@ -363,6 +374,9 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
       );
     },
     onSuccess: (result, vars) => {
+      // Thread the conversation forward so subsequent sends continue the same
+      // multi-turn session on the backend.
+      setConversationId(result.conversationId);
       setTurns((t) =>
         t.map((x) =>
           x.id === vars.tempId
@@ -373,6 +387,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
                 itemRefs: result.itemRefs,
                 itemRefSnapshots: result.itemRefSnapshots,
                 pending: false,
+                appliedConstraints: result.deltas?.appliedConstraints ?? [],
               }
             : x,
         ),
@@ -399,7 +414,8 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   const submitQuestion = (question: string) => {
     const q = question.trim();
     if (!q || askMutation.isPending) return;
-    askMutation.mutate({ tempId: `local-${Date.now()}`, question: q });
+    setInput('');
+    askMutation.mutate({ tempId: `local-${Date.now()}`, question: q, conversationId });
   };
 
   const send = () => {
@@ -419,7 +435,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         x.id === turn.id ? { ...x, pending: true, failed: false, answer: null } : x,
       ),
     );
-    askMutation.mutate({ tempId: turn.id, question: turn.question });
+    askMutation.mutate({ tempId: turn.id, question: turn.question, conversationId });
   };
 
   // Contextual entry sheet entries. All 4 targets (Insights, SenseCheck,

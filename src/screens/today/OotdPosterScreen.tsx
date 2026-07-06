@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { createOotdPoster } from '@/api/ootdPosters';
+import { getWearHistoryByDate, uploadOotdPhoto } from '@/api/outfitHistory';
 import { getOutfitVisualAsset } from '@/api/outfitVisual';
 import { createPresignedUpload, uploadToPresigned } from '@/api/uploads';
 import { PrimaryButton } from '@/components/forms/PrimaryButton';
@@ -15,6 +16,7 @@ import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { OotdPosterTemplate } from '@/types/api';
 import type { TodayStackParamList } from '@/types/navigation';
+import { todayISO } from '@/utils/date';
 import { compressImage, MAX_UPLOAD_BYTES } from '@/utils/image';
 import { shareWithAsset } from '@/utils/share';
 
@@ -98,6 +100,20 @@ export function OotdPosterScreen({ navigation, route }: Props) {
     }
   };
 
+  // Best-effort: hang the selfie on today's wear-history record so history /
+  // calendar surfaces the real look (BE keeps ootd_image_url null otherwise).
+  // No record for today (nothing marked worn) is a legitimate skip — both
+  // requests run silent so the poster flow never surfaces this as an error.
+  const attachOotdToToday = async (photoUrl: string) => {
+    try {
+      const entry = await getWearHistoryByDate(todayISO(), { silentErrorToast: true });
+      await uploadOotdPhoto(entry.wearHistoryId, photoUrl, { silentErrorToast: true });
+      track('ootd_attached_to_history', { wearHistoryId: entry.wearHistoryId });
+    } catch {
+      track('ootd_attach_skipped', {});
+    }
+  };
+
   const createMutation = useMutation({
     mutationFn: () =>
       createOotdPoster({ ootdImageUrl: imageUrl ?? undefined, templateId: template, consent: true }),
@@ -105,6 +121,7 @@ export function OotdPosterScreen({ navigation, route }: Props) {
       setAssetId(res.assetId);
       setPhase('generating');
       track('ootd_poster_generated', { template });
+      if (imageUrl) void attachOotdToToday(imageUrl);
     },
   });
 
