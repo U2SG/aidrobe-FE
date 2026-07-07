@@ -2,7 +2,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { getTodayRecommendation } from '@/api/recommendations';
+import { getFirstOutfitGate } from '@/api/recommendations';
 import { listWardrobeItems } from '@/api/wardrobe';
 import { resolveOutfitPieces } from '@/components/outfit/resolvePieces';
 import { FirstOutfitActivationCard } from '@/components/product/FirstOutfitActivationCard';
@@ -12,11 +12,7 @@ import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
 import type { I18nKey } from '@/i18n';
 import { useTrack } from '@/hooks/useTrack';
-import {
-  countByCategory,
-  deriveFirstOutfitState,
-  missingCoreSlots,
-} from '@/screens/onboarding-v2/firstOutfit';
+import type { CoreSlot, FirstOutfitUiState } from '@/screens/onboarding-v2/firstOutfit';
 import { buildRecommendationReasons } from '@/screens/today-v2/todayReasons';
 import { colors, radius, type } from '@/theme/design';
 import type { WardrobeItem } from '@/types/api';
@@ -75,9 +71,12 @@ export function FirstOutfitScreen({ navigation, route }: Props) {
   // "add more" branches continue onboarding instead of the main app.
   const onboarding = route.params?.onboarding ?? false;
 
-  const todayQuery = useQuery({
-    queryKey: ['todayRecommendation'],
-    queryFn: () => getTodayRecommendation('commute'),
+  // BE #79 — the gate verdict (state / missing slots / first outfit) comes from
+  // the backend, derived from the same daily /today serves. No more FE
+  // approximation from outfit counts.
+  const gateQuery = useQuery({
+    queryKey: ['firstOutfitGate'],
+    queryFn: getFirstOutfitGate,
     retry: 1,
   });
   const wardrobeQuery = useQuery({
@@ -86,16 +85,24 @@ export function FirstOutfitScreen({ navigation, route }: Props) {
     staleTime: 60 * 1000,
   });
 
-  const outfits = todayQuery.data?.outfits ?? [];
-  const state = deriveFirstOutfitState({
-    isLoading: todayQuery.isLoading,
-    isError: todayQuery.isError,
-    todayState: todayQuery.data?.state,
-    feasibleOutfitCount: outfits.length,
-  });
+  const gate = gateQuery.data;
+  const firstOutfit = gate?.firstOutfit ?? null;
+  const state: FirstOutfitUiState = gateQuery.isLoading
+    ? 'processing'
+    : gateQuery.isError
+      ? 'failed'
+      : gate!.state === 'no_outfit' || firstOutfit == null
+        ? 'no_outfit'
+        : gate!.state;
+  // BE slot vocabulary matches CoreSlot ('top'|'bottom'|'shoes'|'dress');
+  // filter defensively so an unknown future slot never renders unmapped.
+  const CORE_SLOTS: readonly CoreSlot[] = ['top', 'bottom', 'shoes', 'dress'];
+  const missingSlots: CoreSlot[] = (gate?.missingSlots ?? []).filter((s): s is CoreSlot =>
+    (CORE_SLOTS as readonly string[]).includes(s),
+  );
 
   const goToday = () => {
-    track('first_outfit_generated', { outfitCount: outfits.length });
+    track('first_outfit_generated', { outfitCount: gate?.feasibleOutfitCount ?? 0 });
     if (onboarding) {
       // Onboarding 4/6 → advance to the optional style-memory step (5/6).
       navigation.navigate('StyleMemory' as never);
@@ -143,7 +150,7 @@ export function FirstOutfitScreen({ navigation, route }: Props) {
           </Text>
           <Pressable
             accessibilityRole="button"
-            onPress={() => todayQuery.refetch()}
+            onPress={() => gateQuery.refetch()}
             style={{ height: 48, paddingHorizontal: 24, borderRadius: radius.md, backgroundColor: colors.label, alignItems: 'center', justifyContent: 'center' }}
           >
             <Text style={{ ...type.headline, color: colors.inverse }}>{t('firstOutfit.failed.retry')}</Text>
@@ -159,7 +166,7 @@ export function FirstOutfitScreen({ navigation, route }: Props) {
             <Text style={{ ...type.body, color: colors.tertiaryLabel }}>{t('firstOutfit.gap.subtitle')}</Text>
           </View>
           <SlotGapEmptyState
-            missingSlots={missingCoreSlots(countByCategory(items))}
+            missingSlots={missingSlots}
             onAddItem={() => navigation.navigate((onboarding ? 'AddWardrobe' : 'AddItem') as never)}
           />
           {onboarding ? (
@@ -191,9 +198,9 @@ export function FirstOutfitScreen({ navigation, route }: Props) {
             <Text style={{ ...type.body, color: colors.tertiaryLabel }}>{t('firstOutfit.ready.subtitle')}</Text>
           </View>
           <FirstOutfitActivationCard
-            outfit={outfits[0]!}
-            pieces={resolveOutfitPieces(outfits[0]!, itemById)}
-            reasons={buildRecommendationReasons(outfits[0]!)}
+            outfit={firstOutfit!}
+            pieces={resolveOutfitPieces(firstOutfit!, itemById)}
+            reasons={buildRecommendationReasons(firstOutfit!)}
             isSingle={state === 'single_outfit'}
             onWear={goToday}
             onAddMore={() => navigation.navigate((onboarding ? 'AddWardrobe' : 'AddItem') as never)}

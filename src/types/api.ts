@@ -413,6 +413,26 @@ export interface ServerTodayRecommendation {
   context?: ServerTodayContext | null;
 }
 
+// BE #79 — first-outfit cold-start feasibility gate. The verdict derives from
+// the same daily the Today pipeline persists, so gate and /today never diverge.
+export type FirstOutfitGateState = 'no_outfit' | 'single_outfit' | 'ready';
+
+export interface ServerFirstOutfitGate {
+  state: FirstOutfitGateState;
+  feasible_outfit_count: number;
+  missing_slots: string[];
+  first_outfit?: ServerOutfitResponse | null;
+  gate_failures: string[];
+}
+
+export interface FirstOutfitGate {
+  state: FirstOutfitGateState;
+  feasibleOutfitCount: number;
+  missingSlots: string[];
+  firstOutfit: OutfitSummary | null;
+  gateFailures: string[];
+}
+
 // V3+: 4-tier overall feedback. Old like/dislike still accepted.
 export type FeedbackKind = 'love' | 'like' | 'neutral' | 'dislike';
 

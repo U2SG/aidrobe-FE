@@ -4,26 +4,13 @@
 // to an honest 'no_outfit' with the specific missing core slots.
 import type { ItemCategory } from '@/types/api';
 
-// UI state of the first-outfit gate. `processing` while the recommendation is in
-// flight, `failed` on a hard error, otherwise driven by feasible outfit count.
+// UI state of the first-outfit gate. `processing` while the gate request is in
+// flight, `failed` on a hard error; the terminal states come from the BE gate
+// (/v1/recommendations/first-outfit) — the old FE count-based approximation
+// was removed when BE #79 landed.
 export type FirstOutfitUiState = 'processing' | 'no_outfit' | 'single_outfit' | 'ready' | 'failed';
 
 export type CoreSlot = 'top' | 'bottom' | 'shoes' | 'dress';
-
-export function deriveFirstOutfitState(input: {
-  isLoading: boolean;
-  isError: boolean;
-  todayState?: string | null;
-  feasibleOutfitCount: number;
-}): FirstOutfitUiState {
-  if (input.isError) return 'failed';
-  if (input.isLoading) return 'processing';
-  if (input.todayState === 'insufficient_items' || input.feasibleOutfitCount <= 0) return 'no_outfit';
-  // Exactly one feasible outfit: show it, but do not expose a swap that would
-  // always fail (brief §6.3).
-  if (input.feasibleOutfitCount === 1) return 'single_outfit';
-  return 'ready';
-}
 
 /**
  * The core slots still missing before a first outfit is possible. A wearable
