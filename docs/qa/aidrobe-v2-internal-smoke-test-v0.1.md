@@ -47,7 +47,7 @@
 | 3.2 | 处理中无白屏；失败页说清原因并可重选 | | |
 | 3.3 | 多张相册导入按队列逐件确认 | | |
 | 3.4 | V2 下最后一件确认后进入 FirstOutfit（不弹回列表） | | |
-| 3.5 | no_outfit 态说清缺什么槽位；single_outfit 态不暴露注定失败的「换一套」；ready 态能进 Today | | ⚠️ 三态目前由 FE 近似推导，真值等 BE #79 |
+| 3.5 | no_outfit 态说清缺什么槽位；single_outfit 态不暴露注定失败的「换一套」；ready 态能进 Today | | 三态来自 BE gate 真值（#79 已接） |
 | 3.6 | 深夜低打扰：22:00 后确认页只显示 图片+名称+保存，其余折叠进「改一下」；20:00–22:00 隐藏颜色/版型；白天全字段 | | 改系统时间测 |
 
 ## 4. Today v2
@@ -114,7 +114,6 @@
 |---|---|---|
 | 晚间/深夜显示的"明日"仍是今日数据换语气 | BE #77 tomorrow recommendation | 未接 |
 | 特殊情况 override 选了不影响推荐内容 | BE #78 context override | 未接 |
-| FirstOutfit 三态是 FE 近似，非后端裁决 | BE #79 first-outfit gate | 开发中 |
 | Today 下方无 resurface insight 卡（不假造，直接空着） | BE #80 resurface insight | 未接 |
 | 太冷/太热等反馈不改变后续推荐 | BE #81 passive learning / #82 indoor climate | 未接 |
 | 记忆纠正/删除、清空数据的服务端真值 | BE #83 data trust endpoints | 未接 |
