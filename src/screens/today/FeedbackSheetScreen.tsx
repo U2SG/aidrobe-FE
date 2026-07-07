@@ -1,415 +1,313 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
-import {
-  getFeedbackTags,
-  getOutfitDetail,
-  sendOutfitFeedbackBundle,
-} from '@/api/recommendations';
-import { getWardrobeItem } from '@/api/wardrobe';
-import { GarmentSvg } from '@/components/ui/GarmentSvg';
+import { sendOutfitFeedback } from '@/api/recommendations';
 import { SystemIcon } from '@/components/ui/SystemIcon';
+import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
+import { REASON_TAG_KEYS, type ReasonTagKey } from '@/i18n/domainLabels';
 import { useToastStore } from '@/store/toast';
-import { colors, shadow } from '@/theme/design';
-import type {
-  FeedbackKind,
-  FitFeedbackType,
-  ItemCategory,
-  WardrobeItem,
-} from '@/types/api';
+import { colors, radius, shadow, type } from '@/theme/design';
 import type { TodayStackParamList } from '@/types/navigation';
+
+// FeedbackSheetScreen v2 restyle — pixel-fidelity pass matching the
+// aidrobe-v2-08-feedback-sheet prototype.
+//
+// Interaction model (matches prototype):
+//   • Single-select reason grid (2 columns) from REASON_TAG_KEYS
+//   • Optional free-text note field (≤ 100 chars)
+//   • Two actions: "提交并换一套" / "只提交反馈"
+//     Both submit then navigation.goBack(). Swap is a UX signal only —
+//     API_GAP[FE#73-swap]: FeedbackSheet has no callback channel to trigger
+//     a wardrobe swap from within a modal child; the parent (OutfitDetail)
+//     would need a route-param callback or a Zustand signal. For now both
+//     CTAs submit + goBack(), preserving the existing flow.
+//
+// Note field is UI-only — API_GAP[BE#69-feedback-note]: the feedback endpoint
+// does not accept a free-text field; notes are not sent to the server.
+//
+// Existing submit logic reused: sendOutfitFeedback (single-event endpoint),
+// track, showToast, navigation.goBack().
 
 type Props = NativeStackScreenProps<TodayStackParamList, 'FeedbackSheet'>;
 
+// Icon per reason tag — mapped from SystemIcon's available set.
+const REASON_ICON: Record<ReasonTagKey, 'shield' | 'person' | 'sparkle' | 'bag' | 'clock' | 'slider' | 'refresh' | 'compass'> = {
+  too_formal: 'shield',
+  too_casual: 'person',
+  too_warm: 'sparkle',
+  too_cold: 'refresh',
+  wrong_color: 'bag',
+  wrong_fit: 'slider',
+  not_my_style: 'compass',
+  just_worn: 'clock',
+};
+
 const T = {
-  bg: colors.groupedBackground,
-  bgAlt: colors.background,
-  card: colors.elevated,
-  cardSoft: colors.secondaryElevated,
-  cardInner: colors.background,
+  sheet: colors.elevated,
   ink: colors.label,
   ink2: colors.secondaryLabel,
   ink3: colors.tertiaryLabel,
-  ink4: colors.quaternaryLabel,
   divider: colors.separator,
-  accent: colors.accent,
+  fill: colors.fill,
   accentBg: colors.accentSoft,
-  shadowSm: shadow.soft,
+  accent: colors.accent,
+  bg: colors.groupedBackground,
 };
 
-type FitChoice = 'tight' | 'fit' | 'loose';
-
-// V3+ A: 4-tier overall (love/like/neutral/dislike) on the wire.
-// Frontend exposes 4 buttons that map directly to server enum.
-const OVERALL_OPTIONS: { id: FeedbackKind; mark: string; label: string }[] = [
-  { id: 'love', mark: '爱', label: '很喜欢' },
-  { id: 'like', mark: '好', label: '不错' },
-  { id: 'neutral', mark: '平', label: '一般' },
-  { id: 'dislike', mark: '差', label: '不喜欢' },
-];
-
-// Fallback tag list when /feedback-tags is empty (e.g. flag off, fresh deploy).
-const FALLBACK_TAGS = ['被夸利落', '太正式了', '下次少穿', '适合开会', '想多穿这种', '配色赞'];
-
-function categoryToGarment(cat?: ItemCategory | null): 'shirt' | 'blazer' | 'jeans' | 'loafer' | 'dress' | 'bag' {
-  switch (cat) {
-    case 'top':
-      return 'shirt';
-    case 'outerwear':
-      return 'blazer';
-    case 'bottom':
-      return 'jeans';
-    case 'shoes':
-      return 'loafer';
-    case 'dress':
-      return 'dress';
-    case 'accessory':
-      return 'bag';
-    default:
-      return 'shirt';
-  }
-}
-
-function fitChoiceToServer(c: FitChoice): FitFeedbackType {
-  if (c === 'fit') return 'fits_well';
-  return c;
-}
+const MAX_NOTE_CHARS = 100;
 
 export function FeedbackSheetScreen({ navigation, route }: Props) {
   const { outfitId } = route.params;
   const isLocal = outfitId === 'local-showcase';
-  const [overall, setOverall] = useState<FeedbackKind | null>(null);
-  const [fitMap, setFitMap] = useState<Record<string, FitChoice>>({});
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [saving, setSaving] = useState(false);
+  const { t, tEnum } = useT();
   const showToast = useToastStore((state) => state.show);
   const track = useTrack();
 
-  const outfitQuery = useQuery({
-    queryKey: ['outfitDetail', outfitId],
-    queryFn: () => getOutfitDetail(outfitId),
-    enabled: !isLocal,
+  const [selectedReason, setSelectedReason] = useState<ReasonTagKey | null>(null);
+  const [note, setNote] = useState('');
+
+  const mutation = useMutation({
+    mutationFn: (reason: ReasonTagKey) =>
+      isLocal
+        ? Promise.resolve({ success: true })
+        : sendOutfitFeedback(outfitId, { kind: 'dislike', reasonTags: [reason] }),
+    onSuccess: (_data, reason) => {
+      track('outfit_feedback_sent', { outfitId, kind: 'dislike', reasonTags: [reason] });
+      showToast({ message: t('feedback.thanks'), kind: 'success' });
+      navigation.goBack();
+    },
+    // On error: apiClient interceptor already shows a toast; keep user on screen to retry.
   });
 
-  const tagsQuery = useQuery({
-    queryKey: ['feedbackTags', 'commute'],
-    queryFn: () => getFeedbackTags('commute'),
-    staleTime: 60 * 60 * 1000,
-    enabled: !isLocal,
-  });
-
-  const itemBriefs = outfitQuery.data?.items ?? [];
-  const itemQueries = useQueries({
-    queries: itemBriefs.map((b) => ({
-      queryKey: ['wardrobeItem', b.id],
-      queryFn: () => getWardrobeItem(b.id),
-      staleTime: 60 * 1000,
-    })),
-  });
-  const fullItems: WardrobeItem[] = itemQueries
-    .map((q) => q.data)
-    .filter((x): x is WardrobeItem => Boolean(x));
-  const items = fullItems.length ? fullItems : itemBriefs.map((b) => ({
-    id: b.id,
-    name: b.name ?? '—',
-    category: b.category ?? null,
-    color: b.color ?? '',
-    imageUrl: null,
-  }));
-
-  const toggleTag = (tag: string) => {
-    setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
-  };
-
-  const setFit = (id: string, fit: FitChoice) => {
-    setFitMap((prev) => ({ ...prev, [id]: fit }));
-  };
-
-  // Tag dictionary — server-provided keys when available, else fallback labels.
-  // We send tag keys (server canonical) when known; legacy labels when not.
-  const overallTags = tagsQuery.data?.tags.filter((t) => t.appliesTo.includes('overall')) ?? [];
-  const tagItems = overallTags.length
-    ? overallTags.map((t) => ({ key: t.key, label: t.labelZhCn }))
-    : FALLBACK_TAGS.map((label) => ({ key: label, label }));
-
-  const submit = async () => {
-    if (!overall) {
-      showToast({ message: '请先选择整体感觉', kind: 'error' });
+  const submit = () => {
+    if (!selectedReason) {
+      showToast({ message: t('feedback.sheet.errorNoReason'), kind: 'error' });
       return;
     }
-    setSaving(true);
-    try {
-      if (!isLocal) {
-        // V3+ A — single transactional bundle. On 422 the server rolls back
-        // and the axios interceptor surfaces the error toast for us.
-        await sendOutfitFeedbackBundle(outfitId, {
-          overall: { kind: overall, reasonTags: selectedTags },
-          items: Object.entries(fitMap).map(([itemId, choice]) => ({
-            itemId,
-            feedbackType: fitChoiceToServer(choice),
-            scene: 'commute',
-          })),
-        });
-      }
-      track('outfit_feedback_sent', { outfitId, overall, selectedTags, fitMap });
-      showToast({ message: '感谢反馈，明天推荐会更准', kind: 'success' });
-      navigation.goBack();
-    } catch {
-      // Interceptor already toasted; keep user on the screen so they can retry.
-    } finally {
-      setSaving(false);
-    }
+    mutation.mutate(selectedReason);
   };
 
-  const variantLabel = String(outfitQuery.data?.variant ?? 'safe').toUpperCase();
+  const reasons = REASON_TAG_KEYS as unknown as ReasonTagKey[];
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
+      {/* Drag handle */}
+      <View style={{ alignItems: 'center', paddingTop: 10, paddingBottom: 4 }}>
+        <View
+          style={{
+            width: 36,
+            height: 4,
+            borderRadius: radius.pill,
+            backgroundColor: T.divider,
+          }}
+        />
+      </View>
+
+      {/* Close button row */}
       <View
         style={{
-          paddingTop: 52,
-          paddingHorizontal: 16,
-          paddingBottom: 6,
           flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
+          justifyContent: 'flex-end',
+          paddingHorizontal: 20,
+          paddingBottom: 4,
         }}
       >
-        <Pressable onPress={() => navigation.goBack()}>
-          <SystemIcon name="x" size={22} color={T.ink2} />
+        <Pressable
+          onPress={() => navigation.goBack()}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel={t('common.cancel')}
+          style={{ padding: 4 }}
+        >
+          <SystemIcon name="x" size={20} color={T.ink3} />
         </Pressable>
-        <Text style={{ fontSize: 13, color: T.ink3, fontFamily: 'monospace' }}>21:48 · 回家了</Text>
-        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 120 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={{ fontSize: 11, color: T.accent, letterSpacing: 1, fontFamily: 'monospace', marginBottom: 4 }}>
-          END OF DAY
-        </Text>
-        <Text style={{ fontSize: 28, fontWeight: '600', color: T.ink, lineHeight: 34 }}>
-          今天那套穿得{'\n'}怎么样？
-        </Text>
-        <Text style={{ fontSize: 12, color: T.ink3, marginTop: 8, marginBottom: 22, lineHeight: 19 }}>
-          一句话反馈 · Aidrobe 会立刻调整明天的推荐。
-        </Text>
-
-        <View
+        {/* Header */}
+        <Text
           style={{
-            height: 130,
-            backgroundColor: T.card,
-            borderRadius: 14,
-            ...T.shadowSm,
-            position: 'relative',
-            marginBottom: 22,
-            overflow: 'hidden',
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 16,
-            gap: 10,
+            ...type.title2,
+            color: T.ink,
+            marginBottom: 6,
           }}
         >
-          {items.slice(0, 4).map((it, i) => (
-            <View
-              key={it.id}
-              style={{
-                width: 70,
-                height: 90,
-                borderRadius: 8,
-                backgroundColor: T.cardInner,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginLeft: i === 0 ? 0 : -16,
-                overflow: 'hidden',
-              }}
-            >
-              {(it as WardrobeItem).imageUrl ? (
-                <Image
-                  source={{ uri: (it as WardrobeItem).imageUrl ?? undefined }}
-                  style={{ width: '100%', height: '100%' }}
-                  resizeMode="contain"
-                />
-              ) : (
-                <GarmentSvg kind={categoryToGarment(it.category)} size={64} />
-              )}
-            </View>
-          ))}
-          <View
-            style={{
-              position: 'absolute',
-              top: 10,
-              right: 10,
-              backgroundColor: T.accentBg,
-              paddingHorizontal: 7,
-              paddingVertical: 3,
-              borderRadius: 4,
-            }}
-          >
-            <Text style={{ fontSize: 9, color: T.accent, fontFamily: 'monospace', letterSpacing: 0.6 }}>
-              {variantLabel}
-            </Text>
-          </View>
-        </View>
+          {t('feedback.sheet.title')}
+        </Text>
+        <Text
+          style={{
+            ...type.footnote,
+            color: T.ink3,
+            marginBottom: 22,
+            lineHeight: 19,
+          }}
+        >
+          {t('feedback.sheet.subtitle')}
+        </Text>
 
-        <Text style={{ fontSize: 12, color: T.ink3, marginBottom: 10 }}>整体感觉</Text>
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 22 }}>
-          {OVERALL_OPTIONS.map((o) => (
-            <Pressable
-              key={o.id}
-              onPress={() => setOverall(o.id)}
-              style={{
-                flex: 1,
-                paddingVertical: 14,
-                paddingHorizontal: 8,
-                borderRadius: 12,
-                backgroundColor: overall === o.id ? T.ink : T.card,
-                alignItems: 'center',
-                gap: 6,
-                ...T.shadowSm,
-              }}
-            >
-              <View
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 14,
+        {/* 2-column reason card grid */}
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 10,
+            marginBottom: 22,
+          }}
+        >
+          {reasons.map((key) => {
+            const selected = selectedReason === key;
+            const iconName = REASON_ICON[key];
+            return (
+              <Pressable
+                key={key}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                onPress={() => setSelectedReason(selected ? null : key)}
+                style={({ pressed }) => ({
+                  width: '47%',
+                  flexDirection: 'row',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: overall === o.id ? 'rgba(255,255,255,0.14)' : T.bgAlt,
-                }}
+                  gap: 10,
+                  paddingVertical: 14,
+                  paddingHorizontal: 14,
+                  borderRadius: radius.sm,
+                  backgroundColor: selected ? T.ink : T.sheet,
+                  borderWidth: selected ? 0 : 1,
+                  borderColor: T.divider,
+                  minHeight: 52,
+                  opacity: pressed ? 0.85 : 1,
+                  ...shadow.soft,
+                })}
               >
+                <SystemIcon
+                  name={iconName}
+                  size={18}
+                  color={selected ? colors.inverse : T.ink2}
+                  strokeWidth={1.6}
+                />
                 <Text
                   style={{
-                    fontSize: 12,
-                    fontWeight: '700',
-                    color: overall === o.id ? colors.inverse : T.ink2,
+                    ...type.footnote,
+                    fontWeight: '500',
+                    color: selected ? colors.inverse : T.ink,
+                    flexShrink: 1,
                   }}
+                  numberOfLines={2}
                 >
-                  {o.mark}
+                  {tEnum('reasonTag', key)}
                 </Text>
-              </View>
-              <Text style={{ fontSize: 11, color: overall === o.id ? colors.inverse : T.ink2 }}>{o.label}</Text>
-            </Pressable>
-          ))}
+                {selected ? (
+                  <View style={{ marginLeft: 'auto' }}>
+                    <SystemIcon name="check" size={14} color={colors.inverse} strokeWidth={2.2} />
+                  </View>
+                ) : null}
+              </Pressable>
+            );
+          })}
         </View>
 
-        <Text style={{ fontSize: 12, color: T.ink3, marginBottom: 10 }}>有哪件不舒服吗？</Text>
-        <View style={{ gap: 10, marginBottom: 22 }}>
-          {items.map((it) => (
-            <View
-              key={it.id}
-              style={{
-                backgroundColor: T.card,
-                borderRadius: 12,
-                padding: 12,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
-                ...T.shadowSm,
-              }}
-            >
-              <View
-                style={{
-                  width: 44,
-                  height: 44,
-                  backgroundColor: T.cardInner,
-                  borderRadius: 8,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  overflow: 'hidden',
-                }}
-              >
-                {(it as WardrobeItem).imageUrl ? (
-                  <Image
-                    source={{ uri: (it as WardrobeItem).imageUrl ?? undefined }}
-                    style={{ width: '100%', height: '100%' }}
-                    resizeMode="contain"
-                  />
-                ) : (
-                  <GarmentSvg kind={categoryToGarment(it.category)} size={36} />
-                )}
-              </View>
-              <Text style={{ flex: 1, fontSize: 12, fontWeight: '500', color: T.ink }} numberOfLines={1}>
-                {it.name}
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 4 }}>
-                {(['tight', 'fit', 'loose'] as FitChoice[]).map((opt) => (
-                  <Pressable
-                    key={opt}
-                    onPress={() => setFit(it.id, opt)}
-                    style={{
-                      paddingHorizontal: 10,
-                      paddingVertical: 5,
-                      borderRadius: 8,
-                      backgroundColor: fitMap[it.id] === opt ? T.ink : 'transparent',
-                      borderWidth: 1,
-                      borderColor: fitMap[it.id] === opt ? T.ink : T.divider,
-                    }}
-                  >
-                    <Text style={{ fontSize: 11, color: fitMap[it.id] === opt ? colors.inverse : T.ink2 }}>
-                      {opt === 'tight' ? '紧' : opt === 'fit' ? '合身' : '松'}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          ))}
+        {/* Optional free-text note */}
+        {/* API_GAP[BE#69-feedback-note]: note is captured locally but not sent — no server field. */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'flex-start',
+            gap: 8,
+            marginBottom: 4,
+          }}
+        >
+          <SystemIcon name="link" size={16} color={T.ink3} strokeWidth={1.6} />
+          <TextInput
+            style={{
+              flex: 1,
+              ...type.callout,
+              color: T.ink,
+              minHeight: 36,
+            }}
+            placeholder={t('feedback.sheet.freeTextPlaceholder')}
+            placeholderTextColor={T.ink3}
+            maxLength={MAX_NOTE_CHARS}
+            multiline
+            value={note}
+            onChangeText={setNote}
+          />
         </View>
-
-        <Text style={{ fontSize: 12, color: T.ink3, marginBottom: 10 }}>其他想说的</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-          {tagItems.map((t) => (
-            <Pressable
-              key={t.key}
-              onPress={() => toggleTag(t.key)}
-              style={{
-                paddingHorizontal: 12,
-                paddingVertical: 7,
-                borderRadius: 999,
-                backgroundColor: selectedTags.includes(t.key) ? T.ink : 'transparent',
-                borderWidth: 1,
-                borderColor: selectedTags.includes(t.key) ? T.ink : T.divider,
-              }}
-            >
-              <Text style={{ fontSize: 11, color: selectedTags.includes(t.key) ? colors.inverse : T.ink2 }}>
-                {t.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        <Text
+          style={{
+            ...type.caption,
+            color: T.ink3,
+            textAlign: 'right',
+            marginBottom: 2,
+          }}
+        >
+          {note.length}/{MAX_NOTE_CHARS}
+        </Text>
       </ScrollView>
 
+      {/* Bottom action bar */}
       <View
         style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
           paddingHorizontal: 20,
-          paddingTop: 14,
+          paddingTop: 12,
           paddingBottom: 36,
           backgroundColor: T.bg,
+          gap: 10,
         }}
       >
+        {/* Primary CTA — submit + swap (API_GAP: swap signal not implemented; same as submit-only) */}
         <Pressable
           onPress={submit}
-          disabled={saving}
+          disabled={mutation.isPending}
+          accessibilityRole="button"
           style={({ pressed }) => ({
-            height: 52,
-            borderRadius: 14,
+            height: 54,
+            borderRadius: radius.md,
             backgroundColor: T.ink,
             alignItems: 'center',
             justifyContent: 'center',
-            opacity: saving || pressed ? 0.7 : 1,
+            opacity: mutation.isPending || pressed ? 0.7 : 1,
           })}
         >
-          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.inverse }}>保存反馈 · 影响明天推荐</Text>
+          <Text
+            style={{
+              ...type.callout,
+              fontWeight: '700',
+              color: colors.inverse,
+              letterSpacing: 0.2,
+            }}
+          >
+            {t('feedback.sheet.submitSwap')}
+          </Text>
+        </Pressable>
+
+        {/* Secondary CTA — submit only */}
+        <Pressable
+          onPress={submit}
+          disabled={mutation.isPending}
+          accessibilityRole="button"
+          style={({ pressed }) => ({
+            height: 44,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: mutation.isPending || pressed ? 0.5 : 1,
+          })}
+        >
+          <Text
+            style={{
+              ...type.callout,
+              color: T.ink2,
+            }}
+          >
+            {t('feedback.sheet.submitOnly')}
+          </Text>
         </Pressable>
       </View>
     </View>

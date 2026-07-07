@@ -11,6 +11,15 @@ assert.equal(one.length, 1, 'primary reason yields one entry');
 assert.equal(one[0].text, '延续你常穿的通勤风格。');
 assert.equal(one[0].source, undefined, 'source is undefined until the BE provides it');
 
+// A multi-sentence reason paragraph is split into one row per sentence.
+const split = buildRecommendationReasons({
+  reason: '延续了你常穿的黑白通勤风格。所有单品都在主衣柜，无需熨烫。',
+  prepNotes: null,
+});
+assert.equal(split.length, 2, 'two sentences → two reason rows');
+assert.equal(split[0].text, '延续了你常穿的黑白通勤风格。');
+assert.equal(split[1].text, '所有单品都在主衣柜，无需熨烫。');
+
 // Primary reason + prep notes are all surfaced as reasons.
 const many = buildRecommendationReasons({
   reason: '天气偏热，选了透气的一套。',
@@ -33,4 +42,4 @@ assert.equal(capped.length, 2, 'maxReasons=2 caps the list');
 const empty = buildRecommendationReasons({ reason: '   ', prepNotes: [{ key: 'k', fallbackText: '' }] });
 assert.equal(empty.length, 0, 'blank reason + blank note → no reasons');
 
-console.log('todayReasons: 8/8 cases passed');
+console.log('todayReasons: 11/11 cases passed');

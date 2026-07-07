@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
   favoriteOutfit,
@@ -14,6 +14,9 @@ import { getWardrobeItem } from '@/api/wardrobe';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { RecommendationFeedback } from '@/components/feedback/RecommendationFeedback';
+import { OutfitBoard } from '@/components/outfit/OutfitBoard';
+import { type GarmentPiece } from '@/components/outfit/garments';
+import { RecommendationReasonList } from '@/components/product/RecommendationReasonList';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
@@ -23,13 +26,13 @@ import { Tag } from '@/components/ui/Tag';
 import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { useToastStore } from '@/store/toast';
-import { colors, shadow } from '@/theme/design';
+import { buildRecommendationReasons } from '@/screens/today-v2/todayReasons';
+import { colors, radius, shadow, type } from '@/theme/design';
 import type {
   ItemCategory,
   OutfitDetail,
   OutfitObstacle,
   OutfitReplacementCandidate,
-  OutfitScores,
   TodayRecommendation,
   WardrobeItem,
 } from '@/types/api';
@@ -64,9 +67,7 @@ const T = {
   shadowMd: shadow.elevated,
 };
 
-type GarmentKind = 'shirt' | 'blazer' | 'trousers' | 'sweater' | 'jeans' | 'dress' | 'skirt' | 'tee' | 'loafer' | 'sneaker' | 'bag';
-
-function categoryToGarment(cat?: ItemCategory | string | null): GarmentKind {
+function categoryToGarment(cat?: ItemCategory | string | null): GarmentPiece['kind'] {
   switch (cat) {
     case 'top':
       return 'shirt';
@@ -85,16 +86,15 @@ function categoryToGarment(cat?: ItemCategory | string | null): GarmentKind {
   }
 }
 
-// Visual hero layout — backend doesn't return positions; client static.
-const HERO_LAYOUT: { x: number; y: number; scale: number }[] = [
-  { x: 36, y: 30, scale: 1.2 },
-  { x: 165, y: 18, scale: 1.3 },
-  { x: 90, y: 175, scale: 1.1 },
+// Static layout positions for the flat-lay board — mirrors TodayScreen's
+// EXTRA_PIECE_LAYOUT pattern. Backend returns no positions; client-defined.
+const BOARD_LAYOUT: { x: number; y: number; scale: number; rotate?: string }[] = [
+  { x: 36,  y: 30,  scale: 1.2 },
+  { x: 165, y: 18,  scale: 1.3 },
+  { x: 90,  y: 175, scale: 1.1 },
   { x: 195, y: 250, scale: 0.85 },
-  { x: 30, y: 230, scale: 0.7 },
+  { x: 30,  y: 230, scale: 0.7 },
 ];
-
-type ScoreCell = { label: string; value: string; max?: string; warn?: boolean };
 
 type DisplayItem = {
   id: string;
@@ -116,26 +116,6 @@ type ReplacementTarget = {
   name: string;
 };
 
-// Score row from server (V3+ B). Falls back to a static placeholder when the
-// ENABLE_OUTFIT_SCORES flag is off (server returns null).
-function scoreCells(scores: OutfitScores | null | undefined): ScoreCell[] {
-  if (!scores) {
-    return [
-      { label: '美感', value: '—', max: '100' },
-      { label: '执行性', value: '—', max: '100' },
-      { label: '合身度', value: '—', max: '100' },
-      { label: '准备时间', value: '—' },
-    ];
-  }
-  const pct = (n: number) => Math.round(n * 100).toString();
-  return [
-    { label: '美感', value: pct(scores.aesthetic), max: '100', warn: scores.aesthetic < 0.7 },
-    { label: '执行性', value: pct(scores.feasibility), max: '100', warn: scores.feasibility < 0.7 },
-    { label: '合身度', value: pct(scores.fit), max: '100', warn: scores.fit < 0.7 },
-    { label: '准备时间', value: `${scores.prepMinutes}′`, warn: scores.prepMinutes > 12 },
-  ];
-}
-
 export function OutfitDetailScreen({ navigation, route }: Props) {
   const { outfitId } = route.params;
   const isLocal = outfitId === 'local-showcase';
@@ -148,8 +128,8 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
   const [replacementTarget, setReplacementTarget] = useState<ReplacementTarget | null>(null);
   const [overflowOpen, setOverflowOpen] = useState(false);
   const [autoReplacingItemId, setAutoReplacingItemId] = useState<string | null>(null);
+  const [showFeedback, setShowFeedback] = useState(false);
 
-  const { width: screenWidth } = useWindowDimensions();
   const outfitQuery = useQuery({
     queryKey: ['outfitDetail', outfitId],
     queryFn: () => getOutfitDetail(outfitId),
@@ -188,7 +168,6 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
       return { previous };
     },
     onSuccess: (_data, nextFavorited) => {
-      // Toggle is ack-only — onMutate already set the optimistic state.
       showToast({
         message: nextFavorited
           ? t('outfitDetail.favorite.added')
@@ -244,6 +223,22 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
     });
   }, [fullItemById, itemBriefs, localReplacements]);
 
+  // Build GarmentPiece[] for OutfitBoard from displayItems.
+  const boardPieces = useMemo<GarmentPiece[]>(
+    () =>
+      displayItems.map((it, i) => {
+        const layout = BOARD_LAYOUT[i] ?? BOARD_LAYOUT[BOARD_LAYOUT.length - 1]!;
+        return {
+          ...layout,
+          itemId: it.id,
+          kind: categoryToGarment(it.category),
+          imageUrl: it.imageUrl ?? null,
+          name: it.name,
+        };
+      }),
+    [displayItems],
+  );
+
   const handleWear = async () => {
     if (!isLocal) {
       try {
@@ -262,7 +257,6 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
     source: 'auto' | 'sheet',
   ) {
     // API_GAP[BE#62]: no persist-replacement endpoint; swap is local-only.
-    // Fallback: replace the displayed slot in this screen session only. See docs/api-gaps.md.
     setLocalReplacements((prev) => ({ ...prev, [slotItemId]: candidate }));
     showToast({ message: t('outfitDetail.replacementApplied', { name: candidate.title }), kind: 'success' });
     track('outfit_item_replaced', {
@@ -288,8 +282,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
   };
 
   const handleDownload = async () => {
-    // API_GAP[untracked]: plain outfit details do not expose a poster/share image asset.
-    // Fallback: share a localized text summary through the native share sheet. See docs/api-gaps.md.
+    // API_GAP[untracked]: no poster/share image asset — fallback to text summary.
     showToast({ message: t('outfitDetail.downloadNoAsset'), kind: 'info' });
     await shareOutfitSummary('download');
   };
@@ -357,362 +350,283 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
     );
   }
 
-  const variant = outfitQuery.data?.variant ?? 'safe';
   const heroTitle = outfitQuery.data?.title ?? '通勤 · 黑白经典';
-  const heroReason =
-    outfitQuery.data?.reason ?? '延续了你常穿的黑白通勤风格。所有单品都在主衣柜，无需熨烫。';
-  const variantLabel = String(variant).toUpperCase();
   const isFavorited = outfitQuery.data?.isFavorited ?? false;
 
   // V3+ B — server-provided. Null when flags off.
-  const apiScores = outfitQuery.data?.scores ?? null;
   const apiObstacles = outfitQuery.data?.obstacles ?? null;
   const apiPrepSteps = outfitQuery.data?.prepSteps ?? null;
   const apiPrepNotes = outfitQuery.data?.prepNotes ?? null;
-  const scores = scoreCells(apiScores);
 
   // Pick the most severe obstacle for the top banner.
-  const activeObstacles = apiObstacles?.filter(
-    (o) => !ignoredObstacleItemIds.has(o.itemId) && !localReplacements[o.itemId],
-  ) ?? [];
-  const primaryObstacle = activeObstacles.find((o) => o.severity === 'blocking')
-    ?? activeObstacles.find((o) => o.severity === 'warning')
-    ?? activeObstacles[0]
-    ?? null;
+  const activeObstacles =
+    apiObstacles?.filter(
+      (o) => !ignoredObstacleItemIds.has(o.itemId) && !localReplacements[o.itemId],
+    ) ?? [];
+  const primaryObstacle =
+    activeObstacles.find((o) => o.severity === 'blocking') ??
+    activeObstacles.find((o) => o.severity === 'warning') ??
+    activeObstacles[0] ??
+    null;
+
+  const reasons = outfitQuery.data
+    ? buildRecommendationReasons(outfitQuery.data)
+    : [];
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <View
         style={{
           paddingTop: 52,
           paddingHorizontal: 16,
-          paddingBottom: 6,
+          paddingBottom: 8,
           flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'space-between',
         }}
       >
         <Pressable
           onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          hitSlop={8}
+          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <SystemIcon name="chevronLeft" size={22} color={T.ink} />
+        </Pressable>
+        {/* Centered title — absolute so side buttons don't shift it */}
+        <View
           style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: T.card,
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 52,
+            height: 52,
             alignItems: 'center',
             justifyContent: 'center',
-            ...T.shadowSm,
+            pointerEvents: 'none',
           }}
         >
-          <SystemIcon name="chevronLeft" size={18} color={T.ink} />
-        </Pressable>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Pressable
-            onPress={handleDownload}
-            accessibilityRole="button"
-            accessibilityLabel={t('outfitDetail.download')}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: T.card,
-              alignItems: 'center',
-              justifyContent: 'center',
-              ...T.shadowSm,
-            }}
-          >
-            <SystemIcon name="download" size={18} color={T.ink2} />
-          </Pressable>
-          <Pressable
-            onPress={() => setOverflowOpen(true)}
-            accessibilityRole="button"
-            accessibilityLabel={t('outfitDetail.moreActions')}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: T.card,
-              alignItems: 'center',
-              justifyContent: 'center',
-              ...T.shadowSm,
-            }}
-          >
-            <SystemIcon name="more" size={20} color={T.ink2} />
-          </Pressable>
+          <Text style={{ ...type.headline, color: T.ink, fontWeight: '600' }}>
+            {t('outfitDetail.screenTitle')}
+          </Text>
         </View>
+        <View style={{ flex: 1 }} />
+        <Pressable
+          onPress={() => setOverflowOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel={t('outfitDetail.moreActions')}
+          hitSlop={8}
+          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <SystemIcon name="more" size={20} color={T.ink2} />
+        </Pressable>
       </View>
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={{ fontSize: 11, color: T.accent, letterSpacing: 1, fontFamily: 'monospace', marginBottom: 4 }}>
-          {variantLabel}
-        </Text>
-        <Text style={{ fontSize: 26, fontWeight: '600', color: T.ink, lineHeight: 32 }}>{heroTitle}</Text>
-
+        {/* ── Obstacle banner ─────────────────────────────────────────────── */}
         {primaryObstacle && (
-          <View
-            style={{
-              marginTop: 14,
-              padding: 14,
-              borderRadius: 14,
-              backgroundColor: T.warnBg,
-              borderWidth: 1,
-              borderColor: T.warnBorder,
-              flexDirection: 'row',
-              gap: 12,
-            }}
-          >
+          <View style={{ paddingHorizontal: 16 }}>
             <View
               style={{
-                width: 28,
-                height: 28,
+                marginTop: 8,
+                padding: 14,
                 borderRadius: 14,
-                backgroundColor: T.warn,
-                alignItems: 'center',
-                justifyContent: 'center',
+                backgroundColor: T.warnBg,
+                borderWidth: 1,
+                borderColor: T.warnBorder,
+                flexDirection: 'row',
+                gap: 12,
               }}
             >
-              <SystemIcon name="exclamation" size={18} color={colors.inverse} strokeWidth={2} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '600', color: T.warnInk, marginBottom: 4 }}>
-                {renderI18n(primaryObstacle.title)}
-              </Text>
-              {/* Neutral hint only — the actual swap is resolved by the
-                  replacements endpoint (handleAutoReplace), so we don't preview
-                  a specific item the swap might not match. */}
-              <Text style={{ fontSize: 11, color: T.warnInk2, lineHeight: 17, marginBottom: 8 }}>
-                {t('outfitDetail.replacementHint')}
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <Pressable
-                  onPress={() => handleAutoReplace(primaryObstacle)}
-                  disabled={autoReplacingItemId === primaryObstacle.itemId}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('outfitDetail.autoReplace')}
-                  style={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    backgroundColor: T.ink,
-                    borderRadius: 8,
-                    opacity: autoReplacingItemId === primaryObstacle.itemId ? 0.62 : 1,
-                  }}
-                >
-                  <Text style={{ color: colors.inverse, fontSize: 11, fontWeight: '600' }}>
-                    {autoReplacingItemId === primaryObstacle.itemId
-                      ? t('outfitDetail.replacementLoading')
-                      : t('outfitDetail.autoReplace')}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => handleIgnoreObstacle(primaryObstacle)}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('outfitDetail.ignoreObstacle')}
-                  style={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    borderColor: T.warnBorderStrong,
-                  }}
-                >
-                  <Text style={{ color: T.warnInk2, fontSize: 11 }}>{t('outfitDetail.ignoreObstacle')}</Text>
-                </Pressable>
+              <View
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 14,
+                  backgroundColor: T.warn,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <SystemIcon name="exclamation" size={18} color={colors.inverse} strokeWidth={2} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: T.warnInk, marginBottom: 4 }}>
+                  {renderI18n(primaryObstacle.title)}
+                </Text>
+                <Text style={{ fontSize: 11, color: T.warnInk2, lineHeight: 17, marginBottom: 8 }}>
+                  {t('outfitDetail.replacementHint')}
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <Pressable
+                    onPress={() => handleAutoReplace(primaryObstacle)}
+                    disabled={autoReplacingItemId === primaryObstacle.itemId}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('outfitDetail.autoReplace')}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      backgroundColor: T.ink,
+                      borderRadius: 8,
+                      opacity: autoReplacingItemId === primaryObstacle.itemId ? 0.62 : 1,
+                    }}
+                  >
+                    <Text style={{ color: colors.inverse, fontSize: 11, fontWeight: '600' }}>
+                      {autoReplacingItemId === primaryObstacle.itemId
+                        ? t('outfitDetail.replacementLoading')
+                        : t('outfitDetail.autoReplace')}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => handleIgnoreObstacle(primaryObstacle)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('outfitDetail.ignoreObstacle')}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: T.warnBorderStrong,
+                    }}
+                  >
+                    <Text style={{ color: T.warnInk2, fontSize: 11 }}>{t('outfitDetail.ignoreObstacle')}</Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
           </View>
         )}
 
-        <View
-          style={{
-            marginTop: 14,
-            flexDirection: 'row',
-            gap: 14,
-            padding: 14,
-            backgroundColor: T.card,
-            borderRadius: 14,
-            ...T.shadowSm,
-          }}
-        >
-          {scores.map((s, i) => (
-            <View key={i} style={{ flex: 1, alignItems: 'center' }}>
-              {i > 0 && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    left: -7,
-                    top: 0,
-                    bottom: 0,
-                    width: 1,
-                    backgroundColor: T.divider,
-                  }}
-                />
-              )}
-              <Text style={{ fontSize: 22, fontWeight: '600', color: s.warn ? T.red : T.ink, lineHeight: 26 }}>
-                {s.value}
-                {s.max ? (
-                  <Text style={{ fontSize: 11, color: T.ink4, fontWeight: '400' }}>{` / ${s.max}`}</Text>
-                ) : null}
-              </Text>
-              <Text style={{ fontSize: 10, color: T.ink3, marginTop: 4 }}>{s.label}</Text>
-            </View>
-          ))}
+        {/* ── OutfitBoard flat-lay ─────────────────────────────────────────── */}
+        <View style={{ marginTop: 16, alignItems: 'center' }}>
+          <OutfitBoard pieces={boardPieces} />
         </View>
 
-        <View
-          style={{
-            marginTop: 14,
-            height: 320,
-            backgroundColor: T.card,
-            borderRadius: 18,
-            ...T.shadowSm,
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-        >
-          {displayItems.map((it, i) => {
-            const layout = HERO_LAYOUT[i] ?? HERO_LAYOUT[0]!;
-            const imageUrl = it.imageUrl ?? null;
-            return (
-              <View
-                key={it.slotItemId}
-                style={{ position: 'absolute', left: layout.x, top: layout.y, transform: [{ scale: layout.scale }] }}
-              >
-                {imageUrl ? (
-                  <Image source={{ uri: imageUrl }} style={{ width: 90, height: 90, borderRadius: 8 }} resizeMode="contain" />
-                ) : (
-                  <GarmentSvg kind={categoryToGarment(it.category)} size={90} />
-                )}
-              </View>
-            );
-          })}
-          <View
-            style={{
-              position: 'absolute',
-              left: 16,
-              bottom: 16,
-              right: 16,
-              padding: 12,
-              backgroundColor: colors.overlayStrong,
-              borderRadius: 10,
-            }}
-          >
-            <Text style={{ fontSize: 11, color: T.ink2, lineHeight: 17 }} numberOfLines={3}>
-              &ldquo;{heroReason}&rdquo;
+        {/* ── Divider ─────────────────────────────────────────────────────── */}
+        <View style={{ height: 1, backgroundColor: colors.separatorSoft, marginTop: 20 }} />
+
+        {/* ── "为什么适合今天" ──────────────────────────────────────────────── */}
+        {reasons.length > 0 && (
+          <View style={{ paddingHorizontal: 24, marginTop: 20 }}>
+            <Text style={{ ...type.callout, fontWeight: '600', color: T.ink, marginBottom: 14 }}>
+              {t('outfitDetail.sectionWhy')}
             </Text>
+            <RecommendationReasonList reasons={reasons} />
           </View>
-        </View>
+        )}
 
-        <Text style={{ marginTop: 18, fontSize: 12, color: T.ink3, marginBottom: 10 }}>
-          {t('outfitDetail.itemCount', { count: displayItems.length })}
-        </Text>
-        {/* 2-column grid — each card: image above, details below */}
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-          {displayItems.map((it) => {
-            const isLaundry = it.status !== 'wearable';
-            const cardWidth = (screenWidth - 24 * 2 - 10) / 2;
-            return (
-              <Pressable
-                key={it.slotItemId}
-                onPress={() => navigation.getParent()?.navigate('WardrobeTab', {
-                  screen: 'ItemDetail',
-                  params: { itemId: it.id },
-                } as never)}
-                style={{ width: cardWidth }}
-              >
-                <View
-                  style={{
+        {/* ── Divider ─────────────────────────────────────────────────────── */}
+        <View style={{ height: 1, backgroundColor: colors.separatorSoft, marginTop: 20, marginHorizontal: 24 }} />
+
+        {/* ── "这套包含" items ────────────────────────────────────────────── */}
+        <View style={{ paddingHorizontal: 24, marginTop: 20 }}>
+          <Text style={{ ...type.callout, fontWeight: '600', color: T.ink, marginBottom: 14 }}>
+            {t('outfitDetail.sectionContains')}
+          </Text>
+          <View style={{ gap: 8 }}>
+            {displayItems.map((it) => {
+              const isLaundry = it.status !== 'wearable';
+              return (
+                <Pressable
+                  key={it.slotItemId}
+                  onPress={() =>
+                    navigation.getParent()?.navigate('WardrobeTab', {
+                      screen: 'ItemDetail',
+                      params: { itemId: it.id },
+                    } as never)
+                  }
+                  onLongPress={() => openReplacementSheet(it)}
+                  style={({ pressed }) => ({
                     backgroundColor: T.card,
-                    borderRadius: 16,
-                    overflow: 'hidden',
+                    borderRadius: radius.md,
+                    padding: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
                     ...T.shadowSm,
                     borderWidth: isLaundry ? 1 : 0,
                     borderColor: isLaundry ? T.warnBorder : 'transparent',
-                    opacity: isLaundry ? 0.88 : 1,
-                  }}
+                    opacity: pressed ? 0.88 : isLaundry ? 0.85 : 1,
+                  })}
                 >
-                  {/* Image area */}
                   <View
                     style={{
-                      height: cardWidth * 0.9,
+                      width: 56,
+                      height: 56,
                       backgroundColor: T.cardInner,
+                      borderRadius: 10,
                       alignItems: 'center',
                       justifyContent: 'center',
+                      position: 'relative',
+                      overflow: 'hidden',
                     }}
                   >
                     <ImageThumb
                       uri={it.imageUrl ?? undefined}
-                      size={cardWidth * 0.72}
-                      cornerRadius={0}
-                      icon={<GarmentSvg kind={categoryToGarment(it.category)} size={cardWidth * 0.58} />}
+                      size={56}
+                      cornerRadius={10}
+                      icon={<GarmentSvg kind={categoryToGarment(it.category)} size={44} />}
                     />
                     {isLaundry && (
                       <View
                         style={{
                           position: 'absolute',
-                          top: 8,
-                          right: 8,
-                          width: 26,
-                          height: 26,
-                          borderRadius: 13,
-                          backgroundColor: colors.overlayStrong,
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          backgroundColor: 'rgba(242,242,247,0.68)',
+                          borderRadius: 10,
                           alignItems: 'center',
                           justifyContent: 'center',
                         }}
                       >
-                        <SystemIcon name="recycle" size={14} color={T.warn} />
+                        <SystemIcon name="recycle" size={19} color={T.warn} />
                       </View>
                     )}
                   </View>
-                  {/* Details + replace */}
-                  <View style={{ padding: 10, gap: 6 }}>
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: T.ink }} numberOfLines={1}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: T.ink, marginBottom: 2 }} numberOfLines={1}>
                       {it.name}
                     </Text>
-                    <Text style={{ fontSize: 10, color: T.ink3 }} numberOfLines={1}>
-                      {it.color || [it.sizeLabel, it.location].filter(Boolean).join(' · ') || '—'}
+                    <Text style={{ fontSize: 10, color: T.ink3, marginBottom: 4 }} numberOfLines={1}>
+                      {[it.sizeLabel, it.fitIntent, it.location].filter(Boolean).join(' · ') || it.color || '—'}
                     </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                    <View style={{ flexDirection: 'row', gap: 4 }}>
                       {isLaundry ? (
-                        <View style={{ paddingHorizontal: 5, paddingVertical: 2, borderRadius: 999, backgroundColor: T.accentBg }}>
+                        <View
+                          style={{
+                            paddingHorizontal: 6,
+                            paddingVertical: 2,
+                            borderRadius: 999,
+                            backgroundColor: T.warnBg,
+                          }}
+                        >
                           <Text style={{ fontSize: 9, color: colors.cautionAmber, fontWeight: '600' }}>{String(it.status)}</Text>
                         </View>
                       ) : (
-                        <Tag style={{ paddingHorizontal: 5, paddingVertical: 2 }}>
+                        <Tag style={{ paddingHorizontal: 6, paddingVertical: 2 }}>
                           {it.fitStatus ? tEnum('fitStatus', it.fitStatus) : t('outfitDetail.fitGood')}
                         </Tag>
                       )}
+                      {it.location ? (
+                        <Tag style={{ paddingHorizontal: 6, paddingVertical: 2 }}>{it.location}</Tag>
+                      ) : null}
                     </View>
-                    <Pressable
-                      onPress={(event) => {
-                        event.stopPropagation();
-                        openReplacementSheet(it);
-                      }}
-                      accessibilityRole="button"
-                      accessibilityLabel={t('outfitDetail.replaceItem', { name: it.name })}
-                      style={{
-                        marginTop: 4,
-                        paddingVertical: 6,
-                        backgroundColor: isLaundry ? T.ink : T.bgAlt,
-                        borderRadius: 8,
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Text style={{ fontSize: 11, fontWeight: '600', color: isLaundry ? colors.inverse : T.ink2 }}>
-                        {t('outfitDetail.replace')}
-                      </Text>
-                    </Pressable>
                   </View>
-                </View>
-              </Pressable>
-            );
-          })}
+                  <SystemIcon name="chevronRight" size={18} color={T.ink3} />
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
 
-        <View style={{ marginTop: 14, padding: 14, backgroundColor: T.cardSoft, borderRadius: 14, gap: 8 }}>
+        {/* ── Prep steps (取衣与准备) ──────────────────────────────────────── */}
+        <View style={{ marginTop: 14, marginHorizontal: 24, padding: 14, backgroundColor: T.cardSoft, borderRadius: 14, gap: 8 }}>
           <Text style={{ fontSize: 12, fontWeight: '600', color: T.ink2 }}>取衣与准备</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
             {apiPrepSteps && apiPrepSteps.length > 0
@@ -733,10 +647,12 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
           </View>
         </View>
 
+        {/* ── OOTD poster entry ────────────────────────────────────────────── */}
         <Pressable
           onPress={() => navigation.navigate('OotdPoster', { outfitId, outfitTitle: heroTitle })}
           style={{
             marginTop: 14,
+            marginHorizontal: 24,
             flexDirection: 'row',
             alignItems: 'center',
             gap: 12,
@@ -765,11 +681,9 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
           <SystemIcon name="chevronRight" size={18} color={T.ink3} />
         </Pressable>
 
-        {!isLocal ? (
-          <View style={{ marginTop: 20 }}>
-            {/* Carry the current outdoor temperature (from the today cache) so a
-                too_cold/too_warm dislike here still emits the indoor-climate
-                mismatch signal (brief §9.2), matching the Today card. */}
+        {/* ── RecommendationFeedback (shown when user taps 不喜欢) ────────── */}
+        {!isLocal && showFeedback ? (
+          <View style={{ marginTop: 20, marginHorizontal: 24 }}>
             <RecommendationFeedback
               outfitId={outfitId}
               temperatureC={
@@ -780,6 +694,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
         ) : null}
       </ScrollView>
 
+      {/* ── Bottom bar ──────────────────────────────────────────────────────── */}
       <View
         style={{
           position: 'absolute',
@@ -792,49 +707,40 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
           backgroundColor: T.bg,
         }}
       >
-        <View style={{ flexDirection: 'row', gap: 10 }}>
+        {/* Full-width black CTA — 54h, matches DecisionOutfitCard */}
+        <Pressable
+          onPress={handleWear}
+          style={({ pressed }) => ({
+            height: 54,
+            borderRadius: radius.md,
+            backgroundColor: colors.label,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: pressed ? 0.88 : 1,
+          })}
+        >
+          <Text style={{ ...type.callout, fontWeight: '600', color: colors.inverse }}>
+            {t('outfitDetail.wearToday')}
+          </Text>
+        </Pressable>
+
+        {/* 不喜欢 · 换一套 text link row */}
+        <View
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 14 }}
+        >
           <Pressable
-            onPress={handleFavorite}
-            disabled={favoriteMutation.isPending}
+            onPress={() => setShowFeedback((v) => !v)}
+            hitSlop={6}
             accessibilityRole="button"
-            accessibilityLabel={
-              isFavorited ? t('outfitDetail.unfavorite') : t('outfitDetail.favorite')
-            }
-            style={{
-              width: 54,
-              height: 54,
-              borderRadius: 14,
-              backgroundColor: T.card,
-              ...T.shadowSm,
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: favoriteMutation.isPending ? 0.62 : 1,
-            }}
           >
-            <SystemIcon
-              name="heart"
-              size={21}
-              color={isFavorited ? T.red : T.ink2}
-              fill={isFavorited ? T.red : 'none'}
-            />
-          </Pressable>
-          <Pressable
-            onPress={handleWear}
-            style={({ pressed }) => ({
-              flex: 1,
-              height: 54,
-              borderRadius: 14,
-              backgroundColor: T.ink,
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: pressed ? 0.88 : 1,
-            })}
-          >
-            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.inverse }}>今天穿这套</Text>
+            <Text style={{ ...type.callout, color: colors.tertiaryLabel }}>
+              {t('outfitDetail.dislikeSwap')}
+            </Text>
           </Pressable>
         </View>
       </View>
 
+      {/* ── Replacement bottom sheet ──────────────────────────────────────── */}
       <BottomSheet
         visible={Boolean(replacementTarget)}
         onClose={() => setReplacementTarget(null)}
@@ -867,7 +773,9 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                   t('outfitDetail.replacementSimilarity', {
                     pct: Math.round(candidate.similarity * 100),
                   }),
-                ].filter(Boolean).join(' · ');
+                ]
+                  .filter(Boolean)
+                  .join(' · ');
                 return (
                   <Pressable
                     key={candidate.itemId}
@@ -909,6 +817,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
         )}
       </BottomSheet>
 
+      {/* ── Overflow actions bottom sheet ─────────────────────────────────── */}
       <BottomSheet
         visible={overflowOpen}
         onClose={() => setOverflowOpen(false)}
@@ -922,6 +831,15 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
             onPress={() => {
               setOverflowOpen(false);
               void shareOutfitSummary('overflow');
+            }}
+          />
+          <Button
+            label={t('outfitDetail.download')}
+            variant="secondary"
+            icon={<SystemIcon name="download" size={17} color={T.ink2} />}
+            onPress={() => {
+              setOverflowOpen(false);
+              void handleDownload();
             }}
           />
           <Button

@@ -15,8 +15,16 @@ export function buildRecommendationReasons(
 ): RecommendationReason[] {
   const reasons: RecommendationReason[] = [];
 
+  // The BE returns `reason` as one multi-sentence paragraph; split it into
+  // individual sentence rows so the list reads like the design's 2–3 reasons
+  // instead of one dense block. Split keeps the trailing 。！. / ! delimiter.
   const primary = outfit.reason?.trim();
-  if (primary) reasons.push({ text: primary });
+  if (primary) {
+    for (const sentence of primary.split(/(?<=[。！!.])/)) {
+      const text = sentence.trim();
+      if (text) reasons.push({ text });
+    }
+  }
 
   for (const note of outfit.prepNotes ?? []) {
     const text = note.fallbackText?.trim();

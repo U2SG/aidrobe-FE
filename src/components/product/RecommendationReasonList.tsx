@@ -33,8 +33,8 @@ export function RecommendationReasonList({ reasons }: { reasons: RecommendationR
         >
           <View
             style={{
-              width: 26,
-              height: 26,
+              width: 22,
+              height: 22,
               borderRadius: radius.pill,
               backgroundColor: colors.accentSoft,
               alignItems: 'center',
@@ -42,16 +42,16 @@ export function RecommendationReasonList({ reasons }: { reasons: RecommendationR
               marginTop: 1,
             }}
           >
-            <SystemIcon name="sparkle" size={14} color={colors.accent} strokeWidth={1.8} />
+            <SystemIcon name="sparkle" size={12} color={colors.accent} strokeWidth={1.8} />
           </View>
-          <View style={{ flex: 1, gap: 3 }}>
-            <Text style={{ ...type.callout, color: colors.secondaryLabel }}>{reason.text}</Text>
-            {reason.source ? (
-              <Text style={{ ...type.caption, color: colors.tertiaryLabel }}>
-                {t(SOURCE_LABEL_KEY[reason.source])}
-              </Text>
-            ) : null}
-          </View>
+          <Text style={{ flex: 1, ...type.callout, color: colors.secondaryLabel }}>{reason.text}</Text>
+          {/* Provenance label on the right (design handoff), when the BE provides
+              a source. Absent today → nothing rendered. */}
+          {reason.source ? (
+            <Text style={{ ...type.caption, color: colors.tertiaryLabel, marginTop: 2 }}>
+              {t(SOURCE_LABEL_KEY[reason.source])}
+            </Text>
+          ) : null}
         </View>
       ))}
     </View>

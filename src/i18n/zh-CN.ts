@@ -13,15 +13,29 @@ export const zhCN = {
   'common.viewAll': '查看全部',
   'common.back': '返回',
   'common.all': '全部',
+  'common.clear': '清除',
   'common.notSet': '未设置',
+
+  // --- V2 primary tabs ------------------------------------------------------
+  'tabs.today': '今日',
+  'tabs.wardrobe': '衣橱',
+  'tabs.ask': 'Ask',
+  'tabs.profile': '我的',
 
   // --- Onboarding ----------------------------------------------------------
   'onboarding.privacyPolicy': '了解隐私政策',
   'onboarding.privacyPolicyOpenFailed': '无法打开隐私政策，请稍后重试',
 
+  // --- Welcome screen (v2 restyle) -----------------------------------------
+  'welcome.title': '今天，穿成喜欢的自己',
+  'welcome.subtitle': '不用维护一套衣物数据库。把常穿的衣服交给 衣然，每天少一点纠结。',
+  'welcome.sparkleHint': '先加几件常穿的，就能看到第一套。',
+  'welcome.cta': '开始整理衣橱',
+  'welcome.loginExisting': '登录已有账号',
+
   // --- Settings ------------------------------------------------------------
   'settings.title': '设置',
-  'settings.subtitle': 'Aidrobe 只保留 V1 Slim 必要设置：出门时间、数据说明和隐私信息。',
+  'settings.subtitle': '衣然 只保留 V1 Slim 必要设置：出门时间、数据说明和隐私信息。',
   'settings.section.general': '通用',
   'settings.section.city': '所在城市',
   'settings.section.wardrobe': '衣橱',
@@ -85,6 +99,9 @@ export const zhCN = {
   'wardrobe.insights.mainColor': '主色调',
   'wardrobe.insights.mostWorn': '最常穿',
   'wardrobe.insights.idle': '闲置',
+  'wardrobe.idle.hint': '有 {count} 件衣服一个月没出现，看看它们。',
+  'wardrobe.item.wornDaysAgo': '{days} 天前穿过',
+  'wardrobe.item.notWornDays': '{days} 天没穿了',
 
   // --- Item detail ---------------------------------------------------------
   'item.name': '名称',
@@ -125,11 +142,11 @@ export const zhCN = {
   'item.editOccasion': '选择场合',
   'item.editFit': '选择版型',
   'item.color.placeholder': '输入颜色',
-  'item.aiAdvice.title': '✨ Aidrobe 建议',
+  'item.aiAdvice.title': '✨ 衣然 建议',
   'item.aiAdvice.body': '这件{color}{category}适合先从日常搭配开始，优先配线条干净、颜色克制的单品。',
   'item.aiAdvice.neutralColor': '',
   'item.aiAdvice.neutralCategory': '单品',
-  'item.aiAdvice.cta': '让 Aidrobe 继续搭配',
+  'item.aiAdvice.cta': '让 衣然 继续搭配',
   'item.unsavedChanges': '你有未保存修改',
   'item.action.reidentify': '重新识别',
   'item.action.moveLocation': '移动位置',
@@ -142,6 +159,8 @@ export const zhCN = {
   'item.bulk.addSeason': '加季节',
   'item.bulk.addOccasion': '加场合',
   'item.bulk.setCategory': '设品类',
+  'item.change': '改一下',
+  'item.edit': '编辑',
   'common.done': '完成',
 
   // --- Add item ------------------------------------------------------------
@@ -163,6 +182,21 @@ export const zhCN = {
   'add.cameraPermission': '需要相机权限',
   'add.albumPermission': '需要相册权限',
   'add.someSkipped': '{count} 张未能导入，已跳过',
+
+  // --- Import failure ------------------------------------------------------
+  'import.failure.title': '导入失败',
+  'import.failure.retake': '重选图片',
+  'import.failure.backToWardrobe': '回到衣橱',
+  'import.failure.label.upload_failed': '上传中断',
+  'import.failure.label.unsupported_format': '格式不合适',
+  'import.failure.label.too_large': '图片太大',
+  'import.failure.label.recognition_failed': '没认出来',
+  'import.failure.label.network_error': '网络断开',
+  'import.failure.hint.upload_failed': '上传通道没有完成，请重选一张或换个网络。',
+  'import.failure.hint.unsupported_format': '换成 JPEG、PNG 或 WebP。',
+  'import.failure.hint.too_large': '压缩到 10MB 以内再导入。',
+  'import.failure.hint.recognition_failed': '换一张背景更干净、衣物更完整的照片。',
+  'import.failure.hint.network_error': '网络恢复后再试一次。',
 
   // --- Import confirm ------------------------------------------------------
   'import.recognizing': '正在识别衣物',
@@ -195,8 +229,8 @@ export const zhCN = {
   'import.saveSelected': '保存所选 {count} 件',
 
   // --- Ask Aidrobe ---------------------------------------------------------
-  'ask.title': '问 Aidrobe',
-  'ask.barHint': '问问 Aidrobe，比如「这件配什么」',
+  'ask.title': '问 衣然',
+  'ask.barHint': '问问 衣然，比如「这件配什么」',
   'ask.relatedItems': '衣橱里的相关单品',
   'ask.itemFallback': '单品',
   'ask.moreItems': '还有 {count} 件',
@@ -219,6 +253,15 @@ export const zhCN = {
   'ask.history.answerFallback': '这次问答还没有保存答案',
   'ask.error.unavailable': '问答功能正在接入中，稍后再试。',
   'ask.error.generic': '出错了，请稍后再试。',
+  'ask.v2.subtitle': '特殊场合、旅行、购物，直接说一句就行。',
+  'ask.v2.cardTitle': '今天想怎么调整？',
+  'ask.v2.cardSub': '我会基于你的真实衣橱来回答。',
+  'ask.v2.placeholder': '说说今天想怎么调整…',
+  'ask.v2.inputHint': '可输入场合、天气、心情或单品。',
+  'ask.v2.s1': '今晚有聚会，想有精神一点',
+  'ask.v2.s2': '今天要走很多路，换双舒服的鞋',
+  'ask.v2.s3': '下周出去玩，帮我准备衣服',
+  'ask.v2.s4': '这件米白衬衫还能怎么搭',
   'ask.appliedConstraints': '已延续：{list}',
 
   // --- Shopping sense-check ------------------------------------------------
@@ -257,11 +300,11 @@ export const zhCN = {
   // --- Discover empty states ----------------------------------------------
   'discover.inspirations.empty.title': '还没有风格灵感',
   'discover.inspirations.empty.subtitle':
-    '收藏喜欢的穿搭图、杂志截图或小红书灵感，Aidrobe 会学习你的风格',
+    '收藏喜欢的穿搭图、杂志截图或小红书灵感，衣然 会学习你的风格',
   'discover.inspirations.empty.cta': '添加第一张灵感',
   'discover.packing.empty.title': '还没有打包清单',
   'discover.packing.empty.subtitle':
-    '选择出行天数和场景，Aidrobe 会从你的衣橱生成一份清单',
+    '选择出行天数和场景，衣然 会从你的衣橱生成一份清单',
   'discover.packing.empty.cta': '新建打包清单',
   // FE#73 packing planner view (BE#68 plan)
   'packing.plan.dailyTitle': '每日搭配',
@@ -275,7 +318,7 @@ export const zhCN = {
 
   // --- Wardrobe report -----------------------------------------------------
   'wardrobeReport.shareMessage':
-    '我的{label}衣橱回顾 · Aidrobe\n穿着 {totalWears} 次，推荐采纳率 {adoptionRate}%',
+    '我的{label}衣橱回顾 · 衣然\n穿着 {totalWears} 次，推荐采纳率 {adoptionRate}%',
   'wardrobeReport.shareTopItem': '本命单品：{title}（穿了 {count} 次）',
   'wardrobeReport.shareKeywords': '风格关键词：{keywords}',
 
@@ -287,7 +330,7 @@ export const zhCN = {
   'today.swapAnother': '换一套',
   'today.viewDetail': '查看详情',
   'today.shareThis': '分享这套',
-  'today.shareMessage': '我的今日穿搭「{title}」· Aidrobe',
+  'today.shareMessage': '我的今日穿搭「{title}」· 衣然',
   'today.noVariant': '暂无该方案',
   'today.needMoreItems': '这套需要更多单品才能搭出来',
   'today.notEnoughData': '衣橱数据还不够',
@@ -325,9 +368,9 @@ export const zhCN = {
   'today.defaultLocation': '主衣柜',
 
   // --- Today v2 (mode-aware, single outfit) --------------------------------
-  'today.mode.morning.title': '今天这套，恰好',
+  'today.mode.morning.title': '早上好',
   'today.mode.morning.subtitle': '出门前，先看看这一套',
-  'today.mode.daytime.title': '今天这套还在这里',
+  'today.mode.daytime.title': '今天这套，随时可穿',
   'today.mode.daytime.subtitle': '想换或者调整都可以',
   'today.mode.evening.title': '明天可以先这样准备',
   'today.mode.evening.subtitle': '把明天的一套先放这儿',
@@ -341,6 +384,14 @@ export const zhCN = {
   'today.v2.swap': '换一套',
   'today.v2.dislike': '不喜欢',
   'today.v2.why': '为什么',
+  'today.v2.viewDetail': '查看详情',
+  'today.v2.favorite': '收藏',
+  'today.v2.unfavorite': '取消收藏',
+  'today.v2.greetingWithName': '早上好，{name}',
+  'today.v2.greeting': '早上好',
+  'today.v2.departureCountdown': '距出门还有 {minutes} 分钟 · {scene}',
+  'today.v2.leaveNow': '现在出门 · {scene}',
+  'today.v2.ringLabel': '出门',
   'today.v2.prepHint': '准备 {minutes} 分',
   'today.v2.tomorrowPreview': '明日预览 · 先放这儿',
   'today.override.prompt': '今天有什么特别的吗？',
@@ -358,7 +409,7 @@ export const zhCN = {
   'today.reasonSource.preference': '你的偏好',
   'today.reasonSource.style': '风格灵感',
   'today.reasonSource.indoorClimate': '室内体感',
-  'today.reasonSource.llm': 'Aidrobe 判断',
+  'today.reasonSource.llm': '衣然 判断',
 
   // --- First Outfit activation (brief §6) ----------------------------------
   'firstOutfit.processing.title': '正在为你搭第一套',
@@ -376,10 +427,13 @@ export const zhCN = {
   'firstOutfit.addSpecific': '添加一件{slot}',
   'firstOutfit.addGeneric': '再添加一件',
   'firstOutfit.ready.title': '第一套，已经准备好了',
-  'firstOutfit.ready.subtitle': '先从这套开始，明天会更懂你。',
+  'firstOutfit.ready.subtitle': '根据你刚加入的衣服，先给你一套最稳妥的。',
+  'firstOutfit.ready.quote': '先从这套开始，明天会更懂你。',
   'firstOutfit.badge': '你的第一套',
   'firstOutfit.title': '今日一套',
-  'firstOutfit.singleHint': '现在能先搭出这一套，再加几件后会更灵活。',
+  'firstOutfit.reasonsHeader': '为什么这一套最合适',
+  'firstOutfit.singleHint': '现在只有这一套可行搭配，再加几件就能有更多选择。',
+  'firstOutfit.addMore': '再加几件',
   'firstOutfit.wear': '穿这套看看',
   'firstOutfit.failed.title': '这次没能搭出来',
   'firstOutfit.failed.body': '可能是网络问题，稍后再试一次。',
@@ -388,28 +442,39 @@ export const zhCN = {
   // --- Profile v2 (trust surface, brief §10) -------------------------------
   'profile.title': '我的',
   'profile.subtitle': '你的衣橱，只属于你。',
+  'profile.section.aidrobe': '衣然 与你',
+  'profile.section.daily': '日常设置',
+  'profile.section.privacy': '隐私与数据',
   'profile.section.data': '你的数据',
   'profile.section.preferences': '偏好与设置',
   'profile.section.account': '账号',
   'profile.section.danger': '数据与账号',
+  'profile.row.memory': '衣然 记住的关于你',
+  'profile.row.memory.sub': '查看、纠正、删除',
+  'profile.row.inspirations': '风格灵感',
   'profile.row.dataTrust': '隐私与数据说明',
-  'profile.row.memory': 'Aidrobe 记住的关于你',
+  'profile.row.dataTrust.sub': '查看数据用途和处理边界',
   'profile.row.settings': '更多设置',
+  'profile.row.permissions': '权限管理',
+  'profile.row.departureTime': '出门时间',
+  'profile.row.location': '位置与天气',
+  'profile.row.language': '语言',
   'profile.row.export': '导出我的数据',
   'profile.row.signOut': '退出登录',
   'profile.row.clearData': '清空全部数据',
-  'profile.row.deactivate': '注销账号',
+  'profile.row.deactivate': '删除数据与注销',
+  'profile.hint.dataOwnership': '你的数据，只属于你。数据可查看、可纠正、可删除。',
   'profile.export.requested': '已提交导出请求，完成后会通知你。',
   'profile.clearData.title': '清空全部数据',
   'profile.clearData.unavailable': '当前版本还没有一键清空。你可以在衣物详情里逐件删除，后续会放到这里。',
-  'profile.deactivate.title': '注销账号',
+  'profile.deactivate.title': '删除数据与注销',
   'profile.deactivate.body': '永久删除你的账号和全部数据，期间无法恢复。确认要继续吗？',
   'profile.deactivate.confirm': '确认注销',
   'profile.deactivate.done': '账号已注销。',
 
   // --- Privacy / data statement (copy: privacy-data-copy-v0.1 §A) ----------
   'privacy.statement.title': '你的衣橱，只属于你',
-  'privacy.statement.intro': 'Aidrobe 需要了解你的衣服和习惯，才能帮你少纠结、穿得像自己。这些信息只为这一件事服务。',
+  'privacy.statement.intro': '衣然 需要了解你的衣服和习惯，才能帮你少纠结、穿得像自己。这些信息只为这一件事服务。',
   'privacy.statement.collect.title': '我们会用到',
   'privacy.statement.collect.clothes': '你上传的衣物照片',
   'privacy.statement.collect.behavior': '你的穿着、换一套、不喜欢等使用行为',
@@ -425,16 +490,35 @@ export const zhCN = {
   'privacy.statement.notDo.no_share': '不卖给、不默认共享给第三方',
   'privacy.statement.notDo.no_ad_profiling': '不用它们给你做广告画像',
   'privacy.statement.control.title': '你可以随时',
-  'privacy.statement.control.view': '查看 Aidrobe 记住了你的哪些偏好',
+  'privacy.statement.control.view': '查看 衣然 记住了你的哪些偏好',
   'privacy.statement.control.correct': '纠正不准的判断',
   'privacy.statement.control.delete_item': '删除任何一件衣物、任何一条记录',
   'privacy.statement.control.delete_all': '删除全部数据或注销账号',
   'privacy.statement.policyLink': '完整《隐私政策》法律条款将随正式发布一同提供。',
 
   // --- Memory management (brief §10.3; no fake entries) --------------------
-  'privacy.memory.title': 'Aidrobe 记住的关于你',
-  'privacy.memory.subtitle': '这些是 Aidrobe 从你的使用里学到的，不是你填的表。不准的地方，随时改。',
+  'privacy.memory.title': '衣然 记住的关于你',
+  'privacy.memory.subtitle': '这些是 衣然 从你的使用里学到的，不是你填的表。不准的地方，随时改。',
   'privacy.memory.empty': '还没有学到可展示的偏好。多用几天，这里会慢慢出现，你随时可以纠正或删除。',
+
+  // --- Permission rationale onboarding screen ------------------------------
+  'permission.stepLabel': '02',
+  'permission.title': '让 衣然 认识你的衣橱',
+  'permission.body': '拍照识别衣物、从相册选图，都需要这两项权限。也可以稍后在设置里开启。',
+  'permission.cta': '允许访问',
+  'permission.skip': '稍后再说',
+  'permission.footnote': '你可以随时在「我的」里更改权限。',
+
+  // --- Departure time onboarding screen ------------------------------------
+  'departure.stepLabel': '03',
+  'departure.title': '设置你的出门时间',
+  'departure.subtitle': '告诉我们你通常几点出门，帮助我们更好地为你推荐穿搭。',
+  'departure.saving': '正在保存出门时间…',
+  'departure.saved': '已保存',
+  'departure.saveFailed': '保存失败，请重试',
+  'departure.saveTime': '保存时间',
+  'departure.skip': '跳过',
+  'departure.footnote': '之后可以在「我的」里修改。',
 
   // --- Commute exposure micro-question (brief §9.5) ------------------------
   'commuteExposure.question': '出门通勤，主要是？',
@@ -464,13 +548,18 @@ export const zhCN = {
   'outfitDetail.selectReplacement': '选择{name}',
   'outfitDetail.replacementSimilarity': '相似度 {pct}%',
   'outfitDetail.downloadNoAsset': '暂无可下载图片，先分享文字摘要',
-  'outfitDetail.shareMessage': '我的今日穿搭「{title}」· Aidrobe\n{items}',
+  'outfitDetail.shareMessage': '我的今日穿搭「{title}」· 衣然\n{items}',
   'outfitDetail.noItems': '暂无单品',
   'outfitDetail.itemCount': '这套包含 {count} 件单品',
   'outfitDetail.fitGood': '合身',
   'outfitDetail.overflowTitle': '更多操作',
   'outfitDetail.overflowShare': '分享这套',
   'outfitDetail.overflowFeedback': '穿着并反馈',
+  'outfitDetail.screenTitle': '搭配详情',
+  'outfitDetail.sectionWhy': '为什么适合今天',
+  'outfitDetail.sectionContains': '这套包含',
+  'outfitDetail.dislikeSwap': '不喜欢 · 换一套',
+  'outfitDetail.wearToday': '今天穿这套',
 
   // --- OOTD poster (AI, selfie-based) --------------------------------------
   'ootd.fromOutfit': '来自这套搭配「{title}」',
@@ -516,6 +605,84 @@ export const zhCN = {
   'feedback.loveIt': '很喜欢',
   'feedback.thanks': '感谢反馈，明天推荐会更准',
   'feedback.submitted': '已记录你的反馈，谢谢！',
+  // FeedbackSheetScreen v2 restyle (v2-visual)
+  'feedback.sheet.title': '这套哪里不合适？',
+  'feedback.sheet.subtitle': '选一个最主要的原因，我会调整一下。',
+  'feedback.sheet.freeTextPlaceholder': '还有别的原因？（可选）',
+  'feedback.sheet.submitSwap': '提交并换一套',
+  'feedback.sheet.submitOnly': '只提交反馈',
+  'feedback.sheet.errorNoReason': '请先选一个原因',
+
+  // --- Context override sheet (Today 07) -----------------------------------
+  'today.override.entryLabel': '今天有什么特别的吗？',
+  'today.override.subtitle': '赶时间可以直接选一个',
+  'today.override.orType': '也可以打字',
+  'today.override.refresh': '按这个重新推荐',
+
+  // --- Add-source sheet (Wardrobe 09) --------------------------------------
+  'addSource.title': '添加衣物',
+  'addSource.subtitle': '选最省事的方式。',
+  'addSource.camera.label': '拍下衣服',
+  'addSource.camera.hint': '适合平铺选拍',
+  'addSource.album.label': '从相册选择',
+  'addSource.album.hint': '支持多张',
+  'addSource.outfit.label': '从穿搭照提取',
+  'addSource.outfit.hint': '一张照片识别多件',
+  'addSource.link.label': '粘贴商品链接',
+  'addSource.link.hint': '添加正在考虑的商品',
+  'addSource.cancel': '取消',
+
+  // --- Contextual entry sheet (Ask 14) -------------------------------------
+  'contextualEntry.title': '还想做什么？',
+  'contextualEntry.subtitle': '这些能力只在合适时出现。',
+  'contextualEntry.trigger': '还有其他事项',
+  'contextualEntry.triggerA11y': '打开情境入口',
+  'contextualEntry.comingSoon': '即将开放，敬请期待',
+  'contextualEntry.shopping.label': '看看值不值得买',
+  'contextualEntry.shopping.hint': '查询商品购买建议',
+  'contextualEntry.trip.label': '准备一次旅行',
+  'contextualEntry.trip.hint': '说出地点和天数就行',
+  'contextualEntry.insights.label': '查看衣橱洞察',
+  'contextualEntry.insights.hint': '了解你的穿着规律',
+  'contextualEntry.style.label': '管理风格灵感',
+  'contextualEntry.style.hint': '查看已保存的参考',
+
+  // --- Delete-data confirmation sheet (Profile 19) -------------------------
+  'deleteData.sheet.title': '清空全部数据？',
+  'deleteData.sheet.body': '将删除你的衣物、使用行为和衣然学到的偏好，相当于重新开始。账号会保留。',
+  'deleteData.sheet.bullet.clothing': '衣物与图片',
+  'deleteData.sheet.bullet.activity': '穿着和互动记录',
+  'deleteData.sheet.bullet.preferences': '学到的偏好',
+  'deleteData.sheet.confirm': '确认清空',
+  'deleteData.sheet.irreversible': '此操作无法撤销',
+
+  // --- Onboarding: add wardrobe (2/6) --------------------------------------
+  'onboarding.addWardrobe.stepFraction': '2 / 6',
+  'onboarding.addWardrobe.title': '先加几件常穿的',
+  'onboarding.addWardrobe.subtitle': '不用拍完整个衣橱。先从今天会考虑穿的开始。',
+  'onboarding.addWardrobe.sparkleHint': '约 7 件，就能陪你每天有推荐。',
+  'onboarding.addWardrobe.cta.camera': '拍下衣服',
+  'onboarding.addWardrobe.cta.album': '从相册选择',
+  'onboarding.addWardrobe.otherMethods': '还有其他添加方式',
+  'onboarding.addWardrobe.footnote': '衣然会自动识别面料、颜色等细节，你只需要确认一下。',
+  'onboarding.addWardrobe.uploadFailed': '上传失败，请重试',
+  'onboarding.addWardrobe.cameraPermission': '需要相机权限才能拍照',
+  'onboarding.addWardrobe.albumPermission': '需要相册权限才能选择照片',
+
+  // --- Onboarding: style memory (5/6) --------------------------------------
+  'onboarding.styleMemory.stepFraction': '5 / 6',
+  'onboarding.styleMemory.title': '给衣然一点灵感',
+  'onboarding.styleMemory.subtitle': '选一张你喜欢的穿搭图，衣然会参考这种感觉。可以跳过。',
+  'onboarding.styleMemory.benefit1.title': '理解色调',
+  'onboarding.styleMemory.benefit1.hint': '更懂你喜欢的颜色',
+  'onboarding.styleMemory.benefit2.title': '理解廓形',
+  'onboarding.styleMemory.benefit2.hint': '更懂你的穿搭风格',
+  'onboarding.styleMemory.benefit3.title': '影响以后推荐',
+  'onboarding.styleMemory.benefit3.hint': '推荐以后会更贴合你',
+  'onboarding.styleMemory.cardHint': '选择你的照片',
+  'onboarding.styleMemory.cta.pick': '选择一张照片',
+  'onboarding.styleMemory.skip': '跳过',
+  'onboarding.styleMemory.footnote': '随时可以在「我的」里查看、更换或删除灵感。',
 } as const;
 
 export type I18nKey = keyof typeof zhCN;

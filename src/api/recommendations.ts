@@ -3,6 +3,7 @@ import type {
   FeedbackBundleBody,
   FeedbackBundleResult,
   FeedbackTagsResponse,
+  FirstOutfitGate,
   OutfitDetail,
   OutfitObstacle,
   OutfitReplacementCandidate,
@@ -11,6 +12,7 @@ import type {
   SendFeedbackBody,
   ServerFeedbackTagsResponse,
   ServerFavoriteOutfitResponse,
+  ServerFirstOutfitGate,
   ServerOutfitObstacle,
   ServerOutfitResponse,
   ServerOutfitReplacementsResponse,
@@ -108,6 +110,24 @@ function toToday(data: ServerTodayRecommendation): TodayRecommendation {
 
 export async function getTodayRecommendation(scene?: 'commute' | 'formal' | 'casual') {
   return toToday(await apiGet<ServerTodayRecommendation>('/v1/recommendations/today', { scene }));
+}
+
+// BE #79 — cold-start feasibility gate. The verdict is derived from the same
+// daily the Today pipeline persists (BE generates it on first call if absent),
+// so this can take as long as a refresh (~25s of LLM work) — same 60s budget.
+export async function getFirstOutfitGate(): Promise<FirstOutfitGate> {
+  const data = await apiGet<ServerFirstOutfitGate>(
+    '/v1/recommendations/first-outfit',
+    undefined,
+    { timeout: 60_000 },
+  );
+  return {
+    state: data.state,
+    feasibleOutfitCount: data.feasible_outfit_count,
+    missingSlots: data.missing_slots,
+    firstOutfit: data.first_outfit ? toOutfit(data.first_outfit) : null,
+    gateFailures: data.gate_failures,
+  };
 }
 
 // V3+ D3 — user-initiated refresh. Rate-limited (default 3/day).

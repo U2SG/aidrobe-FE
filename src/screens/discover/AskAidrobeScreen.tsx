@@ -21,9 +21,13 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { ItemRefsRow } from '@/components/wardrobe/ItemRefsRow';
+import type { ContextualEntry } from '@/components/discover/ContextualEntrySheet';
+import { ContextualEntrySheet } from '@/components/discover/ContextualEntrySheet';
 import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { useWardrobeItemNames } from '@/hooks/useWardrobeItemNames';
+import type { I18nKey } from '@/i18n';
+import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { AskHistoryEntry, AskItemRefSnapshot, AskScope } from '@/types/api';
 import type { AskStackParamList } from '@/types/navigation';
@@ -49,6 +53,14 @@ type Turn = {
 
 const FALLBACK_COMPOSER_HEIGHT = 112;
 const HISTORY_LIMIT = 20;
+
+// Suggestion prompts shown in the idle/empty state hero card (brief v0.9 Ask V2).
+const SUGGESTIONS = [
+  { key: 's1', icon: 'sparkle', labelKey: 'ask.v2.s1' },
+  { key: 's2', icon: 'compass', labelKey: 'ask.v2.s2' },
+  { key: 's3', icon: 'suitcase', labelKey: 'ask.v2.s3' },
+  { key: 's4', icon: 'wardrobe', labelKey: 'ask.v2.s4' },
+] as const satisfies ReadonlyArray<{ key: string; icon: string; labelKey: I18nKey }>;
 
 const T = {
   bg: colors.groupedBackground,
@@ -299,10 +311,12 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   const scope: AskScope = focusedItemId ? 'item' : route.params?.scope === 'today' ? 'today' : 'global';
   const focusedNames = useWardrobeItemNames(focusedItemId ? [focusedItemId] : []);
   const focusedName = focusedItemId ? focusedNames.get(focusedItemId) : undefined;
+  const showToast = useToastStore((s) => s.show);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [historyVisible, setHistoryVisible] = useState(false);
+  const [contextualSheetVisible, setContextualSheetVisible] = useState(false);
   const [composerHeight, setComposerHeight] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -397,11 +411,17 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     },
   });
 
-  const send = () => {
-    const q = input.trim();
+  const submitQuestion = (question: string) => {
+    const q = question.trim();
     if (!q || askMutation.isPending) return;
     setInput('');
     askMutation.mutate({ tempId: `local-${Date.now()}`, question: q, conversationId });
+  };
+
+  const send = () => {
+    if (!input.trim()) return;
+    setInput('');
+    submitQuestion(input);
   };
 
   // Retry a failed turn without re-typing: reset it to pending in place
@@ -417,6 +437,45 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     );
     askMutation.mutate({ tempId: turn.id, question: turn.question, conversationId });
   };
+
+  // Contextual entry sheet entries. All 4 targets (Insights, SenseCheck,
+  // PackingList, StyleInspirations) live in DiscoverStack / SettingsStack —
+  // not reachable from the Ask tab's narrow AskStackParamList. Each shows a
+  // toast placeholder until cross-tab navigation is wired (see REPORT below).
+  const contextualEntries: ContextualEntry[] = [
+    {
+      key: 'shopping',
+      icon: 'bag',
+      labelKey: 'contextualEntry.shopping.label',
+      hintKey: 'contextualEntry.shopping.hint',
+      onPress: () =>
+        showToast({ message: t('contextualEntry.comingSoon'), kind: 'info' }),
+    },
+    {
+      key: 'trip',
+      icon: 'suitcase',
+      labelKey: 'contextualEntry.trip.label',
+      hintKey: 'contextualEntry.trip.hint',
+      onPress: () =>
+        showToast({ message: t('contextualEntry.comingSoon'), kind: 'info' }),
+    },
+    {
+      key: 'insights',
+      icon: 'chart',
+      labelKey: 'contextualEntry.insights.label',
+      hintKey: 'contextualEntry.insights.hint',
+      onPress: () =>
+        showToast({ message: t('contextualEntry.comingSoon'), kind: 'info' }),
+    },
+    {
+      key: 'style',
+      icon: 'bookmark',
+      labelKey: 'contextualEntry.style.label',
+      hintKey: 'contextualEntry.style.hint',
+      onPress: () =>
+        showToast({ message: t('contextualEntry.comingSoon'), kind: 'info' }),
+    },
+  ];
 
   const isEmpty = turns.length === 0;
   // Header sits in normal flow (repo standard — see SenseCheckScreen / ItemDetailScreen;
@@ -458,31 +517,123 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         keyboardShouldPersistTaps="handled"
       >
         {isEmpty ? (
-          <View style={{ paddingVertical: 48, alignItems: 'center', paddingHorizontal: 24 }}>
-            <AIOrb variant="vivid" size={140} />
-            <Text style={{ ...type.headline, color: T.ink, marginTop: 12, textAlign: 'center' }}>
-              {t('ask.emptyTitle')}
+          <View style={{ paddingTop: 8, paddingBottom: 24 }}>
+            {/* Screen subtitle */}
+            <Text style={{ ...type.callout, color: T.ink3, marginBottom: 24, lineHeight: 22 }}>
+              {t('ask.v2.subtitle')}
             </Text>
-            <Text style={{ ...type.callout, color: T.ink3, marginTop: 6, textAlign: 'center' }}>
-              {t('ask.emptyHint')}
-            </Text>
-            {/* Suggestion chips — tapping populates the input */}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 20 }}>
-              {(['ask.chip.commute', 'ask.chip.occasion', 'ask.chip.shoes', 'ask.chip.weather'] as const).map((key) => (
+            {/* Hero card */}
+            <View
+              style={{
+                backgroundColor: T.card,
+                borderRadius: radius.xl,
+                paddingTop: 28,
+                paddingBottom: 8,
+                paddingHorizontal: 20,
+                ...shadow.elevated,
+              }}
+            >
+              {/* Warm-gold agent glow (matches the handoff Ask orb + the editorial
+                  gold palette — not the vivid blue/violet orb, which is reserved
+                  for the in-flight "thinking" state below). */}
+              <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                <View
+                  style={{
+                    width: 72,
+                    height: 72,
+                    borderRadius: 36,
+                    backgroundColor: colors.accentSoft,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.agentGlow }} />
+                </View>
+              </View>
+              {/* Card title */}
+              <Text style={{ ...type.title2, color: T.ink, textAlign: 'center', marginBottom: 8 }}>
+                {t('ask.v2.cardTitle')}
+              </Text>
+              {/* Card subtitle */}
+              <Text
+                style={{
+                  ...type.callout,
+                  color: T.ink3,
+                  textAlign: 'center',
+                  marginBottom: 20,
+                  lineHeight: 22,
+                }}
+              >
+                {t('ask.v2.cardSub')}
+              </Text>
+              {/* Divider */}
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: colors.separatorSoft,
+                  marginHorizontal: -20,
+                  marginBottom: 4,
+                }}
+              />
+              {/* Suggestion rows */}
+              {SUGGESTIONS.map((s) => (
                 <Pressable
-                  key={key}
-                  onPress={() => setInput(t(key))}
+                  key={s.key}
+                  onPress={() => submitQuestion(t(s.labelKey))}
+                  accessibilityRole="button"
+                  android_ripple={{ color: colors.fill }}
                   style={({ pressed }) => ({
-                    paddingHorizontal: 14,
-                    paddingVertical: 8,
-                    backgroundColor: T.card,
-                    borderRadius: 999,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 13,
+                    paddingHorizontal: 4,
                     opacity: pressed ? 0.65 : 1,
+                    minHeight: 44,
                   })}
                 >
-                  <Text style={{ fontSize: 13, color: T.ink2, fontWeight: '500' }}>{t(key)}</Text>
+                  <SystemIcon name={s.icon} size={18} color={T.ink3} strokeWidth={1.7} />
+                  <Text
+                    style={{ ...type.body, color: T.ink2, flex: 1, marginLeft: 12 }}
+                    numberOfLines={1}
+                  >
+                    {t(s.labelKey)}
+                  </Text>
+                  <SystemIcon name="chevronRight" size={16} color={T.ink3} strokeWidth={1.7} />
                 </Pressable>
               ))}
+              {/* Contextual entry trigger — "more" affordance below suggestions */}
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: colors.separatorSoft,
+                  marginHorizontal: -20,
+                  marginTop: 2,
+                  marginBottom: 2,
+                }}
+              />
+              <Pressable
+                onPress={() => setContextualSheetVisible(true)}
+                accessibilityRole="button"
+                accessibilityLabel={t('contextualEntry.triggerA11y')}
+                android_ripple={{ color: colors.fill }}
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 13,
+                  paddingHorizontal: 4,
+                  opacity: pressed ? 0.65 : 1,
+                  minHeight: 44,
+                })}
+              >
+                <SystemIcon name="plus" size={18} color={T.ink3} strokeWidth={1.7} />
+                <Text
+                  style={{ ...type.body, color: T.ink2, flex: 1, marginLeft: 12 }}
+                  numberOfLines={1}
+                >
+                  {t('contextualEntry.trigger')}
+                </Text>
+                <SystemIcon name="chevronRight" size={16} color={T.ink3} strokeWidth={1.7} />
+              </Pressable>
             </View>
           </View>
         ) : (
@@ -538,7 +689,9 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
           <TextInput
             value={input}
             onChangeText={setInput}
-            placeholder={focusedItemId ? t('ask.placeholderFocused') : t('ask.placeholder')}
+            placeholder={
+              focusedItemId ? t('ask.placeholderFocused') : t('ask.v2.placeholder')
+            }
             placeholderTextColor={colors.quaternaryLabel}
             multiline
             style={{
@@ -549,6 +702,8 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
               paddingHorizontal: 14,
               paddingVertical: 12,
               ...type.body,
+              // iOS auto-zooms inputs with fontSize < 16; hard-pin to 16 to prevent it.
+              fontSize: 16,
               color: T.ink,
               ...shadow.soft,
             }}
@@ -569,6 +724,13 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
             <SystemIcon name="chevronRight" size={20} color={colors.inverse} />
           </Pressable>
         </View>
+        {!focusedItemId ? (
+          <Text
+            style={{ ...type.footnote, color: T.ink3, marginTop: 6, textAlign: 'center' }}
+          >
+            {t('ask.v2.inputHint')}
+          </Text>
+        ) : null}
       </View>
 
       <AskHistorySheet
@@ -578,6 +740,12 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         error={historyQuery.isError && !historyQuery.isFetching}
         onClose={() => setHistoryVisible(false)}
         onRetry={() => void historyQuery.refetch()}
+      />
+
+      <ContextualEntrySheet
+        visible={contextualSheetVisible}
+        onClose={() => setContextualSheetVisible(false)}
+        entries={contextualEntries}
       />
     </View>
   );

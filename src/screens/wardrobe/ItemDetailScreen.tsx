@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode, RefObject } from 'react';
+import type { RefObject } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
 import {
@@ -73,8 +73,6 @@ const T = {
   accent: colors.accent,
 };
 
-const LOG_COLORS = [colors.separatorSoft, '#D7D3CC', colors.accent, colors.label];
-
 function confidencePct(score: number | null | undefined): string {
   return score == null ? '' : `${Math.round(score * 100)}%`;
 }
@@ -135,90 +133,81 @@ function hasDraftChanges(
   );
 }
 
-interface DetailCardProps {
-  title: string;
-  children: ReactNode;
+/** Days between an ISO date string and today; null if date is falsy or invalid. */
+function daysSince(isoDate: string | null | undefined): number | null {
+  if (!isoDate) return null;
+  const parts = isoDate.split('-').map(Number);
+  if (parts.length < 3) return null;
+  const [y, m, d] = parts;
+  const then = new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1);
+  if (isNaN(then.getTime())) return null;
+  const now = new Date();
+  const msPerDay = 86400000;
+  return Math.max(0, Math.floor((now.getTime() - then.getTime()) / msPerDay));
 }
 
-function DetailCard({ title, children }: DetailCardProps) {
-  return (
-    <View
-      style={{
-        backgroundColor: T.card,
-        borderRadius: radius.md,
-        borderWidth: 1,
-        borderColor: T.dividerSoft,
-        padding: 16,
-        gap: 4,
-      }}
-    >
-      <Text style={{ ...type.footnote, fontWeight: '700', color: T.ink }}>{title}</Text>
-      <View style={{ marginTop: 4 }}>{children}</View>
-    </View>
-  );
-}
-
-interface DetailRowProps {
+interface AttributeRowProps {
   label: string;
   value?: string | null;
   placeholder: string;
   onPress: () => void;
+  changeLabel: string;
   lowConfidence?: boolean;
   confidenceScore?: number | null;
   confidenceLabel?: string;
   onConfirm?: () => void;
   confirmLabel?: string;
-  changeLabel?: string;
 }
 
-function DetailRow({
+function AttributeRow({
   label,
   value,
   placeholder,
   onPress,
+  changeLabel,
   lowConfidence = false,
   confidenceScore,
   confidenceLabel,
   onConfirm,
   confirmLabel,
-  changeLabel,
-}: DetailRowProps) {
+}: AttributeRowProps) {
   const display = value?.trim() || placeholder;
   const isEmpty = !value?.trim();
   const showReview = lowConfidence && onConfirm != null;
 
   return (
-    <View style={{ paddingVertical: 6, gap: 8 }}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${label}: ${display}`}
-        onPress={onPress}
-        style={({ pressed }) => ({
-          minHeight: 48,
+    <View>
+      <View
+        style={{
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 10,
-          opacity: pressed ? 0.72 : 1,
-        })}
+          minHeight: 48,
+          gap: 12,
+          paddingVertical: 10,
+        }}
       >
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={{ ...type.caption, color: T.ink3 }}>{label}</Text>
-          <Text
-            numberOfLines={2}
-            style={{
-              ...type.callout,
-              fontWeight: '600',
-              color: isEmpty ? T.accent : T.ink,
-            }}
-          >
-            {display}
-          </Text>
-        </View>
+        <Text
+          style={{ ...type.footnote, color: T.ink3, width: 56 }}
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+        <Text
+          style={{
+            ...type.callout,
+            fontWeight: '500',
+            color: isEmpty ? T.accent : T.ink,
+            flex: 1,
+          }}
+          numberOfLines={1}
+        >
+          {display}
+        </Text>
         {confidenceScore != null ? (
           <View
             style={{
-              paddingHorizontal: 8,
-              paddingVertical: 4,
+              paddingHorizontal: 7,
+              paddingVertical: 3,
               borderRadius: radius.pill,
               backgroundColor: colors.warningBg,
             }}
@@ -226,15 +215,20 @@ function DetailRow({
             <Text style={{ ...type.caption, color: colors.warning }}>{confidenceLabel}</Text>
           </View>
         ) : null}
-        <SystemIcon
-          name={lowConfidence ? 'sparkle' : 'chevronRight'}
-          size={15}
-          color={lowConfidence ? colors.warning : T.ink3}
-          strokeWidth={1.9}
-        />
-      </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${label}: ${display}`}
+          onPress={onPress}
+          hitSlop={8}
+          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+        >
+          <Text style={{ ...type.footnote, color: T.accent, fontWeight: '500' }}>
+            {changeLabel}
+          </Text>
+        </Pressable>
+      </View>
       {showReview ? (
-        <View style={{ flexDirection: 'row', gap: 8 }}>
+        <View style={{ flexDirection: 'row', gap: 8, paddingBottom: 8 }}>
           <Button
             label={confirmLabel ?? ''}
             size="sm"
@@ -243,7 +237,7 @@ function DetailRow({
             style={{ flex: 1 }}
           />
           <Button
-            label={changeLabel ?? ''}
+            label={changeLabel}
             size="sm"
             variant="secondary"
             onPress={onPress}
@@ -255,18 +249,36 @@ function DetailRow({
   );
 }
 
-interface TextDetailRowProps {
+interface TextAttributeRowProps {
   label: string;
   value: string;
   placeholder: string;
   inputRef?: RefObject<TextInput | null>;
   onChangeText: (value: string) => void;
+  changeLabel: string;
 }
 
-function TextDetailRow({ label, value, placeholder, inputRef, onChangeText }: TextDetailRowProps) {
+function TextAttributeRow({
+  label,
+  value,
+  placeholder,
+  inputRef,
+  onChangeText,
+  changeLabel,
+}: TextAttributeRowProps) {
   return (
-    <View style={{ paddingVertical: 6, gap: 2 }}>
-      <Text style={{ ...type.caption, color: T.ink3 }}>{label}</Text>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        minHeight: 48,
+        gap: 12,
+        paddingVertical: 10,
+      }}
+    >
+      <Text style={{ ...type.footnote, color: T.ink3, width: 56 }} numberOfLines={1}>
+        {label}
+      </Text>
       <TextInput
         ref={inputRef}
         value={value}
@@ -274,13 +286,15 @@ function TextDetailRow({ label, value, placeholder, inputRef, onChangeText }: Te
         placeholder={placeholder}
         placeholderTextColor={T.accent}
         style={{
+          flex: 1,
           minHeight: 44,
           paddingVertical: 0,
           ...type.callout,
-          fontWeight: '600',
+          fontWeight: '500',
           color: T.ink,
         }}
       />
+      <Text style={{ ...type.footnote, color: T.accent, fontWeight: '500' }}>{changeLabel}</Text>
     </View>
   );
 }
@@ -362,10 +376,12 @@ export function ItemDetailScreen({ navigation, route }: Props) {
     staleTime: 5 * 60 * 1000,
   });
 
-  const intensity = useMemo(
+  // Keep intensity series computed (feeds lastWorn / wearCount display)
+  const _intensity = useMemo(
     () => buildIntensitySeries(wearHistoryQuery.data?.dailyCounts, 60),
     [wearHistoryQuery.data?.dailyCounts],
   );
+
   const [draft, setDraft] = useState<UpdateWardrobeItemBody>({});
   const [fitIntent, setFitIntent] = useState<FitIntent | null>(null);
   const [activeField, setActiveField] = useState<QuickField>(null);
@@ -438,10 +454,6 @@ export function ItemDetailScreen({ navigation, route }: Props) {
     );
   }
 
-  // While the user is editing the name of an AI/old row, name_source is still
-  // non-user, so treat an edited draft name as user-named — otherwise the
-  // deterministic fallback would keep showing "White Top" over the just-typed
-  // name until the backend flips name_source.
   const nameEdited = backendItem != null && !sameNullable(draft.name, backendItem.name);
   const displayName = backendItem
     ? resolveItemDisplayName(locale, {
@@ -449,7 +461,6 @@ export function ItemDetailScreen({ navigation, route }: Props) {
         nameSource: nameEdited ? 'user' : backendItem.nameSource,
         displayName: backendItem.displayName,
         localizedNames: backendItem.localizedNames,
-        // BE#64 will backfill displayName/localizedNames; these fields keep old rows localized.
         category: draft.category ?? backendItem.category,
         color: draft.color ?? backendItem.color,
         subCategory: backendItem.subCategory,
@@ -462,25 +473,30 @@ export function ItemDetailScreen({ navigation, route }: Props) {
 
   const imageUri = showcaseItem ? null : (backendItem?.imageUrl ?? null);
   const imageSource = showcaseItem?.image ?? null;
-  const heroImageSize = Math.min(Math.max(width - 96, 196), 280);
+  // Hero image: square-ish, fits within screen
+  const heroImageSize = Math.min(Math.max(width - 40, 280), 360);
   const isDirty = hasDraftChanges(draft, backendItem, fitIntent);
   const colorLabel = draft.color ? tEnum('color', draft.color) : '';
   const categoryLabel = draft.category ? tEnum('category', draft.category) : '';
-  const locationLabel = draft.location?.trim() || t('today.defaultLocation');
-  const summaryLine = [
-    colorLabel,
-    locationLabel,
-    backendItem?.wearCount != null ? t('item.wornCount', { count: backendItem.wearCount }) : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
   const seasonValue = (draft.seasonTags ?? []).map((s) => tEnum('season', s)).join(' · ');
   const occasionValue = (draft.styleTags ?? []).map((s) => tEnum('occasion', s)).join(' · ');
   const fitValue = fitIntent ? tEnum('fitIntent', fitIntent) : '';
-  const aiAdvice = t('item.aiAdvice.body', {
-    color: colorLabel || t('item.aiAdvice.neutralColor'),
-    category: categoryLabel || t('item.aiAdvice.neutralCategory'),
-  });
+
+  // Attribute summary line: 品类 · 颜色 · 季节
+  const attributeLine = [categoryLabel, colorLabel, seasonValue]
+    .filter(Boolean)
+    .join(' · ');
+
+  // Wear record line (mirrors WardrobeListScreen's daysSince logic)
+  const wearDays = daysSince(backendItem?.lastWorn);
+  const wearRecordLine =
+    wearDays !== null
+      ? t('wardrobe.item.wornDaysAgo', { days: String(wearDays) })
+      : null;
+
+  // Status: wearable → ok, dirty → warn, everything else → danger
+  const statusKind =
+    draft.status === 'wearable' ? 'ok' : draft.status === 'dirty' ? 'warn' : 'danger';
 
   const confirmDelete = () =>
     Alert.alert(t('item.delete.title'), t('item.delete.body'), [
@@ -489,9 +505,6 @@ export function ItemDetailScreen({ navigation, route }: Props) {
     ]);
 
   const openAskWithItem = () => {
-    // V2 promotes Ask to its own tab; V1 reaches it through Discover. The parent
-    // tab navigator differs by flag, so use a loose cast rather than two route
-    // param lists.
     const parent = navigation.getParent() as
       | { navigate: (name: string, params?: object) => void }
       | undefined;
@@ -539,14 +552,15 @@ export function ItemDetailScreen({ navigation, route }: Props) {
   };
 
   // API_GAP[untracked]: per-item "mark worn today" endpoint is not available.
-  // Fallback: keep the CTA visible but disabled; wear history remains read-only.
-  const markWornDisabled = true;
+  const _markWornDisabled = true;
   // API_GAP[untracked]: per-item re-identification endpoint is not available.
-  // Fallback: keep the more-menu action visible but disabled; no local mock.
   const reidentifyDisabled = true;
+
+  const changeLabel = t('item.change');
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
+      {/* Header: back + more */}
       <View
         style={{
           paddingTop: 52,
@@ -595,196 +609,210 @@ export function ItemDetailScreen({ navigation, route }: Props) {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: isDirty ? 132 : 32, gap: 14 }}
+        contentContainerStyle={{
+          paddingBottom: isDirty ? 132 : 40,
+          gap: 0,
+        }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Large hero image */}
         <View
           style={{
-            backgroundColor: T.card,
-            borderRadius: radius.lg,
-            borderWidth: 1,
-            borderColor: T.dividerSoft,
-            padding: 18,
-            gap: 16,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 20,
+            paddingTop: 8,
+            paddingBottom: 20,
           }}
         >
-          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ position: 'relative' }}>
             <ImageThumb
               uri={imageUri}
               source={imageSource}
               size={heroImageSize}
-              cornerRadius={radius.md}
+              cornerRadius={radius.lg}
               fallbackLabel={displayName || categoryLabel}
-              icon={<GarmentSvg kind="shirt" size={Math.round(heroImageSize * 0.48)} />}
+              icon={<GarmentSvg kind="shirt" size={Math.round(heroImageSize * 0.44)} />}
               accessibilityLabel={displayName}
             />
             {backendItem?.cutoutStatus === 'queued' ? (
-              <CutoutBadge style={{ position: 'absolute', top: 10, left: 10 }} />
+              <CutoutBadge style={{ position: 'absolute', top: 12, left: 12 }} />
             ) : null}
-          </View>
-
-          <View style={{ gap: 10 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-              <Pressable accessibilityRole="button" onPress={openNameEditor} style={{ flex: 1, gap: 5 }}>
-                <Text style={{ ...type.title2, color: T.ink }} numberOfLines={2}>
-                  {displayName || t('ask.itemFallback')}
-                </Text>
-                <Text style={{ ...type.caption, color: T.ink3 }}>{t('item.editName')}</Text>
-              </Pressable>
-              <StatusPill
-                kind={draft.status === 'wearable' ? 'ok' : 'danger'}
-                label={tEnum('status', draft.status)}
-              />
-            </View>
-            <Text style={{ ...type.footnote, color: T.ink3 }}>{summaryLine}</Text>
-          </View>
-
-          <View style={{ gap: 10 }}>
-            <Button
-              label={t('item.askOutfit')}
-              onPress={openAskWithItem}
-              icon={<SystemIcon name="sparkle" size={16} color={colors.inverse} strokeWidth={1.9} />}
-              disabled={Boolean(showcaseItem)}
-            />
-            <Button
-              label={t('item.markWornToday')}
-              variant="secondary"
-              onPress={() => undefined}
-              disabled={markWornDisabled || Boolean(showcaseItem)}
-            />
           </View>
         </View>
 
-        <DetailCard title={t('item.section.basic')}>
-          <DetailRow
+        {/* Name + attribute line + status row */}
+        <View style={{ paddingHorizontal: 20, gap: 6, marginBottom: 24 }}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={openNameEditor}
+            style={({ pressed }) => ({ opacity: pressed ? 0.72 : 1 })}
+          >
+            <Text style={{ ...type.title2, color: T.ink }} numberOfLines={2}>
+              {displayName || t('ask.itemFallback')}
+            </Text>
+          </Pressable>
+
+          {attributeLine ? (
+            <Text style={{ ...type.footnote, color: T.ink3 }}>{attributeLine}</Text>
+          ) : null}
+
+          {/* Status row: dot + status label + wear record */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <StatusPill
+              kind={statusKind}
+              label={tEnum('status', draft.status)}
+            />
+            {wearRecordLine ? (
+              <>
+                <Text style={{ ...type.footnote, color: T.ink4 }}>·</Text>
+                <Text style={{ ...type.footnote, color: T.ink3 }}>{wearRecordLine}</Text>
+              </>
+            ) : null}
+          </View>
+        </View>
+
+        {/* Attribute rows card */}
+        <View
+          style={{
+            marginHorizontal: 20,
+            backgroundColor: T.card,
+            borderRadius: radius.md,
+            borderWidth: 1,
+            borderColor: T.dividerSoft,
+            paddingHorizontal: 16,
+            marginBottom: 16,
+          }}
+        >
+          <AttributeRow
             label={t('item.category')}
             value={draft.category ? tEnum('category', draft.category) : null}
             placeholder={t('item.addValue')}
             onPress={() => setActiveField('category')}
+            changeLabel={changeLabel}
             lowConfidence={catLow}
             confidenceScore={reviewed.category ? null : backendItem?.categoryConfidence}
             confidenceLabel={confidencePct(backendItem?.categoryConfidence)}
             onConfirm={catLow ? () => markReviewed('category') : undefined}
             confirmLabel={t('item.review.confirm')}
-            changeLabel={t('item.review.change')}
           />
-          <DetailRow
+          <View style={{ height: 1, backgroundColor: T.dividerSoft }} />
+          <AttributeRow
             label={t('item.color')}
             value={colorLabel}
             placeholder={t('item.addValue')}
             onPress={() => setActiveField('color')}
+            changeLabel={changeLabel}
             lowConfidence={colorLow}
             confidenceScore={reviewed.color ? null : backendItem?.colorConfidence}
             confidenceLabel={confidencePct(backendItem?.colorConfidence)}
             onConfirm={colorLow ? () => markReviewed('color') : undefined}
             confirmLabel={t('item.review.confirm')}
-            changeLabel={t('item.review.change')}
           />
-          <TextDetailRow
+          <View style={{ height: 1, backgroundColor: T.dividerSoft }} />
+          <AttributeRow
+            label={t('item.season')}
+            value={seasonValue}
+            placeholder={t('item.addValue')}
+            onPress={() => setActiveField('season')}
+            changeLabel={changeLabel}
+          />
+          <View style={{ height: 1, backgroundColor: T.dividerSoft }} />
+          <AttributeRow
+            label={t('item.occasion')}
+            value={occasionValue}
+            placeholder={t('item.addValue')}
+            onPress={() => setActiveField('occasion')}
+            changeLabel={changeLabel}
+          />
+          <View style={{ height: 1, backgroundColor: T.dividerSoft }} />
+          <AttributeRow
+            label={t('item.fit')}
+            value={fitValue}
+            placeholder={t('item.addValue')}
+            onPress={() => setActiveField('fit')}
+            changeLabel={changeLabel}
+          />
+          <View style={{ height: 1, backgroundColor: T.dividerSoft }} />
+          <TextAttributeRow
             label={t('item.location')}
             value={draft.location ?? ''}
             placeholder={t('item.addValue')}
             inputRef={locationInputRef}
             onChangeText={(location) => setDraft((c) => ({ ...c, location }))}
-          />
-        </DetailCard>
-
-        <DetailCard title={t('item.section.style')}>
-          <DetailRow
-            label={t('item.season')}
-            value={seasonValue}
-            placeholder={t('item.addValue')}
-            onPress={() => setActiveField('season')}
-          />
-          <DetailRow
-            label={t('item.occasion')}
-            value={occasionValue}
-            placeholder={t('item.addValue')}
-            onPress={() => setActiveField('occasion')}
-          />
-          <DetailRow
-            label={t('item.fit')}
-            value={fitValue}
-            placeholder={t('item.addValue')}
-            onPress={() => setActiveField('fit')}
+            changeLabel={changeLabel}
           />
           {suggestionApplied ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingBottom: 10 }}>
               <SystemIcon name="sparkle" size={12} color={T.accent} strokeWidth={1.9} />
               <Text style={{ ...type.caption, color: T.ink3 }}>{t('item.suggest.applied')}</Text>
             </View>
           ) : null}
-        </DetailCard>
-
-        <View
-          style={{
-            backgroundColor: T.card,
-            borderRadius: radius.md,
-            borderWidth: 1,
-            borderColor: T.dividerSoft,
-            padding: 16,
-            gap: 12,
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <SystemIcon name="sparkle" size={16} color={T.accent} strokeWidth={1.9} />
-            <Text style={{ ...type.footnote, fontWeight: '700', color: T.ink }}>
-              {t('item.aiAdvice.title')}
-            </Text>
-          </View>
-          <Text style={{ ...type.callout, color: T.ink2 }}>{aiAdvice}</Text>
-          <Button
-            label={t('item.aiAdvice.cta')}
-            variant="tonal"
-            onPress={openAskWithItem}
-            icon={<SystemIcon name="sparkle" size={15} color={T.ink} strokeWidth={1.9} />}
-            disabled={Boolean(showcaseItem)}
-          />
         </View>
 
+        {/* NOTE: 常和它一起穿 section omitted — no related-items API endpoint exists. */}
+
+        {/* Black CTA: 用这件搭一套 (54h) */}
+        <View style={{ marginHorizontal: 20, marginBottom: 12 }}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={openAskWithItem}
+            disabled={!!showcaseItem}
+            style={({ pressed }) => ({
+              height: 54,
+              backgroundColor: showcaseItem ? T.ink3 : colors.label,
+              borderRadius: radius.md,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.82 : 1,
+            })}
+          >
+            <Text
+              style={{
+                ...type.headline,
+                color: colors.inverse,
+                fontWeight: '600',
+              }}
+            >
+              {t('item.askOutfit')}
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Text links: 编辑 · 删除 */}
         <View
           style={{
-            backgroundColor: T.card,
-            borderRadius: radius.md,
-            borderWidth: 1,
-            borderColor: T.dividerSoft,
-            padding: 16,
-            gap: 12,
+            flexDirection: 'row',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 16,
+            paddingBottom: 4,
           }}
         >
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <Text style={{ ...type.footnote, fontWeight: '700', color: T.ink }}>{t('item.wearLog')}</Text>
-            <Text style={{ ...type.caption, color: T.ink3 }}>{t('item.wearLog.period')}</Text>
-          </View>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 3 }}>
-            {intensity.map((v, i) => (
-              <View
-                key={i}
-                style={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: 2,
-                  backgroundColor: LOG_COLORS[v] ?? LOG_COLORS[0],
-                }}
-              />
-            ))}
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
-            <Text style={{ ...type.caption, color: T.ink3, flex: 1 }}>
-              {t('item.wornTotal', { count: backendItem?.wearCount ?? 0 })}
-              {backendItem?.purchasePrice && (backendItem?.wearCount ?? 0) > 0
-                ? ` · ${t('item.costPerWear', { amount: Math.round(backendItem.purchasePrice / Math.max(1, backendItem.wearCount ?? 1)) })}`
-                : ''}
-            </Text>
-            <Text style={{ ...type.caption, color: T.ink3 }}>
-              {backendItem?.lastWorn
-                ? t('item.lastWorn', { date: backendItem.lastWorn })
-                : t('item.wearLog.period')}
-            </Text>
-          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={openNameEditor}
+            hitSlop={10}
+            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+          >
+            <Text style={{ ...type.footnote, color: T.ink3 }}>{t('item.edit')}</Text>
+          </Pressable>
+          <Text style={{ ...type.footnote, color: T.ink4 }}>·</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={confirmDelete}
+            disabled={!!showcaseItem}
+            hitSlop={10}
+            style={({ pressed }) => ({
+              opacity: showcaseItem ? 0.35 : pressed ? 0.6 : 1,
+            })}
+          >
+            <Text style={{ ...type.footnote, color: T.ink3 }}>{t('common.delete')}</Text>
+          </Pressable>
         </View>
       </ScrollView>
 
+      {/* Unsaved changes bar */}
       {isDirty ? (
         <View
           style={{
@@ -818,6 +846,7 @@ export function ItemDetailScreen({ navigation, route }: Props) {
         </View>
       ) : null}
 
+      {/* More actions sheet */}
       <BottomSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('item.moreActions')}>
         {/* 2×2 action grid — card cells, icon above label */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
@@ -862,6 +891,7 @@ export function ItemDetailScreen({ navigation, route }: Props) {
         </View>
       </BottomSheet>
 
+      {/* Name editor sheet */}
       <BottomSheet visible={nameSheetOpen} onClose={() => setNameSheetOpen(false)} title={t('item.editName')}>
         <TextInput
           value={nameDraft}
@@ -898,6 +928,7 @@ export function ItemDetailScreen({ navigation, route }: Props) {
         </View>
       </BottomSheet>
 
+      {/* Quick-edit pickers — all preserved */}
       <OptionPickerSheet
         mode="single"
         visible={activeField === 'category'}

@@ -18,6 +18,7 @@ import { createPresignedUpload, uploadFileUriToPresigned } from '@/api/uploads';
 import { Button } from '@/components/ui/Button';
 import { SiriOrb } from '@/components/ui/SiriOrb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
+import { AddSourceSheet } from '@/components/wardrobe/AddSourceSheet';
 import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { useImportDraftStore } from '@/store/importDraft';
@@ -51,19 +52,16 @@ type Props = NativeStackScreenProps<WardrobeStackParamList, 'AddItem'>;
 // Album multi-select cap. Backend stays one-task-per-image; we just fan out.
 const MAX_IMPORT_BATCH = 9;
 
-const P = {
-  bg: '#F4F1EA',
-  surface: '#FFFCF5',
-  surfaceSoft: '#E9E6DA',
-  ink: '#151411',
-  muted: '#777168',
-  faint: '#A9A298',
-  line: '#D9D4C8',
-  rail: '#3E4B45',
-  sage: '#C8D3C1',
-  steel: '#7F8D8A',
-  black: '#15120F',
-};
+const Tok = {
+  bg: colors.groupedBackground,
+  card: colors.elevated,
+  cardSoft: colors.fill,
+  ink: colors.label,
+  muted: colors.tertiaryLabel,
+  faint: colors.quaternaryLabel,
+  line: colors.separator,
+  rail: colors.secondaryLabel,
+} as const;
 
 export function AddItemScreen({ navigation }: Props) {
   const { t, locale } = useT();
@@ -71,6 +69,7 @@ export function AddItemScreen({ navigation }: Props) {
   const showToast = useToastStore((state) => state.show);
   const track = useTrack();
 
+  const [sourceSheetVisible, setSourceSheetVisible] = useState(true);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [submittingLink, setSubmittingLink] = useState(false);
@@ -237,7 +236,7 @@ export function AddItemScreen({ navigation }: Props) {
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
           hitSlop={10}
         >
-          <SystemIcon name="chevronLeft" size={24} color={P.ink} strokeWidth={2.2} />
+          <SystemIcon name="chevronLeft" size={24} color={Tok.ink} strokeWidth={2.2} />
         </Pressable>
         <Text style={styles.headerTitle}>{t('add.title')}</Text>
         <View style={styles.headerSpacer} />
@@ -259,7 +258,7 @@ export function AddItemScreen({ navigation }: Props) {
           <View style={styles.scanHaloOuter}>
             <View style={styles.scanHaloMid}>
               <View style={styles.scanHaloInner}>
-                <SystemIcon name="camera" size={35} color={P.ink} strokeWidth={1.55} />
+                <SystemIcon name="camera" size={35} color={Tok.ink} strokeWidth={1.55} />
               </View>
             </View>
           </View>
@@ -279,6 +278,31 @@ export function AddItemScreen({ navigation }: Props) {
         </View>
       </ScrollView>
 
+      <AddSourceSheet
+        visible={sourceSheetVisible && !linkModalOpen}
+        onClose={() => {
+          setSourceSheetVisible(false);
+          navigation.goBack();
+        }}
+        onCamera={() => {
+          setSourceSheetVisible(false);
+          void pickFromCamera();
+        }}
+        onAlbum={() => {
+          setSourceSheetVisible(false);
+          void pickFromLibrary();
+        }}
+        onOutfit={() => {
+          // No dedicated outfit-extraction handler yet; reuses album picker.
+          // TODO: wire to outfit-extract flow once backend supports it.
+          setSourceSheetVisible(false);
+          void pickFromLibrary();
+        }}
+        onLink={() => {
+          setSourceSheetVisible(false);
+          setLinkModalOpen(true);
+        }}
+      />
       <LinkImportModal
         visible={linkModalOpen}
         value={linkUrl}
@@ -321,7 +345,7 @@ function DockAction({
       style={({ pressed }) => [styles.dockAction, pressed && styles.pressed, disabled && styles.disabled]}
     >
       <View style={styles.dockIcon}>
-        <SystemIcon name={icon} size={21} color={P.ink} strokeWidth={1.9} />
+        <SystemIcon name={icon} size={21} color={Tok.ink} strokeWidth={1.9} />
       </View>
       <Text style={styles.dockLabel}>{label}</Text>
     </Pressable>
@@ -373,7 +397,7 @@ function LinkImportModal({
             value={value}
             onChangeText={onChange}
             placeholder={placeholder}
-            placeholderTextColor={P.faint}
+            placeholderTextColor={Tok.faint}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="url"
@@ -415,7 +439,7 @@ function ProcessingOverlay({ label, progress }: { label: string | null; progress
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: P.bg,
+    backgroundColor: Tok.bg,
   },
   header: {
     paddingTop: 46,
@@ -435,7 +459,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: P.ink,
+    color: Tok.ink,
     letterSpacing: 0,
   },
   headerSpacer: {
@@ -452,7 +476,7 @@ const styles = StyleSheet.create({
   captureStage: {
     minHeight: 520,
     borderRadius: 34,
-    backgroundColor: P.surface,
+    backgroundColor: Tok.card,
     overflow: 'hidden',
     padding: 22,
     justifyContent: 'flex-end',
@@ -468,7 +492,7 @@ const styles = StyleSheet.create({
     left: 58,
     right: 58,
     height: 2,
-    backgroundColor: P.ink,
+    backgroundColor: Tok.ink,
     opacity: 0.72,
   },
   hangerHook: {
@@ -476,7 +500,7 @@ const styles = StyleSheet.create({
     top: 44,
     width: 1,
     height: 64,
-    backgroundColor: P.ink,
+    backgroundColor: Tok.ink,
     opacity: 0.24,
   },
   hangerLeft: {
@@ -493,7 +517,7 @@ const styles = StyleSheet.create({
     height: 214,
     borderRadius: 107,
     borderWidth: 1,
-    borderColor: 'rgba(62,75,69,0.18)',
+    borderColor: colors.separatorSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -502,16 +526,16 @@ const styles = StyleSheet.create({
     height: 158,
     borderRadius: 79,
     borderWidth: 1,
-    borderColor: 'rgba(62,75,69,0.28)',
+    borderColor: colors.separator,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(200,211,193,0.22)',
+    backgroundColor: colors.secondaryElevated,
   },
   scanHaloInner: {
     width: 92,
     height: 92,
     borderRadius: 46,
-    backgroundColor: P.bg,
+    backgroundColor: Tok.bg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -521,7 +545,7 @@ const styles = StyleSheet.create({
     left: 44,
     right: 44,
     height: 1,
-    backgroundColor: P.rail,
+    backgroundColor: Tok.rail,
     opacity: 0.32,
   },
   garment: {
@@ -547,8 +571,8 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: P.line,
-    backgroundColor: P.surface,
+    borderColor: Tok.line,
+    backgroundColor: Tok.card,
     zIndex: 2,
   },
   garmentSleeve: {
@@ -557,7 +581,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 76,
     borderRadius: 14,
-    backgroundColor: P.surfaceSoft,
+    backgroundColor: Tok.cardSoft,
   },
   leftSleeve: {
     left: 2,
@@ -574,9 +598,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 118,
     borderRadius: 18,
-    backgroundColor: '#D8CEC0',
+    backgroundColor: colors.fill,
     borderWidth: 1,
-    borderColor: 'rgba(21,20,17,0.06)',
+    borderColor: colors.separatorSoft,
   },
   garmentPlacket: {
     position: 'absolute',
@@ -584,12 +608,12 @@ const styles = StyleSheet.create({
     top: 14,
     bottom: 14,
     width: 1,
-    backgroundColor: 'rgba(21,20,17,0.2)',
+    backgroundColor: colors.separator,
   },
   stageFooter: {
     gap: 8,
     borderRadius: 26,
-    backgroundColor: P.black,
+    backgroundColor: Tok.ink,
     paddingHorizontal: 24,
     paddingVertical: 18,
   },
@@ -600,7 +624,8 @@ const styles = StyleSheet.create({
   },
   stageSub: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.58)',
+    color: colors.inverse,
+    opacity: 0.6,
   },
   importDock: {
     marginTop: 16,
@@ -611,9 +636,9 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 96,
     borderRadius: 24,
-    backgroundColor: 'rgba(255,252,245,0.82)',
+    backgroundColor: Tok.card,
     borderWidth: 1,
-    borderColor: 'rgba(21,20,17,0.06)',
+    borderColor: colors.separatorSoft,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 9,
@@ -624,22 +649,22 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: P.bg,
+    backgroundColor: Tok.bg,
   },
   dockLabel: {
     fontSize: 13,
     fontWeight: '700',
-    color: P.ink,
+    color: Tok.ink,
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(21,18,15,0.42)',
+    backgroundColor: 'rgba(26,23,20,0.42)',
     justifyContent: 'flex-end',
     padding: 14,
   },
   linkSheet: {
     borderRadius: 30,
-    backgroundColor: P.surface,
+    backgroundColor: Tok.card,
     padding: 20,
     paddingBottom: 24,
     gap: 16,
@@ -650,21 +675,21 @@ const styles = StyleSheet.create({
     width: 38,
     height: 4,
     borderRadius: 2,
-    backgroundColor: P.line,
+    backgroundColor: Tok.line,
     marginBottom: 2,
   },
   modalTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: P.ink,
+    color: Tok.ink,
   },
   linkInput: {
     minHeight: 54,
     borderRadius: 18,
     paddingHorizontal: 16,
     fontSize: 15,
-    color: P.ink,
-    backgroundColor: P.bg,
+    color: Tok.ink,
+    backgroundColor: Tok.bg,
   },
   modalSubmit: {
     minHeight: 54,
@@ -672,7 +697,7 @@ const styles = StyleSheet.create({
   },
   processingBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(21,18,15,0.32)',
+    backgroundColor: 'rgba(26,23,20,0.32)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 28,
@@ -680,7 +705,7 @@ const styles = StyleSheet.create({
   processingCard: {
     width: '100%',
     borderRadius: 28,
-    backgroundColor: P.surface,
+    backgroundColor: Tok.card,
     padding: 24,
     alignItems: 'center',
     gap: 14,
@@ -689,19 +714,19 @@ const styles = StyleSheet.create({
   processingTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: P.ink,
+    color: Tok.ink,
   },
   progressTrack: {
     width: '100%',
     height: 5,
     borderRadius: 3,
-    backgroundColor: P.surfaceSoft,
+    backgroundColor: Tok.cardSoft,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
     borderRadius: 3,
-    backgroundColor: P.rail,
+    backgroundColor: Tok.rail,
   },
   pressed: {
     opacity: 0.82,

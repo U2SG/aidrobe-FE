@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
 import type { I18nKey } from '@/i18n';
 import { colors, radius, type } from '@/theme/design';
@@ -9,60 +11,119 @@ export type ContextOverrideSuggestion = {
   id: string;
   labelKey: I18nKey;
   payload: string;
+  // Optional icon from SystemIcon's name union. Chips without one render text only.
+  iconName?: 'suitcase' | 'compass';
 };
 
 type Props = {
+  visible: boolean;
+  onClose: () => void;
   suggestions: ContextOverrideSuggestion[];
   onSelectSuggestion: (payload: string) => void;
   onSubmitText: (text: string) => void;
   disabled?: boolean;
 };
 
-// Today v2 context override (brief v0.9 §5.4): suggestions-first. The default
-// affordance is a row of tappable chips, not a blank text box — one tap submits
-// an override. Free text is the secondary path, tucked behind the chips.
-export function ContextOverrideBar({ suggestions, onSelectSuggestion, onSubmitText, disabled }: Props) {
+// Today v2 context override sheet (brief v0.9 §5.4): bottom sheet, suggestions
+// first (primary), free-text input second (secondary). Chips fire immediately
+// and close. The text input submits via the inline send button or the full-width
+// CTA; cancel dismisses without action.
+export function ContextOverrideBar({
+  visible,
+  onClose,
+  suggestions,
+  onSelectSuggestion,
+  onSubmitText,
+  disabled,
+}: Props) {
   const { t } = useT();
   const [text, setText] = useState('');
 
-  const submitText = () => {
+  const handleChip = (payload: string) => {
+    if (disabled) return;
+    onSelectSuggestion(payload);
+    onClose();
+  };
+
+  const handleSubmitText = () => {
     const trimmed = text.trim();
     if (!trimmed) return;
     onSubmitText(trimmed);
     setText('');
+    onClose();
   };
 
-  return (
-    <View style={{ gap: 12 }}>
-      <Text style={{ ...type.footnote, fontWeight: '600', color: colors.label }}>
-        {t('today.override.prompt')}
-      </Text>
+  const handleClose = () => {
+    setText('');
+    onClose();
+  };
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {suggestions.map((s) => (
-          <Pressable
-            key={s.id}
-            accessibilityRole="button"
-            disabled={disabled}
-            onPress={() => onSelectSuggestion(s.payload)}
-            style={({ pressed }) => ({
-              minHeight: 36,
-              paddingHorizontal: 14,
-              justifyContent: 'center',
-              borderRadius: radius.pill,
-              borderWidth: 1,
-              borderColor: colors.separator,
-              backgroundColor: colors.elevated,
-              opacity: disabled ? 0.5 : pressed ? 0.86 : 1,
-            })}
-          >
-            <Text style={{ ...type.caption, fontWeight: '600', color: colors.label }}>
-              {t(s.labelKey)}
-            </Text>
-          </Pressable>
+  // Chips arranged in a 2-column grid matching the prototype layout.
+  const chipRows: ContextOverrideSuggestion[][] = [];
+  for (let i = 0; i < suggestions.length; i += 2) {
+    chipRows.push(suggestions.slice(i, i + 2));
+  }
+
+  return (
+    <BottomSheet visible={visible} onClose={handleClose}>
+      {/* Title + subtitle */}
+      <View style={{ gap: 4 }}>
+        <Text style={{ ...type.headline, color: colors.label, textAlign: 'center' }}>
+          {t('today.override.prompt')}
+        </Text>
+        <Text style={{ ...type.footnote, color: colors.tertiaryLabel, textAlign: 'center' }}>
+          {t('today.override.subtitle')}
+        </Text>
+      </View>
+
+      {/* Chips — 2-column grid, primary affordance */}
+      <View style={{ gap: 10 }}>
+        {chipRows.map((row, rowIdx) => (
+          <View key={rowIdx} style={{ flexDirection: 'row', gap: 10 }}>
+            {row.map((s) => (
+              <Pressable
+                key={s.id}
+                accessibilityRole="button"
+                disabled={disabled}
+                onPress={() => handleChip(s.payload)}
+                style={({ pressed }) => ({
+                  flex: 1,
+                  minHeight: 72,
+                  borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.separator,
+                  backgroundColor: colors.elevated,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  padding: 12,
+                  opacity: disabled ? 0.5 : pressed ? 0.8 : 1,
+                })}
+              >
+                {s.iconName ? (
+                  <SystemIcon name={s.iconName} size={20} color={colors.secondaryLabel} strokeWidth={1.6} />
+                ) : null}
+                <Text style={{ ...type.callout, fontWeight: '600', color: colors.label, textAlign: 'center' }}>
+                  {t(s.labelKey)}
+                </Text>
+              </Pressable>
+            ))}
+            {/* Pad the last row if it has only one chip */}
+            {row.length === 1 ? <View style={{ flex: 1 }} /> : null}
+          </View>
         ))}
       </View>
 
+      {/* Divider label — secondary affordance transition */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={{ flex: 1, height: 1, backgroundColor: colors.separatorSoft }} />
+        <Text style={{ ...type.footnote, color: colors.quaternaryLabel }}>
+          {t('today.override.orType')}
+        </Text>
+        <View style={{ flex: 1, height: 1, backgroundColor: colors.separatorSoft }} />
+      </View>
+
+      {/* Free-text input row */}
       <View
         style={{
           flexDirection: 'row',
@@ -70,40 +131,84 @@ export function ContextOverrideBar({ suggestions, onSelectSuggestion, onSubmitTe
           gap: 8,
           borderRadius: radius.md,
           backgroundColor: colors.secondaryElevated,
-          paddingLeft: 14,
+          paddingLeft: 12,
           paddingRight: 6,
         }}
       >
+        <SystemIcon name="search" size={16} color={colors.quaternaryLabel} strokeWidth={1.6} />
         <TextInput
           value={text}
           onChangeText={setText}
           editable={!disabled}
           placeholder={t('today.override.placeholder')}
           placeholderTextColor={colors.quaternaryLabel}
-          onSubmitEditing={submitText}
+          onSubmitEditing={handleSubmitText}
           returnKeyType="send"
           // iOS PWA: lock font-size >= 16 to defeat input auto-zoom.
           style={{ flex: 1, ...type.body, color: colors.label, paddingVertical: 12 }}
         />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('today.override.submit')}
-          disabled={disabled || !text.trim()}
-          onPress={submitText}
+        {text.trim() ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('today.override.submit')}
+            onPress={handleSubmitText}
+            disabled={disabled}
+            style={({ pressed }) => ({
+              height: 34,
+              paddingHorizontal: 14,
+              borderRadius: radius.pill,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: colors.label,
+              opacity: pressed ? 0.75 : 1,
+            })}
+          >
+            <Text style={{ ...type.caption, fontWeight: '700', color: colors.inverse }}>
+              {t('today.override.submit')}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
+
+      {/* Primary CTA — submits free text if present; disabled when empty */}
+      <Pressable
+        accessibilityRole="button"
+        disabled={disabled || !text.trim()}
+        onPress={handleSubmitText}
+        style={({ pressed }) => ({
+          height: 50,
+          borderRadius: radius.md,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: text.trim() ? colors.label : colors.fill,
+          opacity: pressed ? 0.75 : 1,
+        })}
+      >
+        <Text
           style={{
-            height: 34,
-            paddingHorizontal: 14,
-            borderRadius: radius.pill,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: text.trim() ? colors.label : colors.fill,
+            ...type.headline,
+            color: text.trim() ? colors.inverse : colors.quaternaryLabel,
           }}
         >
-          <Text style={{ ...type.caption, fontWeight: '700', color: text.trim() ? colors.inverse : colors.quaternaryLabel }}>
-            {t('today.override.submit')}
-          </Text>
-        </Pressable>
-      </View>
-    </View>
+          {t('today.override.refresh')}
+        </Text>
+      </Pressable>
+
+      {/* Cancel */}
+      <Pressable
+        accessibilityRole="button"
+        onPress={handleClose}
+        style={({ pressed }) => ({
+          height: 44,
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: pressed ? 0.6 : 1,
+        })}
+      >
+        <Text style={{ ...type.callout, color: colors.tertiaryLabel }}>
+          {t('common.cancel')}
+        </Text>
+      </Pressable>
+    </BottomSheet>
   );
 }

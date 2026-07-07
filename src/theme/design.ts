@@ -12,6 +12,10 @@ export const colors = {
   quaternaryLabel: '#A7A09A',
   accent: '#B08D5B',
   accentSoft: '#F4E8D1',
+  // Warm-gold agent glow — quotation marks, star/sparkle accents; not for body
+  // text. Quiet readable body for soft secondary copy. From the V2 handoff.
+  agentGlow: '#D8B77A',
+  quietText: '#6B645B',
   success: '#3F8060',
   successBg: '#EDF4EE',
   warning: '#C8924A',

@@ -13,16 +13,37 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'common.viewAll': 'View all',
   'common.back': 'Back',
   'common.all': 'All',
+  'common.clear': 'Clear',
   'common.notSet': 'Not set',
+
+  // --- V2 primary tabs ------------------------------------------------------
+  'tabs.today': 'Today',
+  'tabs.wardrobe': 'Wardrobe',
+  'tabs.ask': 'Ask',
+  'tabs.profile': 'Me',
 
   // --- Onboarding ----------------------------------------------------------
   'onboarding.privacyPolicy': 'View privacy policy',
   'onboarding.privacyPolicyOpenFailed': "Couldn't open the privacy policy. Please try again later.",
+  'permission.stepLabel': '02',
+  'permission.title': 'Let YIRAN get to know your wardrobe',
+  'permission.body':
+    'Photographing items and picking from your photos both need these. You can enable them later in settings too.',
+  'permission.cta': 'Allow access',
+  'permission.skip': 'Maybe later',
+  'permission.footnote': 'You can change permissions anytime in Profile.',
+
+  // --- Welcome screen (v2 restyle) -----------------------------------------
+  'welcome.title': 'Dress like yourself, today.',
+  'welcome.subtitle': 'No wardrobe spreadsheet needed. Hand YIRAN your everyday pieces and spend a little less time deciding.',
+  'welcome.sparkleHint': 'Add a few regulars and your first look is ready.',
+  'welcome.cta': 'Start organising your wardrobe',
+  'welcome.loginExisting': 'Sign in to existing account',
 
   // --- Settings ------------------------------------------------------------
   'settings.title': 'Settings',
   'settings.subtitle':
-    'Aidrobe keeps only the V1 Slim essentials: departure time, data notes and privacy info.',
+    'YIRAN keeps only the V1 Slim essentials: departure time, data notes and privacy info.',
   'settings.section.general': 'General',
   'settings.section.city': 'City',
   'settings.section.wardrobe': 'Wardrobe',
@@ -88,6 +109,9 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'wardrobe.insights.mainColor': 'Main color',
   'wardrobe.insights.mostWorn': 'Most worn',
   'wardrobe.insights.idle': 'Idle',
+  'wardrobe.idle.hint': '{count} items missing for a month — take a look.',
+  'wardrobe.item.wornDaysAgo': 'Worn {days}d ago',
+  'wardrobe.item.notWornDays': 'Not worn {days}d',
 
   // --- Item detail ---------------------------------------------------------
   'item.name': 'Name',
@@ -128,11 +152,11 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'item.editOccasion': 'Choose occasions',
   'item.editFit': 'Choose fit',
   'item.color.placeholder': 'Enter a color',
-  'item.aiAdvice.title': '✨ Aidrobe suggestion',
+  'item.aiAdvice.title': '✨ YIRAN suggestion',
   'item.aiAdvice.body': 'This {color} {category} works best as a starting piece for everyday outfits. Pair it with clean lines and restrained colors first.',
   'item.aiAdvice.neutralColor': 'versatile',
   'item.aiAdvice.neutralCategory': 'item',
-  'item.aiAdvice.cta': 'Let Aidrobe style it',
+  'item.aiAdvice.cta': 'Let YIRAN style it',
   'item.unsavedChanges': 'You have unsaved changes',
   'item.action.reidentify': 'Re-identify',
   'item.action.moveLocation': 'Move location',
@@ -145,6 +169,8 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'item.bulk.addSeason': 'Add season',
   'item.bulk.addOccasion': 'Add occasion',
   'item.bulk.setCategory': 'Set category',
+  'item.change': 'Change',
+  'item.edit': 'Edit',
   'common.done': 'Done',
 
   // --- Add item ------------------------------------------------------------
@@ -166,6 +192,21 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'add.cameraPermission': 'Camera permission needed',
   'add.albumPermission': 'Photo library permission needed',
   'add.someSkipped': '{count} could not be imported and were skipped',
+
+  // --- Import failure ------------------------------------------------------
+  'import.failure.title': 'Import failed',
+  'import.failure.retake': 'Choose another photo',
+  'import.failure.backToWardrobe': 'Back to wardrobe',
+  'import.failure.label.upload_failed': 'Upload interrupted',
+  'import.failure.label.unsupported_format': 'Unsupported format',
+  'import.failure.label.too_large': 'Image too large',
+  'import.failure.label.recognition_failed': 'Not recognised',
+  'import.failure.label.network_error': 'Network dropped',
+  'import.failure.hint.upload_failed': 'The upload channel did not complete. Try another photo or check your connection.',
+  'import.failure.hint.unsupported_format': 'Use a JPEG, PNG, or WebP instead.',
+  'import.failure.hint.too_large': 'Compress to under 10 MB then try again.',
+  'import.failure.hint.recognition_failed': 'Try a photo with a cleaner background and the full garment in view.',
+  'import.failure.hint.network_error': 'Try again once your connection is back.',
 
   // --- Import confirm ------------------------------------------------------
   'import.recognizing': 'Recognizing item',
@@ -199,8 +240,8 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'import.saveSelected': 'Save {count} selected',
 
   // --- Ask Aidrobe ---------------------------------------------------------
-  'ask.title': 'Ask Aidrobe',
-  'ask.barHint': 'Ask Aidrobe, e.g. "What goes with this"',
+  'ask.title': 'Ask YIRAN',
+  'ask.barHint': 'Ask YIRAN, e.g. "What goes with this"',
   'ask.relatedItems': 'Related items in your wardrobe',
   'ask.itemFallback': 'Item',
   'ask.moreItems': '{count} more',
@@ -223,6 +264,15 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'ask.history.answerFallback': 'No answer was saved for this Ask.',
   'ask.error.unavailable': 'Q&A is still being set up, please try later.',
   'ask.error.generic': 'Something went wrong, please try again later.',
+  'ask.v2.subtitle': 'Special occasions, travel, shopping — just say it.',
+  'ask.v2.cardTitle': 'What would you like to adjust today?',
+  'ask.v2.cardSub': "I'll answer based on your real wardrobe.",
+  'ask.v2.placeholder': 'Tell me how you want to dress today…',
+  'ask.v2.inputHint': 'Enter occasion, weather, mood, or a specific item.',
+  'ask.v2.s1': 'I have a party tonight, I want to look sharp',
+  'ask.v2.s2': "I'll be walking a lot today, help me find comfy shoes",
+  'ask.v2.s3': "I'm going on a trip next week, help me pack",
+  'ask.v2.s4': 'What else can I do with my off-white shirt',
   'ask.appliedConstraints': 'Carried over: {list}',
 
   // --- Shopping sense-check ------------------------------------------------
@@ -266,11 +316,11 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   // --- Discover empty states ----------------------------------------------
   'discover.inspirations.empty.title': 'No style inspiration yet',
   'discover.inspirations.empty.subtitle':
-    'Save outfits, magazine screenshots, or social inspiration you like so Aidrobe can learn your style.',
+    'Save outfits, magazine screenshots, or social inspiration you like so YIRAN can learn your style.',
   'discover.inspirations.empty.cta': 'Add first inspiration',
   'discover.packing.empty.title': 'No packing lists yet',
   'discover.packing.empty.subtitle':
-    'Choose trip length and scenes, and Aidrobe will generate a checklist from your wardrobe.',
+    'Choose trip length and scenes, and YIRAN will generate a checklist from your wardrobe.',
   'discover.packing.empty.cta': 'Create packing list',
   // FE#73 packing planner view (BE#68 plan)
   'packing.plan.dailyTitle': 'Daily outfits',
@@ -284,7 +334,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
 
   // --- Wardrobe report -----------------------------------------------------
   'wardrobeReport.shareMessage':
-    'My {label} wardrobe recap · Aidrobe\n{totalWears} wears, {adoptionRate}% recommendation adoption',
+    'My {label} wardrobe recap · YIRAN\n{totalWears} wears, {adoptionRate}% recommendation adoption',
   'wardrobeReport.shareTopItem': 'Signature item: {title} ({count} wears)',
   'wardrobeReport.shareKeywords': 'Style keywords: {keywords}',
 
@@ -296,7 +346,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'today.swapAnother': 'Swap',
   'today.viewDetail': 'View detail',
   'today.shareThis': 'Share this look',
-  'today.shareMessage': 'My look today "{title}" · Aidrobe',
+  'today.shareMessage': 'My look today "{title}" · YIRAN',
   'today.noVariant': 'No look yet',
   'today.needMoreItems': 'This look needs more items to assemble',
   'today.notEnoughData': 'Not enough wardrobe data yet',
@@ -334,9 +384,9 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'today.defaultLocation': 'Main closet',
 
   // --- Today v2 (mode-aware, single outfit) --------------------------------
-  'today.mode.morning.title': 'Today, just right',
+  'today.mode.morning.title': 'Good morning',
   'today.mode.morning.subtitle': 'One look to see before you head out',
-  'today.mode.daytime.title': "Today's look is still here",
+  'today.mode.daytime.title': "Today's look, ready when you are",
   'today.mode.daytime.subtitle': 'Swap or adjust anytime',
   'today.mode.evening.title': 'You can set up tomorrow like this',
   'today.mode.evening.subtitle': "Tomorrow's look, set aside for you",
@@ -350,6 +400,14 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'today.v2.swap': 'Swap',
   'today.v2.dislike': 'Not for me',
   'today.v2.why': 'Why',
+  'today.v2.viewDetail': 'View detail',
+  'today.v2.favorite': 'Favorite',
+  'today.v2.unfavorite': 'Unfavorite',
+  'today.v2.greetingWithName': 'Good morning, {name}',
+  'today.v2.greeting': 'Good morning',
+  'today.v2.departureCountdown': '{minutes} min to leave · {scene}',
+  'today.v2.leaveNow': 'Time to go · {scene}',
+  'today.v2.ringLabel': 'leave',
   'today.v2.prepHint': '{minutes} min to prep',
   'today.v2.tomorrowPreview': 'Tomorrow preview · set aside',
   'today.override.prompt': 'Anything special today?',
@@ -367,7 +425,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'today.reasonSource.preference': 'Your preferences',
   'today.reasonSource.style': 'Style inspiration',
   'today.reasonSource.indoorClimate': 'Indoor comfort',
-  'today.reasonSource.llm': 'Aidrobe call',
+  'today.reasonSource.llm': 'YIRAN call',
 
   // --- First Outfit activation (brief §6) ----------------------------------
   'firstOutfit.processing.title': 'Putting together your first look',
@@ -385,10 +443,13 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'firstOutfit.addSpecific': 'Add a {slot}',
   'firstOutfit.addGeneric': 'Add one more',
   'firstOutfit.ready.title': 'Your first look is ready',
-  'firstOutfit.ready.subtitle': "Start here — tomorrow gets to know you better.",
+  'firstOutfit.ready.subtitle': 'Based on what you just added, here is your safest starting look.',
+  'firstOutfit.ready.quote': "Start here — tomorrow gets to know you better.",
   'firstOutfit.badge': 'Your first look',
   'firstOutfit.title': "Today's look",
-  'firstOutfit.singleHint': 'This is the one look for now — a few more items unlock more.',
+  'firstOutfit.reasonsHeader': 'Why this look works best',
+  'firstOutfit.singleHint': 'This is the only feasible look right now — add a few more pieces to unlock more.',
+  'firstOutfit.addMore': 'Add a few more',
   'firstOutfit.wear': 'Try this on',
   'firstOutfit.failed.title': "Couldn't build one this time",
   'firstOutfit.failed.body': 'It may be the network — try again in a moment.',
@@ -397,22 +458,33 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   // --- Profile v2 (trust surface, brief §10) -------------------------------
   'profile.title': 'Profile',
   'profile.subtitle': 'Your wardrobe is yours alone.',
+  'profile.section.aidrobe': 'YIRAN & you',
+  'profile.section.daily': 'Daily settings',
+  'profile.section.privacy': 'Privacy & data',
   'profile.section.data': 'Your data',
   'profile.section.preferences': 'Preferences & settings',
   'profile.section.account': 'Account',
   'profile.section.danger': 'Data & account',
+  'profile.row.memory': 'What YIRAN remembers about you',
+  'profile.row.memory.sub': 'View, correct, or delete',
+  'profile.row.inspirations': 'Style inspiration',
   'profile.row.dataTrust': 'Privacy & data',
-  'profile.row.memory': 'What Aidrobe remembers about you',
+  'profile.row.dataTrust.sub': 'View how your data is used and handled',
   'profile.row.settings': 'More settings',
+  'profile.row.permissions': 'Permissions',
+  'profile.row.departureTime': 'Departure time',
+  'profile.row.location': 'Location & weather',
+  'profile.row.language': 'Language',
   'profile.row.export': 'Export my data',
   'profile.row.signOut': 'Sign out',
   'profile.row.clearData': 'Clear all data',
-  'profile.row.deactivate': 'Delete account',
+  'profile.row.deactivate': 'Delete data & account',
+  'profile.hint.dataOwnership': 'Your data is yours alone. You can view, correct, or delete it at any time.',
   'profile.export.requested': "Export requested — we'll let you know when it's ready.",
   'profile.clearData.title': 'Clear all data',
   'profile.clearData.unavailable':
     "There's no one-tap clear yet. You can delete items one by one from item detail; it'll live here later.",
-  'profile.deactivate.title': 'Delete account',
+  'profile.deactivate.title': 'Delete data & account',
   'profile.deactivate.body':
     'This permanently deletes your account and all data, with no recovery. Are you sure?',
   'profile.deactivate.confirm': 'Delete account',
@@ -421,7 +493,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   // --- Privacy / data statement (copy: privacy-data-copy-v0.1 §A) ----------
   'privacy.statement.title': 'Your wardrobe is yours alone',
   'privacy.statement.intro':
-    'Aidrobe needs to understand your clothes and habits to help you decide faster and dress like yourself. This information serves only that.',
+    'YIRAN needs to understand your clothes and habits to help you decide faster and dress like yourself. This information serves only that.',
   'privacy.statement.collect.title': 'What we use',
   'privacy.statement.collect.clothes': 'The clothing photos you upload',
   'privacy.statement.collect.behavior': 'Your wear / swap / dislike actions',
@@ -437,18 +509,29 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'privacy.statement.notDo.no_share': "We don't sell or share with third parties by default",
   'privacy.statement.notDo.no_ad_profiling': "We don't build ad profiles from them",
   'privacy.statement.control.title': 'You can anytime',
-  'privacy.statement.control.view': 'See what preferences Aidrobe remembers',
+  'privacy.statement.control.view': 'See what preferences YIRAN remembers',
   'privacy.statement.control.correct': 'Correct anything that’s wrong',
   'privacy.statement.control.delete_item': 'Delete any item or any record',
   'privacy.statement.control.delete_all': 'Delete all data or your account',
   'privacy.statement.policyLink': 'The full Privacy Policy legal terms will ship with the public release.',
 
   // --- Memory management (brief §10.3; no fake entries) --------------------
-  'privacy.memory.title': 'What Aidrobe remembers about you',
+  'privacy.memory.title': 'What YIRAN remembers about you',
   'privacy.memory.subtitle':
-    "These are things Aidrobe learned from how you use it — not a form you filled in. Fix anything that's off.",
+    "These are things YIRAN learned from how you use it — not a form you filled in. Fix anything that's off.",
   'privacy.memory.empty':
     'Nothing learned to show yet. Use it a few more days and it will appear here — you can correct or delete anytime.',
+
+  // --- Departure time onboarding screen ------------------------------------
+  'departure.stepLabel': '03',
+  'departure.title': 'Set your departure time',
+  'departure.subtitle': 'Tell us when you usually head out so we can give you sharper outfit picks.',
+  'departure.saving': 'Saving your departure time…',
+  'departure.saved': 'Saved',
+  'departure.saveFailed': 'Save failed, please retry',
+  'departure.saveTime': 'Save time',
+  'departure.skip': 'Skip',
+  'departure.footnote': 'You can change this any time in Profile.',
 
   // --- Commute exposure micro-question (brief §9.5) ------------------------
   'commuteExposure.question': 'Your commute is mostly?',
@@ -468,7 +551,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'outfitDetail.ignoreObstacle': 'Wear it anyway',
   'outfitDetail.obstacleIgnored': 'Reminder hidden for this item',
   'outfitDetail.replacementHint':
-    'Aidrobe can look for similar items. If the service is not available yet, this look stays unchanged.',
+    'YIRAN can look for similar items. If the service is not available yet, this look stays unchanged.',
   'outfitDetail.replacementLoading': 'Searching',
   'outfitDetail.replacementApplied': 'Previewing "{name}" (not saved)',
   'outfitDetail.replacementUnavailable': 'Replacement service is not available yet. Try again later.',
@@ -479,13 +562,18 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'outfitDetail.selectReplacement': 'Choose {name}',
   'outfitDetail.replacementSimilarity': '{pct}% similar',
   'outfitDetail.downloadNoAsset': 'No downloadable image yet; sharing a text summary instead',
-  'outfitDetail.shareMessage': 'My look today "{title}" · Aidrobe\n{items}',
+  'outfitDetail.shareMessage': 'My look today "{title}" · YIRAN\n{items}',
   'outfitDetail.noItems': 'No items',
   'outfitDetail.itemCount': '{count} items in this look',
   'outfitDetail.fitGood': 'Fits well',
   'outfitDetail.overflowTitle': 'More actions',
   'outfitDetail.overflowShare': 'Share this look',
   'outfitDetail.overflowFeedback': 'Wear and give feedback',
+  'outfitDetail.screenTitle': 'Outfit detail',
+  'outfitDetail.sectionWhy': 'Why it works today',
+  'outfitDetail.sectionContains': 'What\'s in this look',
+  'outfitDetail.dislikeSwap': 'Not feeling it · Try another',
+  'outfitDetail.wearToday': 'Wear this today',
 
   // --- OOTD poster (AI, selfie-based) --------------------------------------
   'ootd.fromOutfit': 'From the look "{title}"',
@@ -525,4 +613,88 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'feedback.loveIt': 'Love it',
   'feedback.thanks': 'Thanks — tomorrow’s picks will be sharper',
   'feedback.submitted': 'Thanks, your feedback is recorded!',
+  // FeedbackSheetScreen v2 restyle (v2-visual)
+  'feedback.sheet.title': "What doesn't work about this outfit?",
+  'feedback.sheet.subtitle': "Pick the main reason and I'll adjust.",
+  'feedback.sheet.freeTextPlaceholder': 'Anything else? (optional)',
+  'feedback.sheet.submitSwap': 'Submit & swap',
+  'feedback.sheet.submitOnly': 'Just submit feedback',
+  'feedback.sheet.errorNoReason': 'Please pick a reason first',
+
+  // --- Context override sheet (Today 07) -----------------------------------
+  'today.override.entryLabel': 'Anything special today?',
+  'today.override.subtitle': 'In a hurry? Just pick one.',
+  'today.override.orType': 'Or type it out',
+  'today.override.refresh': 'Redo recommendation',
+
+  // --- Add-source sheet (Wardrobe 09) --------------------------------------
+  'addSource.title': 'Add item',
+  'addSource.subtitle': 'Choose the easiest way.',
+  'addSource.camera.label': 'Take a photo',
+  'addSource.camera.hint': 'Best for flat lay',
+  'addSource.album.label': 'Choose from album',
+  'addSource.album.hint': 'Supports multiple',
+  'addSource.outfit.label': 'Extract from outfit photo',
+  'addSource.outfit.hint': 'Identify multiple items from one photo',
+  'addSource.link.label': 'Paste product link',
+  'addSource.link.hint': "Add items you're considering",
+  'addSource.cancel': 'Cancel',
+
+  // --- Contextual entry sheet (Ask 14) -------------------------------------
+  'contextualEntry.title': 'What else can I help with?',
+  'contextualEntry.subtitle': 'These tools appear when you need them.',
+  'contextualEntry.trigger': 'More options',
+  'contextualEntry.triggerA11y': 'Open contextual actions',
+  'contextualEntry.comingSoon': 'Coming soon',
+  'contextualEntry.shopping.label': "Check if it's worth buying",
+  'contextualEntry.shopping.hint': 'Get purchase advice',
+  'contextualEntry.trip.label': 'Plan a trip',
+  'contextualEntry.trip.hint': 'Tell me where and how long',
+  'contextualEntry.insights.label': 'View wardrobe insights',
+  'contextualEntry.insights.hint': 'Understand your wear patterns',
+  'contextualEntry.style.label': 'Manage style inspirations',
+  'contextualEntry.style.hint': 'Browse your saved references',
+
+  // --- Delete-data confirmation sheet (Profile 19) -------------------------
+  'deleteData.sheet.title': 'Clear all data?',
+  'deleteData.sheet.body':
+    'This will delete your wardrobe, activity, and learned preferences — like starting fresh. Your account is kept.',
+  'deleteData.sheet.bullet.clothing': 'Clothing & photos',
+  'deleteData.sheet.bullet.activity': 'Outfit & interaction history',
+  'deleteData.sheet.bullet.preferences': 'Learned preferences',
+  'deleteData.sheet.confirm': 'Clear everything',
+  'deleteData.sheet.irreversible': 'This action cannot be undone',
+
+  // --- Onboarding: add wardrobe (2/6) --------------------------------------
+  'onboarding.addWardrobe.stepFraction': '2 / 6',
+  'onboarding.addWardrobe.title': 'Start with your everyday looks',
+  'onboarding.addWardrobe.subtitle':
+    "No need to photograph everything. Start with what you'd wear today.",
+  'onboarding.addWardrobe.sparkleHint':
+    'About 7 items is enough to start getting daily recommendations.',
+  'onboarding.addWardrobe.cta.camera': 'Photograph a garment',
+  'onboarding.addWardrobe.cta.album': 'Choose from library',
+  'onboarding.addWardrobe.otherMethods': 'Other ways to add',
+  'onboarding.addWardrobe.footnote':
+    'YIRAN will recognize fabric, colour, and other details — you just confirm.',
+  'onboarding.addWardrobe.uploadFailed': 'Upload failed, please try again',
+  'onboarding.addWardrobe.cameraPermission': 'Camera permission is required',
+  'onboarding.addWardrobe.albumPermission': 'Photo library permission is required',
+
+  // --- Onboarding: style memory (5/6) --------------------------------------
+  'onboarding.styleMemory.stepFraction': '5 / 6',
+  'onboarding.styleMemory.title': 'Give YIRAN a little inspiration',
+  'onboarding.styleMemory.subtitle':
+    'Pick a photo of a look you love. YIRAN will take its cues from it. You can skip.',
+  'onboarding.styleMemory.benefit1.title': 'Understand colour palette',
+  'onboarding.styleMemory.benefit1.hint': 'Learns the colours you love',
+  'onboarding.styleMemory.benefit2.title': 'Understand silhouette',
+  'onboarding.styleMemory.benefit2.hint': 'Learns your style of dressing',
+  'onboarding.styleMemory.benefit3.title': 'Shape future recommendations',
+  'onboarding.styleMemory.benefit3.hint': 'Your picks become more personal over time',
+  'onboarding.styleMemory.cardHint': 'Pick your photo',
+  'onboarding.styleMemory.cta.pick': 'Choose a photo',
+  'onboarding.styleMemory.skip': 'Skip',
+  'onboarding.styleMemory.footnote':
+    'You can view, replace, or delete this inspiration anytime in your Profile.',
 };

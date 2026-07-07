@@ -29,6 +29,12 @@ const androidConfig: NonNullable<ExpoConfig['android']> & {
   package: 'app.aidrobe.android',
   versionCode: 6,
   usesCleartextTraffic: APP_ENV !== 'production',
+  // 衣然 YIRAN adaptive launcher icon: the primary mark on the warm-white brand
+  // background (docs/design/brand/logo/final-v1).
+  adaptiveIcon: {
+    foregroundImage: './assets/adaptive-icon.png',
+    backgroundColor: '#FAF7F0',
+  },
 };
 
 const withAndroidCleartextTraffic: ConfigPlugin = (config) =>
@@ -54,6 +60,20 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   platforms: ['ios', 'android', 'web'],
   orientation: 'portrait',
   userInterfaceStyle: 'automatic',
+  // 衣然 YIRAN brand icon + splash (docs/design/brand/logo/final-v1). Warm-white
+  // brand background #FAF7F0 to match the app's morning surface.
+  icon: './assets/icon.png',
+  // Spread-cast: expo honors a top-level `splash` at build time, but SDK 56
+  // dropped it from the ExpoConfig type (it moved to the expo-splash-screen
+  // plugin, which is not installed here). Spreading bypasses the excess-property
+  // check while keeping the branded launch screen.
+  ...({
+    splash: {
+      image: './assets/splash-icon.png',
+      resizeMode: 'contain',
+      backgroundColor: '#FAF7F0',
+    },
+  } as unknown as Partial<ExpoConfig>),
   ios: {
     supportsTablet: false,
     bundleIdentifier: 'app.aidrobe.ios',
