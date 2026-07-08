@@ -189,7 +189,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
     <View style={{ flex: 1, backgroundColor: T.bg }}>
       {/* Nav */}
       <View style={{ paddingTop: 52, paddingHorizontal: 20, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Pressable onPress={exitFlow} hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+        <Pressable onPress={exitFlow} hitSlop={8} style={undefined}>
           <SystemIcon name="chevronLeft" size={22} color={T.ink2} />
         </Pressable>
         <Text style={{ ...typeScale.footnote, color: T.ink3 }}>{t('import.progress', { current, total })}</Text>
@@ -300,14 +300,13 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
                   <View style={{ height: 1, backgroundColor: T.divider, marginHorizontal: 16 }} />
                   <Pressable
                     onPress={() => setExpanded(true)}
-                    style={({ pressed }) => ({
+                    style={{
                       minHeight: 44,
                       paddingHorizontal: 16,
                       paddingVertical: 12,
                       flexDirection: 'row',
                       alignItems: 'center',
-                      opacity: pressed ? 0.6 : 1,
-                    })}
+                    }}
                   >
                     <Text style={{ ...typeScale.callout, color: T.accent }}>{t('item.change')}</Text>
                   </Pressable>
@@ -486,7 +485,7 @@ function MultiCandidateConfirm({
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
       <View style={{ paddingTop: 52, paddingHorizontal: 20, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Pressable onPress={onClose} hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+        <Pressable onPress={onClose} hitSlop={8} style={undefined}>
           <SystemIcon name="chevronLeft" size={22} color={T.ink2} />
         </Pressable>
         <Text style={{ ...typeScale.footnote, color: T.ink3 }}>{t('import.progress', { current, total })}</Text>
@@ -606,7 +605,7 @@ function ChoiceChip({ active, onPress, label }: { active: boolean; onPress: () =
     <Pressable
       onPress={onPress}
       hitSlop={4}
-      style={({ pressed }) => ({
+      style={{
         paddingHorizontal: 14,
         paddingVertical: 7,
         minHeight: 34,
@@ -614,10 +613,9 @@ function ChoiceChip({ active, onPress, label }: { active: boolean; onPress: () =
         backgroundColor: active ? colors.label : 'transparent',
         borderWidth: 1,
         borderColor: active ? colors.label : colors.separator,
-        opacity: pressed ? 0.75 : 1,
         alignItems: 'center',
         justifyContent: 'center',
-      })}
+      }}
     >
       <Text style={{ ...typeScale.caption, color: active ? colors.inverse : colors.secondaryLabel }}>{label}</Text>
     </Pressable>

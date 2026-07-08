@@ -667,15 +667,14 @@ export function TodayScreen({ navigation }: Props) {
               <Pressable
                 onPress={boardIsReal ? handleWear : undefined}
                 disabled={!boardIsReal}
-                style={({ pressed }) => ({
+                style={{
                   flex: 1,
                   height: 48,
                   borderRadius: 24,
                   backgroundColor: boardIsReal ? P.ink : P.line,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  opacity: pressed ? 0.86 : 1,
-                })}
+                }}
               >
                 <Text style={{ color: boardIsReal ? colors.inverse : P.faint, fontSize: 14, fontWeight: '800' }}>
                   {t('today.wearThis')}

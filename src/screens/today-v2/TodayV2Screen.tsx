@@ -262,7 +262,7 @@ export function TodayV2Screen({ navigation }: Props) {
           <Pressable
             accessibilityRole="button"
             onPress={() => setOverrideSheetOpen(true)}
-            style={({ pressed }) => ({
+            style={{
               flexDirection: 'row',
               alignItems: 'center',
               gap: 10,
@@ -272,8 +272,7 @@ export function TodayV2Screen({ navigation }: Props) {
               borderWidth: 1,
               borderColor: colors.separator,
               backgroundColor: colors.elevated,
-              opacity: pressed ? 0.8 : 1,
-            })}
+            }}
           >
             <SystemIcon name="sparkle" size={16} color={colors.tertiaryLabel} strokeWidth={1.6} />
             <Text style={{ flex: 1, ...type.callout, color: colors.tertiaryLabel }}>

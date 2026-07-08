@@ -59,8 +59,50 @@ const SUGGESTIONS = [
   { key: 's1', icon: 'sparkle', labelKey: 'ask.v2.s1' },
   { key: 's2', icon: 'compass', labelKey: 'ask.v2.s2' },
   { key: 's3', icon: 'suitcase', labelKey: 'ask.v2.s3' },
-  { key: 's4', icon: 'wardrobe', labelKey: 'ask.v2.s4' },
 ] as const satisfies ReadonlyArray<{ key: string; icon: string; labelKey: I18nKey }>;
+
+// One tappable icon+label+chevron row in the idle hero card. The row layout
+// deliberately sits on an inner View: putting flexDirection etc. in a
+// Pressable style FUNCTION loses the layout on-device (new arch) and the
+// children render stacked; web is unaffected, which is how it slipped past
+// web-based verification.
+function HeroRow({
+  icon,
+  label,
+  onPress,
+  accessibilityLabel,
+}: {
+  icon: React.ComponentProps<typeof SystemIcon>['name'];
+  label: string;
+  onPress: () => void;
+  accessibilityLabel?: string;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      android_ripple={{ color: colors.fill }}
+      style={({ pressed }) => ({ opacity: pressed ? 0.65 : 1 })}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingVertical: 13,
+          paddingHorizontal: 4,
+          minHeight: 44,
+        }}
+      >
+        <SystemIcon name={icon} size={18} color={T.ink3} strokeWidth={1.7} />
+        <Text style={{ ...type.body, color: T.ink2, flex: 1, marginLeft: 12 }} numberOfLines={1}>
+          {label}
+        </Text>
+        <SystemIcon name="chevronRight" size={16} color={T.ink3} strokeWidth={1.7} />
+      </View>
+    </Pressable>
+  );
+}
 
 const T = {
   bg: colors.groupedBackground,
@@ -126,7 +168,9 @@ function TurnView({ turn, onRetry, retryBusy }: { turn: Turn; onRetry: () => voi
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: turn.pending ? 0 : 8 }}>
           <SystemIcon name="sparkle" size={14} color={T.accent} strokeWidth={1.9} />
-          <Text style={{ ...type.caption, color: T.accent, fontWeight: '700', letterSpacing: 0.5 }}>AIDROBE</Text>
+          <Text style={{ ...type.caption, color: T.accent, fontWeight: '700', letterSpacing: 0.5 }}>
+            {t('ask.turn.brand')}
+          </Text>
         </View>
         {turn.pending ? (
           // AI "thinking" presence — the small vivid orb shares the motion
@@ -174,15 +218,17 @@ function AskHistoryRow({
       onPress={onPress}
       accessibilityRole="button"
       android_ripple={{ color: colors.fill }}
-      style={({ pressed }) => ({
-        backgroundColor: colors.secondaryElevated,
-        borderRadius: radius.lg,
-        padding: 14,
-        borderWidth: 1,
-        borderColor: colors.separatorSoft,
-        opacity: pressed ? 0.78 : 1,
-      })}
+      style={({ pressed }) => ({ opacity: pressed ? 0.78 : 1 })}
     >
+      <View
+        style={{
+          backgroundColor: colors.secondaryElevated,
+          borderRadius: radius.lg,
+          padding: 14,
+          borderWidth: 1,
+          borderColor: colors.separatorSoft,
+        }}
+      >
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={{ ...type.body, color: colors.label, fontWeight: '600' }} numberOfLines={2}>
@@ -202,6 +248,7 @@ function AskHistoryRow({
         ) : null}
       </View>
       <ItemRefsRow snapshots={entry.itemRefSnapshots} ids={entry.itemRefs} />
+      </View>
     </Pressable>
   );
 }
@@ -495,11 +542,26 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         title={t('ask.title')}
         onBack={() => navigation.goBack()}
         right={
-          <HeaderIconButton
-            icon="clock"
-            onPress={openHistory}
-            accessibilityLabel={t('ask.history.open')}
-          />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            {turns.length > 0 ? (
+              // Start a fresh conversation without restarting the app: drops
+              // the rendered turns and the backend conversation thread.
+              <HeaderIconButton
+                icon="refresh"
+                onPress={() => {
+                  setTurns([]);
+                  setConversationId(null);
+                  setInput('');
+                }}
+                accessibilityLabel={t('ask.newConversation')}
+              />
+            ) : null}
+            <HeaderIconButton
+              icon="clock"
+              onPress={openHistory}
+              accessibilityLabel={t('ask.history.open')}
+            />
+          </View>
         }
       />
 
@@ -575,32 +637,28 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
                   marginBottom: 4,
                 }}
               />
-              {/* Suggestion rows */}
+              {/* Suggestion rows. Layout lives on an inner View, NOT on the
+                  Pressable's style function — on-device (new arch) the
+                  function-style layout props get dropped and children stack
+                  vertically; web renders both fine. */}
               {SUGGESTIONS.map((s) => (
-                <Pressable
+                <HeroRow
                   key={s.key}
+                  icon={s.icon}
+                  label={t(s.labelKey)}
                   onPress={() => submitQuestion(t(s.labelKey))}
-                  accessibilityRole="button"
-                  android_ripple={{ color: colors.fill }}
-                  style={({ pressed }) => ({
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    paddingVertical: 13,
-                    paddingHorizontal: 4,
-                    opacity: pressed ? 0.65 : 1,
-                    minHeight: 44,
-                  })}
-                >
-                  <SystemIcon name={s.icon} size={18} color={T.ink3} strokeWidth={1.7} />
-                  <Text
-                    style={{ ...type.body, color: T.ink2, flex: 1, marginLeft: 12 }}
-                    numberOfLines={1}
-                  >
-                    {t(s.labelKey)}
-                  </Text>
-                  <SystemIcon name="chevronRight" size={16} color={T.ink3} strokeWidth={1.7} />
-                </Pressable>
+                />
               ))}
+              {/* Item-scoped ask hand-off: real per-item questions start from
+                  the wardrobe (item detail → 用这件搭一套); a canned fake-item
+                  text here would mislead. */}
+              <HeroRow
+                icon="wardrobe"
+                label={t('ask.v2.pickItem')}
+                onPress={() =>
+                  navigation.getParent()?.navigate('WardrobeTab' as never)
+                }
+              />
               {/* Contextual entry trigger — "more" affordance below suggestions */}
               <View
                 style={{
@@ -611,29 +669,12 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
                   marginBottom: 2,
                 }}
               />
-              <Pressable
-                onPress={() => setContextualSheetVisible(true)}
-                accessibilityRole="button"
+              <HeroRow
+                icon="plus"
+                label={t('contextualEntry.trigger')}
                 accessibilityLabel={t('contextualEntry.triggerA11y')}
-                android_ripple={{ color: colors.fill }}
-                style={({ pressed }) => ({
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingVertical: 13,
-                  paddingHorizontal: 4,
-                  opacity: pressed ? 0.65 : 1,
-                  minHeight: 44,
-                })}
-              >
-                <SystemIcon name="plus" size={18} color={T.ink3} strokeWidth={1.7} />
-                <Text
-                  style={{ ...type.body, color: T.ink2, flex: 1, marginLeft: 12 }}
-                  numberOfLines={1}
-                >
-                  {t('contextualEntry.trigger')}
-                </Text>
-                <SystemIcon name="chevronRight" size={16} color={T.ink3} strokeWidth={1.7} />
-              </Pressable>
+                onPress={() => setContextualSheetVisible(true)}
+              />
             </View>
           </View>
         ) : (
@@ -680,9 +721,21 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
             }}
           >
             <SystemIcon name="sparkle" size={12} color={T.accent} strokeWidth={1.9} />
-            <Text style={{ ...type.caption, color: T.ink2 }} numberOfLines={1}>
+            <Text style={{ ...type.caption, color: T.ink2, flexShrink: 1 }} numberOfLines={1}>
               {t('ask.focusedChip', { name: focusedName ?? t('ask.focusedFallback') })}
             </Text>
+            {/* Clear the item focus without leaving the screen. Dropping the
+                param flips scope back to global; the scope-change effect
+                already resets turns + conversation. */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('ask.focusedClear')}
+              onPress={() => navigation.setParams({ focusedItemId: undefined })}
+              hitSlop={10}
+              style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+            >
+              <SystemIcon name="x" size={13} color={T.ink3} strokeWidth={2} />
+            </Pressable>
           </View>
         ) : null}
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10 }}>

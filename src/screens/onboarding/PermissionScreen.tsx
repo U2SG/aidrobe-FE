@@ -73,14 +73,14 @@ export function PermissionScreen({ navigation }: Props) {
             accessibilityRole="button"
             onPress={requestAll}
             disabled={requesting}
-            style={({ pressed }) => ({
+            style={{
               height: 54,
               borderRadius: radius.md,
               backgroundColor: colors.label,
               alignItems: 'center',
               justifyContent: 'center',
-              opacity: requesting || pressed ? 0.8 : 1,
-            })}
+              opacity: requesting ? 0.8 : 1,
+            }}
           >
             <Text style={{ ...type.headline, color: colors.inverse }}>{t('permission.cta')}</Text>
           </Pressable>

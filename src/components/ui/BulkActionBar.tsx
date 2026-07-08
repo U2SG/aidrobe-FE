@@ -71,7 +71,7 @@ export function BulkActionBar({ visible, countLabel, actions, onClear }: Props) 
             accessibilityRole="button"
             accessibilityLabel={a.label}
             onPress={a.onPress}
-            style={({ pressed }) => ({
+            style={{
               minHeight: 44,
               flexDirection: 'row',
               alignItems: 'center',
@@ -79,8 +79,7 @@ export function BulkActionBar({ visible, countLabel, actions, onClear }: Props) 
               paddingHorizontal: 14,
               borderRadius: radius.pill,
               backgroundColor: a.tone === 'danger' ? colors.dangerBg : colors.label,
-              opacity: pressed ? 0.7 : 1,
-            })}
+            }}
           >
             {a.icon ? (
               <SystemIcon

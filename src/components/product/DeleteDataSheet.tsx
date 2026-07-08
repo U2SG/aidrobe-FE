@@ -90,13 +90,13 @@ export function DeleteDataSheet({ visible, loading, onConfirm, onClose }: Props)
           disabled={loading}
           android_ripple={{ color: colors.dangerBg }}
           accessibilityRole="button"
-          style={({ pressed }) => ({
+          style={{
             alignSelf: 'stretch',
-            backgroundColor: loading || pressed ? colors.danger + 'CC' : colors.danger,
+            backgroundColor: loading ? colors.danger + 'CC' : colors.danger,
             borderRadius: radius.md,
             paddingVertical: 14,
             alignItems: 'center',
-          })}
+          }}
         >
           <Text style={{ ...type.callout, color: colors.inverse, fontWeight: '600' }}>
             {t('deleteData.sheet.confirm' as never)}

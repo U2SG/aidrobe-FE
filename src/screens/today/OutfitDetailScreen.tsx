@@ -540,7 +540,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                     } as never)
                   }
                   onLongPress={() => openReplacementSheet(it)}
-                  style={({ pressed }) => ({
+                  style={{
                     backgroundColor: T.card,
                     borderRadius: radius.md,
                     padding: 12,
@@ -550,8 +550,8 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                     ...T.shadowSm,
                     borderWidth: isLaundry ? 1 : 0,
                     borderColor: isLaundry ? T.warnBorder : 'transparent',
-                    opacity: pressed ? 0.88 : isLaundry ? 0.85 : 1,
-                  })}
+                    opacity: isLaundry ? 0.85 : 1,
+                  }}
                 >
                   <View
                     style={{
@@ -608,11 +608,13 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                         >
                           <Text style={{ fontSize: 9, color: colors.cautionAmber, fontWeight: '600' }}>{String(it.status)}</Text>
                         </View>
-                      ) : (
+                      ) : it.fitStatus && it.fitStatus !== 'unknown' ? (
+                        // "未知" as a pill is noise, not information — prototype 06
+                        // shows a fit tag only when there is something to say.
                         <Tag style={{ paddingHorizontal: 6, paddingVertical: 2 }}>
-                          {it.fitStatus ? tEnum('fitStatus', it.fitStatus) : t('outfitDetail.fitGood')}
+                          {tEnum('fitStatus', it.fitStatus)}
                         </Tag>
-                      )}
+                      ) : null}
                       {it.location ? (
                         <Tag style={{ paddingHorizontal: 6, paddingVertical: 2 }}>{it.location}</Tag>
                       ) : null}
@@ -710,14 +712,13 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
         {/* Full-width black CTA — 54h, matches DecisionOutfitCard */}
         <Pressable
           onPress={handleWear}
-          style={({ pressed }) => ({
+          style={{
             height: 54,
             borderRadius: radius.md,
             backgroundColor: colors.label,
             alignItems: 'center',
             justifyContent: 'center',
-            opacity: pressed ? 0.88 : 1,
-          })}
+          }}
         >
           <Text style={{ ...type.callout, fontWeight: '600', color: colors.inverse }}>
             {t('outfitDetail.wearToday')}
@@ -782,14 +783,14 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                     onPress={() => handleSelectReplacement(candidate)}
                     accessibilityRole="button"
                     accessibilityLabel={t('outfitDetail.selectReplacement', { name: candidate.title })}
-                    style={({ pressed }) => ({
+                    style={{
                       flexDirection: 'row',
                       alignItems: 'center',
                       gap: 12,
                       padding: 10,
                       borderRadius: 12,
-                      backgroundColor: pressed ? T.bgAlt : T.cardSoft,
-                    })}
+                      backgroundColor: T.cardSoft,
+                    }}
                   >
                     <ImageThumb
                       uri={candidate.thumbnailUrl}

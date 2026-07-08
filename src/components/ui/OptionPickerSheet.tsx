@@ -118,7 +118,7 @@ export function OptionPickerSheet(props: SingleProps | MultiProps) {
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
               onPress={() => handleTap(opt.value)}
-              style={({ pressed }) => ({
+              style={{
                 minHeight: 44,
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -129,8 +129,7 @@ export function OptionPickerSheet(props: SingleProps | MultiProps) {
                 backgroundColor: active ? colors.label : colors.elevated,
                 borderWidth: 1,
                 borderColor: active ? colors.label : colors.separator,
-                opacity: pressed ? 0.7 : 1,
-              })}
+              }}
             >
               {active ? (
                 <SystemIcon name="check" size={13} color={colors.inverse} strokeWidth={2} />
@@ -167,15 +166,14 @@ export function OptionPickerSheet(props: SingleProps | MultiProps) {
           <Pressable
             accessibilityRole="button"
             onPress={commitCustom}
-            style={({ pressed }) => ({
+            style={{
               width: 36,
               height: 36,
               alignItems: 'center',
               justifyContent: 'center',
               borderRadius: radius.xs,
               backgroundColor: colors.label,
-              opacity: pressed ? 0.7 : 1,
-            })}
+            }}
           >
             <SystemIcon name="check" size={15} color={colors.inverse} strokeWidth={2} />
           </Pressable>
@@ -186,14 +184,13 @@ export function OptionPickerSheet(props: SingleProps | MultiProps) {
         <Pressable
           accessibilityRole="button"
           onPress={commitMulti}
-          style={({ pressed }) => ({
+          style={{
             minHeight: 48,
             alignItems: 'center',
             justifyContent: 'center',
             borderRadius: radius.sm,
             backgroundColor: colors.label,
-            opacity: pressed ? 0.7 : 1,
-          })}
+          }}
         >
           <Typography variant="callout" color="inverse" style={{ fontWeight: '600' }}>
             {doneLabel ?? ''}

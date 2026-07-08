@@ -243,6 +243,9 @@ export const zhCN = {
   'ask.chip.shoes': '这件配什么鞋',
   'ask.chip.weather': '现在天气适合穿什么',
   'ask.focusedChip': '围绕「{name}」搭配',
+  'ask.focusedClear': '取消围绕这件搭配',
+  'ask.turn.brand': '衣然',
+  'ask.newConversation': '新对话',
   'ask.focusedFallback': '这件单品',
   'ask.history.open': '查看历史问答',
   'ask.history.title': '历史问答',
@@ -261,7 +264,7 @@ export const zhCN = {
   'ask.v2.s1': '今晚有聚会，想有精神一点',
   'ask.v2.s2': '今天要走很多路，换双舒服的鞋',
   'ask.v2.s3': '下周出去玩，帮我准备衣服',
-  'ask.v2.s4': '这件米白衬衫还能怎么搭',
+  'ask.v2.pickItem': '想搭某件衣服？去衣橱选它',
   'ask.appliedConstraints': '已延续：{list}',
 
   // --- Shopping sense-check ------------------------------------------------

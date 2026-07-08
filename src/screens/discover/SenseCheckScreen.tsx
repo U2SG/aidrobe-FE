@@ -471,7 +471,7 @@ export function SenseCheckScreen({ navigation }: Props) {
               onPress={() => historyQuery.refetch()}
               accessibilityRole="button"
               accessibilityLabel={t.t('common.retry')}
-              style={({ pressed }) => ({
+              style={{
                 minHeight: 44,
                 minWidth: 120,
                 alignItems: 'center',
@@ -479,8 +479,7 @@ export function SenseCheckScreen({ navigation }: Props) {
                 borderRadius: radius.md,
                 borderWidth: 1,
                 borderColor: T.divider,
-                opacity: pressed ? 0.62 : 1,
-              })}
+              }}
             >
               <Text style={{ ...type.footnote, fontWeight: '600', color: T.ink2 }}>{t.t('common.retry')}</Text>
             </Pressable>

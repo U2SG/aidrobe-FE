@@ -122,14 +122,13 @@ export function StyleMemoryScreen({ navigation }: Props) {
         <Pressable
           onPress={() => navigation.goBack()}
           hitSlop={10}
-          style={({ pressed }) => ({
+          style={{
             width: 44,
             height: 44,
             borderRadius: 22,
             alignItems: 'center',
             justifyContent: 'center',
-            opacity: pressed ? 0.6 : 1,
-          })}
+          }}
         >
           <SystemIcon name="chevronLeft" size={24} color={T.ink} strokeWidth={2.2} />
         </Pressable>
@@ -183,10 +182,10 @@ export function StyleMemoryScreen({ navigation }: Props) {
         <Pressable
           onPress={pickInspiration}
           disabled={uploading}
-          style={({ pressed }) => ({
+          style={{
             marginTop: 24,
-            opacity: uploading || pressed ? 0.8 : 1,
-          })}
+            opacity: uploading ? 0.8 : 1,
+          }}
         >
           <InspirationCardPlaceholder hint={t('onboarding.styleMemory.cardHint')} />
         </Pressable>
@@ -242,7 +241,7 @@ export function StyleMemoryScreen({ navigation }: Props) {
         <Pressable
           onPress={pickInspiration}
           disabled={uploading}
-          style={({ pressed }) => ({
+          style={{
             height: 54,
             borderRadius: radius.md,
             backgroundColor: T.ink,
@@ -251,8 +250,8 @@ export function StyleMemoryScreen({ navigation }: Props) {
             flexDirection: 'row',
             gap: 8,
             marginTop: 28,
-            opacity: uploading || pressed ? 0.72 : 1,
-          })}
+            opacity: uploading ? 0.72 : 1,
+          }}
         >
           {uploading ? (
             <ActivityIndicator color={T.inverse} size="small" />
@@ -267,13 +266,13 @@ export function StyleMemoryScreen({ navigation }: Props) {
         <Pressable
           onPress={skip}
           disabled={uploading}
-          style={({ pressed }) => ({
+          style={{
             height: 44,
             alignItems: 'center',
             justifyContent: 'center',
             marginTop: 4,
-            opacity: uploading || pressed ? 0.6 : 1,
-          })}
+            opacity: uploading ? 0.6 : 1,
+          }}
         >
           <Text style={{ ...typeTokens.callout, color: T.ink2 }}>
             {t('onboarding.styleMemory.skip')}

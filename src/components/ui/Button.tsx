@@ -144,14 +144,16 @@ export function Button({
       onPress={onPress}
       disabled={isDisabled}
       android_ripple={isDisabled ? undefined : { color: v.rippleColor }}
-      style={({ pressed }) => [
+      // Plain style array — a style FUNCTION here loses its output on-device
+      // (new arch), which erased every solid button background under light text.
+      style={[
         baseStyle.root,
         {
           minHeight,
           backgroundColor: v.background,
           borderColor: v.borderColor,
           borderWidth: v.borderWidth ?? 0,
-          opacity: isDisabled ? v.disabledOpacity : pressed ? 0.85 : 1,
+          opacity: isDisabled ? v.disabledOpacity : 1,
         },
         style,
       ]}

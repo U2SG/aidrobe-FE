@@ -220,7 +220,7 @@ function AttributeRow({
           accessibilityLabel={`${label}: ${display}`}
           onPress={onPress}
           hitSlop={8}
-          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+          style={undefined}
         >
           <Text style={{ ...type.footnote, color: T.accent, fontWeight: '500' }}>
             {changeLabel}
@@ -315,10 +315,10 @@ function MenuAction({ label, icon, onPress, disabled = false, destructive = fals
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => ({
+      style={{
         width: cardWidth,
-        opacity: disabled ? 0.45 : pressed ? 0.68 : 1,
-      })}
+        opacity: disabled ? 0.45 : 1,
+      }}
     >
       <View
         style={{
@@ -573,7 +573,7 @@ export function ItemDetailScreen({ navigation, route }: Props) {
         <Pressable
           accessibilityRole="button"
           onPress={() => navigation.goBack()}
-          style={({ pressed }) => ({
+          style={{
             width: 40,
             height: 40,
             borderRadius: 20,
@@ -582,8 +582,7 @@ export function ItemDetailScreen({ navigation, route }: Props) {
             justifyContent: 'center',
             borderWidth: 1,
             borderColor: T.dividerSoft,
-            opacity: pressed ? 0.72 : 1,
-          })}
+          }}
         >
           <SystemIcon name="chevronLeft" size={18} color={T.ink} />
         </Pressable>
@@ -591,7 +590,7 @@ export function ItemDetailScreen({ navigation, route }: Props) {
           accessibilityRole="button"
           accessibilityLabel={t('item.moreActions')}
           onPress={() => setMenuOpen(true)}
-          style={({ pressed }) => ({
+          style={{
             width: 40,
             height: 40,
             borderRadius: 20,
@@ -600,8 +599,7 @@ export function ItemDetailScreen({ navigation, route }: Props) {
             justifyContent: 'center',
             borderWidth: 1,
             borderColor: T.dividerSoft,
-            opacity: pressed ? 0.72 : 1,
-          })}
+          }}
         >
           <SystemIcon name="more" size={18} color={T.ink2} />
         </Pressable>
@@ -646,7 +644,7 @@ export function ItemDetailScreen({ navigation, route }: Props) {
           <Pressable
             accessibilityRole="button"
             onPress={openNameEditor}
-            style={({ pressed }) => ({ opacity: pressed ? 0.72 : 1 })}
+            style={undefined}
           >
             <Text style={{ ...type.title2, color: T.ink }} numberOfLines={2}>
               {displayName || t('ask.itemFallback')}
@@ -758,14 +756,13 @@ export function ItemDetailScreen({ navigation, route }: Props) {
             accessibilityRole="button"
             onPress={openAskWithItem}
             disabled={!!showcaseItem}
-            style={({ pressed }) => ({
+            style={{
               height: 54,
               backgroundColor: showcaseItem ? T.ink3 : colors.label,
               borderRadius: radius.md,
               alignItems: 'center',
               justifyContent: 'center',
-              opacity: pressed ? 0.82 : 1,
-            })}
+            }}
           >
             <Text
               style={{
@@ -793,7 +790,7 @@ export function ItemDetailScreen({ navigation, route }: Props) {
             accessibilityRole="button"
             onPress={openNameEditor}
             hitSlop={10}
-            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+            style={undefined}
           >
             <Text style={{ ...type.footnote, color: T.ink3 }}>{t('item.edit')}</Text>
           </Pressable>
@@ -803,9 +800,9 @@ export function ItemDetailScreen({ navigation, route }: Props) {
             onPress={confirmDelete}
             disabled={!!showcaseItem}
             hitSlop={10}
-            style={({ pressed }) => ({
-              opacity: showcaseItem ? 0.35 : pressed ? 0.6 : 1,
-            })}
+            style={{
+              opacity: showcaseItem ? 0.35 : 1,
+            }}
           >
             <Text style={{ ...type.footnote, color: T.ink3 }}>{t('common.delete')}</Text>
           </Pressable>

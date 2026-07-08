@@ -59,7 +59,7 @@ export function DepartureTimeSheet({
         <Pressable
           onPress={onClose}
           disabled={saving}
-          style={({ pressed }) => ({
+          style={{
             flex: 1,
             height: 50,
             borderRadius: radius.md,
@@ -67,8 +67,7 @@ export function DepartureTimeSheet({
             borderColor: colors.separator,
             alignItems: 'center',
             justifyContent: 'center',
-            opacity: pressed ? 0.7 : 1,
-          })}
+          }}
         >
           <Typography variant="headline" color="secondaryLabel">
             {t('common.cancel')}
@@ -77,15 +76,15 @@ export function DepartureTimeSheet({
         <Pressable
           onPress={() => onSave(draft)}
           disabled={saving}
-          style={({ pressed }) => ({
+          style={{
             flex: 1,
             height: 50,
             borderRadius: radius.md,
             backgroundColor: colors.label,
             alignItems: 'center',
             justifyContent: 'center',
-            opacity: saving || pressed ? 0.75 : 1,
-          })}
+            opacity: saving ? 0.75 : 1,
+          }}
         >
           <Typography variant="headline" color="inverse">
             {t('common.save')}

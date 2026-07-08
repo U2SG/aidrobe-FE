@@ -254,6 +254,9 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'ask.chip.shoes': 'What shoes go with this',
   'ask.chip.weather': 'What suits the current weather',
   'ask.focusedChip': 'Styling around "{name}"',
+  'ask.focusedClear': 'Stop styling around this item',
+  'ask.turn.brand': 'YIRAN',
+  'ask.newConversation': 'New chat',
   'ask.focusedFallback': 'this item',
   'ask.history.open': 'View Ask history',
   'ask.history.title': 'Ask history',
@@ -272,7 +275,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'ask.v2.s1': 'I have a party tonight, I want to look sharp',
   'ask.v2.s2': "I'll be walking a lot today, help me find comfy shoes",
   'ask.v2.s3': "I'm going on a trip next week, help me pack",
-  'ask.v2.s4': 'What else can I do with my off-white shirt',
+  'ask.v2.pickItem': 'Styling one piece? Pick it in your wardrobe',
   'ask.appliedConstraints': 'Carried over: {list}',
 
   // --- Shopping sense-check ------------------------------------------------
