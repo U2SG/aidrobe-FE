@@ -366,6 +366,9 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   const [contextualSheetVisible, setContextualSheetVisible] = useState(false);
   const [composerHeight, setComposerHeight] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
+  // Conversation generation. Bumped on new-chat / scope change so an in-flight
+  // request's late callback can't reseed conversationId/turns (review on #96).
+  const conversationEpoch = useRef(0);
 
   useEffect(() => {
     track('ask_viewed', { scope });
@@ -389,12 +392,18 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   // If the scope / focused item changes while the screen stays mounted, drop
   // the previous session's turns and conversation thread.
   useEffect(() => {
+    conversationEpoch.current += 1;
     setTurns([]);
     setConversationId(null);
   }, [scope, focusedItemId]);
 
   const askMutation = useMutation({
-    mutationFn: (vars: { tempId: string; question: string; conversationId: string | null }) =>
+    mutationFn: (vars: {
+      tempId: string;
+      question: string;
+      conversationId: string | null;
+      epoch: number;
+    }) =>
       askAidrobe({
         question: vars.question,
         focusedItemId,
@@ -421,6 +430,10 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
       );
     },
     onSuccess: (result, vars) => {
+      // The question really happened — record it — but if the user started a
+      // new chat while this was in flight, discard the UI/thread reseed.
+      track('ask_sent', { scope });
+      if (vars.epoch !== conversationEpoch.current) return;
       // Thread the conversation forward so subsequent sends continue the same
       // multi-turn session on the backend.
       setConversationId(result.conversationId);
@@ -439,9 +452,11 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
             : x,
         ),
       );
-      track('ask_sent', { scope });
     },
     onError: (err, vars) => {
+      // Stale (new chat started mid-flight): the turn was already cleared, so
+      // there is nothing to mark failed.
+      if (vars.epoch !== conversationEpoch.current) return;
       const code = httpStatus(err);
       setTurns((prev) =>
         prev.map((x) =>
@@ -462,7 +477,12 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     const q = question.trim();
     if (!q || askMutation.isPending) return;
     setInput('');
-    askMutation.mutate({ tempId: `local-${Date.now()}`, question: q, conversationId });
+    askMutation.mutate({
+      tempId: `local-${Date.now()}`,
+      question: q,
+      conversationId,
+      epoch: conversationEpoch.current,
+    });
   };
 
   const send = () => {
@@ -482,7 +502,12 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         x.id === turn.id ? { ...x, pending: true, failed: false, answer: null } : x,
       ),
     );
-    askMutation.mutate({ tempId: turn.id, question: turn.question, conversationId });
+    askMutation.mutate({
+      tempId: turn.id,
+      question: turn.question,
+      conversationId,
+      epoch: conversationEpoch.current,
+    });
   };
 
   // Contextual entry sheet entries. All 4 targets (Insights, SenseCheck,
@@ -549,6 +574,9 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
               <HeaderIconButton
                 icon="refresh"
                 onPress={() => {
+                  // Bump the epoch so any in-flight request's late callback is
+                  // discarded and can't reseed this fresh chat.
+                  conversationEpoch.current += 1;
                   setTurns([]);
                   setConversationId(null);
                   setInput('');
