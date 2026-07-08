@@ -115,14 +115,13 @@ export function FirstOutfitActivationCard({
       <Pressable
         accessibilityRole="button"
         onPress={onWear}
-        style={({ pressed }) => ({
+        style={{
           height: 54,
           borderRadius: radius.md,
           backgroundColor: colors.label,
           alignItems: 'center',
           justifyContent: 'center',
-          opacity: pressed ? 0.88 : 1,
-        })}
+        }}
       >
         <Text style={{ ...type.headline, color: colors.inverse }}>{t('firstOutfit.wear')}</Text>
       </Pressable>

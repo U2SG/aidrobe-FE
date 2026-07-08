@@ -62,7 +62,7 @@ export function EditableChip({
         accessibilityLabel={`${label}: ${display}`}
         onPress={onPress}
         // 44px min hit area for mobile.
-        style={({ pressed }) => ({
+        style={{
           minHeight: 44,
           flexDirection: 'row',
           alignItems: 'center',
@@ -73,8 +73,7 @@ export function EditableChip({
           backgroundColor: colors.elevated,
           borderWidth: 1,
           borderColor: lowConfidence ? colors.warning : colors.separator,
-          opacity: pressed ? 0.7 : 1,
-        })}
+        }}
       >
         <View style={{ flex: 1, gap: 1 }}>
           <Typography variant="caption" color="tertiaryLabel">
@@ -103,7 +102,7 @@ export function EditableChip({
           <Pressable
             accessibilityRole="button"
             onPress={onConfirm}
-            style={({ pressed }) => ({
+            style={{
               minHeight: 44,
               flex: 1,
               flexDirection: 'row',
@@ -112,8 +111,7 @@ export function EditableChip({
               gap: 5,
               borderRadius: radius.sm,
               backgroundColor: colors.label,
-              opacity: pressed ? 0.7 : 1,
-            })}
+            }}
           >
             <SystemIcon name="check" size={13} color={colors.inverse} strokeWidth={2} />
             <Typography variant="caption" color="inverse">
@@ -123,7 +121,7 @@ export function EditableChip({
           <Pressable
             accessibilityRole="button"
             onPress={onPress}
-            style={({ pressed }) => ({
+            style={{
               minHeight: 44,
               flex: 1,
               alignItems: 'center',
@@ -132,8 +130,7 @@ export function EditableChip({
               backgroundColor: colors.elevated,
               borderWidth: 1,
               borderColor: colors.separator,
-              opacity: pressed ? 0.7 : 1,
-            })}
+            }}
           >
             <Typography variant="caption" color="secondaryLabel">
               {changeLabel ?? ''}

@@ -188,14 +188,14 @@ export function WelcomeScreen({ navigation }: Props) {
               onPress={signInWithApple}
               disabled={signingIn}
               android_ripple={signingIn ? undefined : { color: 'rgba(255,255,255,0.14)' }}
-              style={({ pressed }) => ({
+              style={{
                 height: 54,
                 borderRadius: radius.md,
                 backgroundColor: T.ink,
                 alignItems: 'center',
                 justifyContent: 'center',
-                opacity: signingIn ? 0.75 : pressed ? 0.88 : 1,
-              })}
+                opacity: signingIn ? 0.75 : 1,
+              }}
             >
               <Text style={{ ...typeTokens.headline, color: T.inverse }}>
                 {t('welcome.cta')}
@@ -205,14 +205,13 @@ export function WelcomeScreen({ navigation }: Props) {
             <Pressable
               onPress={() => navigation.navigate('Permission')}
               android_ripple={{ color: 'rgba(255,255,255,0.14)' }}
-              style={({ pressed }) => ({
+              style={{
                 height: 54,
                 borderRadius: radius.md,
                 backgroundColor: T.ink,
                 alignItems: 'center',
                 justifyContent: 'center',
-                opacity: pressed ? 0.88 : 1,
-              })}
+              }}
             >
               <Text style={{ ...typeTokens.headline, color: T.inverse }}>
                 {t('welcome.cta')}
@@ -238,12 +237,11 @@ export function WelcomeScreen({ navigation }: Props) {
           {/* Privacy link */}
           <Pressable
             onPress={openPrivacyPolicy}
-            style={({ pressed }) => ({
+            style={{
               height: 44,
               alignItems: 'center',
               justifyContent: 'center',
-              opacity: pressed ? 0.55 : 1,
-            })}
+            }}
           >
             <Text style={{ ...typeTokens.caption, color: T.ink3 }}>
               {t('onboarding.privacyPolicy')}

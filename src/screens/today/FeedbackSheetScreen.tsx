@@ -171,7 +171,7 @@ export function FeedbackSheetScreen({ navigation, route }: Props) {
                 accessibilityRole="radio"
                 accessibilityState={{ selected }}
                 onPress={() => setSelectedReason(selected ? null : key)}
-                style={({ pressed }) => ({
+                style={{
                   width: '47%',
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -183,9 +183,8 @@ export function FeedbackSheetScreen({ navigation, route }: Props) {
                   borderWidth: selected ? 0 : 1,
                   borderColor: T.divider,
                   minHeight: 52,
-                  opacity: pressed ? 0.85 : 1,
                   ...shadow.soft,
-                })}
+                }}
               >
                 <SystemIcon
                   name={iconName}
@@ -267,14 +266,14 @@ export function FeedbackSheetScreen({ navigation, route }: Props) {
           onPress={submit}
           disabled={mutation.isPending}
           accessibilityRole="button"
-          style={({ pressed }) => ({
+          style={{
             height: 54,
             borderRadius: radius.md,
             backgroundColor: T.ink,
             alignItems: 'center',
             justifyContent: 'center',
-            opacity: mutation.isPending || pressed ? 0.7 : 1,
-          })}
+            opacity: mutation.isPending ? 0.7 : 1,
+          }}
         >
           <Text
             style={{
@@ -293,12 +292,12 @@ export function FeedbackSheetScreen({ navigation, route }: Props) {
           onPress={submit}
           disabled={mutation.isPending}
           accessibilityRole="button"
-          style={({ pressed }) => ({
+          style={{
             height: 44,
             alignItems: 'center',
             justifyContent: 'center',
-            opacity: mutation.isPending || pressed ? 0.5 : 1,
-          })}
+            opacity: mutation.isPending ? 0.5 : 1,
+          }}
         >
           <Text
             style={{

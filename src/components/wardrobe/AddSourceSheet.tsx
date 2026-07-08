@@ -73,7 +73,7 @@ export function AddSourceSheet({ visible, onClose, onCamera, onAlbum, onOutfit, 
 
       <Pressable
         onPress={onClose}
-        style={({ pressed }) => [styles.cancelButton, pressed && styles.pressed]}
+        style={styles.cancelButton}
         accessibilityRole="button"
       >
         <Text style={styles.cancelLabel}>{t('addSource.cancel')}</Text>
@@ -99,7 +99,7 @@ function SourceRow({
     <>
       <Pressable
         onPress={onPress}
-        style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+        style={styles.row}
         accessibilityRole="button"
       >
         <View style={styles.iconWrap}>

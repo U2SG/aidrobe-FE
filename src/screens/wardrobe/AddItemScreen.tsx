@@ -233,7 +233,7 @@ export function AddItemScreen({ navigation }: Props) {
       <View style={styles.header}>
         <Pressable
           onPress={() => navigation.goBack()}
-          style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
+          style={styles.backButton}
           hitSlop={10}
         >
           <SystemIcon name="chevronLeft" size={24} color={Tok.ink} strokeWidth={2.2} />
@@ -250,7 +250,7 @@ export function AddItemScreen({ navigation }: Props) {
         <Pressable
           onPress={pickFromCamera}
           disabled={busy}
-          style={({ pressed }) => [styles.captureStage, pressed && styles.capturePressed]}
+          style={styles.captureStage}
         >
           <View style={styles.stageRail} />
           <View style={[styles.hangerHook, styles.hangerLeft]} />
@@ -342,7 +342,7 @@ function DockAction({
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      style={({ pressed }) => [styles.dockAction, pressed && styles.pressed, disabled && styles.disabled]}
+      style={[styles.dockAction, disabled && styles.disabled]}
     >
       <View style={styles.dockIcon}>
         <SystemIcon name={icon} size={21} color={Tok.ink} strokeWidth={1.9} />

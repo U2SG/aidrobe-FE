@@ -30,15 +30,14 @@ function EntryRow({ entry, onClose }: { entry: ContextualEntry; onClose: () => v
       }}
       accessibilityRole="button"
       android_ripple={{ color: colors.fill }}
-      style={({ pressed }) => ({
+      style={{
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 14,
         paddingHorizontal: spacing.control,
         borderRadius: radius.md,
         minHeight: 44,
-        opacity: pressed ? 0.68 : 1,
-      })}
+      }}
     >
       {/* Icon container */}
       <View
@@ -108,13 +107,12 @@ export function ContextualEntrySheet({ visible, onClose, entries }: Props) {
       <Pressable
         onPress={onClose}
         accessibilityRole="button"
-        style={({ pressed }) => ({
+        style={{
           alignItems: 'center',
           paddingVertical: 14,
           borderRadius: radius.md,
           minHeight: 44,
-          opacity: pressed ? 0.65 : 1,
-        })}
+        }}
       >
         <Text style={{ ...type.body, color: colors.tertiaryLabel }}>
           {t('common.cancel')}

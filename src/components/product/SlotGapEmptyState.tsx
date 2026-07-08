@@ -80,14 +80,13 @@ export function SlotGapEmptyState({
       <Pressable
         accessibilityRole="button"
         onPress={onAddItem}
-        style={({ pressed }) => ({
+        style={{
           height: 54,
           borderRadius: radius.md,
           backgroundColor: colors.label,
           alignItems: 'center',
           justifyContent: 'center',
-          opacity: pressed ? 0.88 : 1,
-        })}
+        }}
       >
         <Text style={{ ...type.headline, color: colors.inverse }}>
           {primaryMissing

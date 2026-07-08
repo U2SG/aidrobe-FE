@@ -170,14 +170,13 @@ export function AddWardrobeScreen({ navigation }: Props) {
         <Pressable
           onPress={() => navigation.goBack()}
           hitSlop={10}
-          style={({ pressed }) => ({
+          style={{
             width: 44,
             height: 44,
             borderRadius: 22,
             alignItems: 'center',
             justifyContent: 'center',
-            opacity: pressed ? 0.6 : 1,
-          })}
+          }}
         >
           <SystemIcon name="chevronLeft" size={24} color={T.ink} strokeWidth={2.2} />
         </Pressable>
@@ -259,7 +258,7 @@ export function AddWardrobeScreen({ navigation }: Props) {
         <Pressable
           onPress={pickFromCamera}
           disabled={uploading}
-          style={({ pressed }) => ({
+          style={{
             height: 54,
             borderRadius: radius.md,
             backgroundColor: T.ink,
@@ -267,8 +266,8 @@ export function AddWardrobeScreen({ navigation }: Props) {
             justifyContent: 'center',
             flexDirection: 'row',
             gap: 8,
-            opacity: uploading || pressed ? 0.72 : 1,
-          })}
+            opacity: uploading ? 0.72 : 1,
+          }}
         >
           {uploading ? (
             <ActivityIndicator color={T.inverse} size="small" />
@@ -286,7 +285,7 @@ export function AddWardrobeScreen({ navigation }: Props) {
         <Pressable
           onPress={pickFromLibrary}
           disabled={uploading}
-          style={({ pressed }) => ({
+          style={{
             height: 54,
             borderRadius: radius.md,
             backgroundColor: 'transparent',
@@ -297,8 +296,8 @@ export function AddWardrobeScreen({ navigation }: Props) {
             flexDirection: 'row',
             gap: 8,
             marginTop: 10,
-            opacity: uploading || pressed ? 0.65 : 1,
-          })}
+            opacity: uploading ? 0.65 : 1,
+          }}
         >
           <SystemIcon name="photo" size={18} color={T.ink} strokeWidth={1.8} />
           <Text style={{ ...typeTokens.headline, color: T.ink }}>
@@ -310,13 +309,13 @@ export function AddWardrobeScreen({ navigation }: Props) {
         <Pressable
           onPress={() => navigation.navigate('StyleMemory')}
           disabled={uploading}
-          style={({ pressed }) => ({
+          style={{
             height: 44,
             alignItems: 'center',
             justifyContent: 'center',
             marginTop: 4,
-            opacity: uploading || pressed ? 0.6 : 1,
-          })}
+            opacity: uploading ? 0.6 : 1,
+          }}
         >
           <Text style={{ ...typeTokens.callout, color: T.ink2 }}>
             {t('onboarding.addWardrobe.otherMethods')}

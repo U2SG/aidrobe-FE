@@ -28,6 +28,11 @@ type Props = {
 // first (primary), free-text input second (secondary). Chips fire immediately
 // and close. The text input submits via the inline send button or the full-width
 // CTA; cancel dismisses without action.
+//
+// Layout note: every Pressable here keeps its layout on a plain-object style or
+// an inner View — layout props inside a Pressable style FUNCTION get dropped
+// on-device (new arch) and the children render stacked/scattered (web is fine,
+// which is how it passed web verification).
 export function ContextOverrideBar({
   visible,
   onClose,
@@ -86,26 +91,42 @@ export function ContextOverrideBar({
                 accessibilityRole="button"
                 disabled={disabled}
                 onPress={() => handleChip(s.payload)}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  minHeight: 72,
-                  borderRadius: radius.md,
-                  borderWidth: 1,
-                  borderColor: colors.separator,
-                  backgroundColor: colors.elevated,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                  padding: 12,
-                  opacity: disabled ? 0.5 : pressed ? 0.8 : 1,
-                })}
+                android_ripple={{ color: colors.fill }}
+                style={{ flex: 1 }}
               >
-                {s.iconName ? (
-                  <SystemIcon name={s.iconName} size={20} color={colors.secondaryLabel} strokeWidth={1.6} />
-                ) : null}
-                <Text style={{ ...type.callout, fontWeight: '600', color: colors.label, textAlign: 'center' }}>
-                  {t(s.labelKey)}
-                </Text>
+                <View
+                  style={{
+                    minHeight: 72,
+                    borderRadius: radius.md,
+                    borderWidth: 1,
+                    borderColor: colors.separator,
+                    backgroundColor: colors.elevated,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    padding: 12,
+                    opacity: disabled ? 0.5 : 1,
+                  }}
+                >
+                  {s.iconName ? (
+                    <SystemIcon
+                      name={s.iconName}
+                      size={20}
+                      color={colors.secondaryLabel}
+                      strokeWidth={1.6}
+                    />
+                  ) : null}
+                  <Text
+                    style={{
+                      ...type.callout,
+                      fontWeight: '600',
+                      color: colors.label,
+                      textAlign: 'center',
+                    }}
+                  >
+                    {t(s.labelKey)}
+                  </Text>
+                </View>
               </Pressable>
             ))}
             {/* Pad the last row if it has only one chip */}
@@ -153,19 +174,22 @@ export function ContextOverrideBar({
             accessibilityLabel={t('today.override.submit')}
             onPress={handleSubmitText}
             disabled={disabled}
-            style={({ pressed }) => ({
-              height: 34,
-              paddingHorizontal: 14,
-              borderRadius: radius.pill,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: colors.label,
-              opacity: pressed ? 0.75 : 1,
-            })}
+            style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
           >
-            <Text style={{ ...type.caption, fontWeight: '700', color: colors.inverse }}>
-              {t('today.override.submit')}
-            </Text>
+            <View
+              style={{
+                height: 34,
+                paddingHorizontal: 14,
+                borderRadius: radius.pill,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: colors.label,
+              }}
+            >
+              <Text style={{ ...type.caption, fontWeight: '700', color: colors.inverse }}>
+                {t('today.override.submit')}
+              </Text>
+            </View>
           </Pressable>
         ) : null}
       </View>
@@ -175,39 +199,39 @@ export function ContextOverrideBar({
         accessibilityRole="button"
         disabled={disabled || !text.trim()}
         onPress={handleSubmitText}
-        style={({ pressed }) => ({
-          height: 50,
-          borderRadius: radius.md,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: text.trim() ? colors.label : colors.fill,
-          opacity: pressed ? 0.75 : 1,
-        })}
+        style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
       >
-        <Text
+        <View
           style={{
-            ...type.headline,
-            color: text.trim() ? colors.inverse : colors.quaternaryLabel,
+            height: 50,
+            borderRadius: radius.md,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: text.trim() ? colors.label : colors.fill,
           }}
         >
-          {t('today.override.refresh')}
-        </Text>
+          <Text
+            style={{
+              ...type.headline,
+              color: text.trim() ? colors.inverse : colors.quaternaryLabel,
+            }}
+          >
+            {t('today.override.refresh')}
+          </Text>
+        </View>
       </Pressable>
 
       {/* Cancel */}
       <Pressable
         accessibilityRole="button"
         onPress={handleClose}
-        style={({ pressed }) => ({
-          height: 44,
-          alignItems: 'center',
-          justifyContent: 'center',
-          opacity: pressed ? 0.6 : 1,
-        })}
+        style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
       >
-        <Text style={{ ...type.callout, color: colors.tertiaryLabel }}>
-          {t('common.cancel')}
-        </Text>
+        <View style={{ height: 44, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ ...type.callout, color: colors.tertiaryLabel }}>
+            {t('common.cancel')}
+          </Text>
+        </View>
       </Pressable>
     </BottomSheet>
   );

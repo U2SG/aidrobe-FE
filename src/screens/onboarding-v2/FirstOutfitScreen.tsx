@@ -175,12 +175,11 @@ export function FirstOutfitScreen({ navigation, route }: Props) {
             <Pressable
               accessibilityRole="button"
               onPress={() => navigation.navigate('StyleMemory' as never)}
-              style={({ pressed }) => ({
+              style={{
                 height: 44,
                 alignItems: 'center',
                 justifyContent: 'center',
-                opacity: pressed ? 0.6 : 1,
-              })}
+              }}
             >
               <Text style={{ ...type.callout, color: colors.tertiaryLabel }}>
                 {t('onboarding.styleMemory.skip')}

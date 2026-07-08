@@ -193,15 +193,14 @@ export function DepartureTimeScreen() {
               <Pressable
                 onPress={() => setTime(adjustTime(time, -30))}
                 hitSlop={12}
-                style={({ pressed }) => ({
+                style={{
                   width: 44,
                   height: 44,
                   borderRadius: radius.sm,
                   backgroundColor: T.bg,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  opacity: pressed ? 0.6 : 1,
-                })}
+                }}
               >
                 <Text style={{ fontSize: 26, fontWeight: '300', color: T.ink, lineHeight: 30 }}>
                   {'−'}
@@ -225,15 +224,14 @@ export function DepartureTimeScreen() {
               <Pressable
                 onPress={() => setTime(adjustTime(time, 30))}
                 hitSlop={12}
-                style={({ pressed }) => ({
+                style={{
                   width: 44,
                   height: 44,
                   borderRadius: radius.sm,
                   backgroundColor: T.bg,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  opacity: pressed ? 0.6 : 1,
-                })}
+                }}
               >
                 <Text style={{ fontSize: 26, fontWeight: '300', color: T.ink, lineHeight: 30 }}>
                   +
@@ -256,7 +254,7 @@ export function DepartureTimeScreen() {
                   <Pressable
                     key={preset}
                     onPress={() => setTime(`${preset}:00`)}
-                    style={({ pressed }) => ({
+                    style={{
                       flex: 1,
                       minHeight: 44,
                       borderRadius: radius.sm,
@@ -267,8 +265,7 @@ export function DepartureTimeScreen() {
                       justifyContent: 'center',
                       flexDirection: 'row',
                       gap: 4,
-                      opacity: pressed ? 0.7 : 1,
-                    })}
+                    }}
                   >
                     {selected ? (
                       <SystemIcon name="check" size={13} color={T.accent} strokeWidth={2.2} />
@@ -341,26 +338,25 @@ export function DepartureTimeScreen() {
           <Pressable
             onPress={save}
             disabled={saving}
-            style={({ pressed }) => ({
+            style={{
               height: 54,
               borderRadius: radius.md,
               backgroundColor: T.ink,
               alignItems: 'center',
               justifyContent: 'center',
-              opacity: saving || pressed ? 0.75 : 1,
-            })}
+              opacity: saving ? 0.75 : 1,
+            }}
           >
             <Text style={{ ...typeScale.headline, color: T.inverse }}>{t('departure.saveTime')}</Text>
           </Pressable>
           <Pressable
             onPress={finish}
             disabled={saving}
-            style={({ pressed }) => ({
+            style={{
               height: 44,
               alignItems: 'center',
               justifyContent: 'center',
-              opacity: pressed ? 0.55 : 1,
-            })}
+            }}
           >
             <Text style={{ ...typeScale.footnote, color: T.ink3 }}>{t('departure.skip')}</Text>
           </Pressable>

@@ -63,15 +63,14 @@ export function WardrobeShowcaseEmpty({
 
       <Pressable
         onPress={onAddItem}
-        style={({ pressed }) => ({
+        style={{
           height: 50,
           borderRadius: radius.lg,
           backgroundColor: colors.label,
           alignItems: 'center',
           justifyContent: 'center',
           marginTop: 20,
-          opacity: pressed ? 0.75 : 1,
-        })}
+        }}
       >
         <Typography variant="body" color="inverse" style={{ fontWeight: '600' }}>
           {t('wardrobe.empty.addFirst')}
