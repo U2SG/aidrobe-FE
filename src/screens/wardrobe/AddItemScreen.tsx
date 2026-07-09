@@ -15,8 +15,8 @@ import {
 import { API_BASE_URL, APP_ENV } from '@/api/client';
 import { createImportTask } from '@/api/importTasks';
 import { createPresignedUpload, uploadFileUriToPresigned } from '@/api/uploads';
+import { AIOrb } from '@/components/ui/AIOrb';
 import { Button } from '@/components/ui/Button';
-import { SiriOrb } from '@/components/ui/SiriOrb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { AddSourceSheet } from '@/components/wardrobe/AddSourceSheet';
 import { useT } from '@/hooks/useT';
@@ -425,7 +425,7 @@ function ProcessingOverlay({ label, progress }: { label: string | null; progress
     <Modal visible transparent animationType="fade">
       <View style={styles.processingBackdrop}>
         <View style={styles.processingCard}>
-          <SiriOrb size={96} />
+          <AIOrb variant="ink" size={96} />
           <Text style={styles.processingTitle}>{label}</Text>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width }]} />

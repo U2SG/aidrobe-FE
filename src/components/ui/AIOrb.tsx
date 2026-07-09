@@ -1,6 +1,6 @@
 import { useReducedMotion } from 'react-native-reanimated';
 
-import { SiriOrb, type SiriOrbVariant } from './SiriOrb';
+import { SiriBloomOrb, type BloomVariant } from './SiriBloomOrb';
 
 // AIOrb — the house "AI presence" element. A thin generalization over the
 // Skia/web SiriOrb primitive that adds a richer semantic variant set, size
@@ -33,10 +33,10 @@ const SIZE_PX: Record<AIOrbSize, number> = {
   xl: 160,
 };
 
-// Collapse the semantic variant set onto the two shader palettes the primitive
-// actually supports. `error` reads as the muted ink orb; everything expressive
-// uses the vivid palette.
-function paletteFor(variant: AIOrbVariant): SiriOrbVariant {
+// Collapse the semantic variant set onto the two palettes the bloom primitive
+// supports. `error` reads as the muted ink orb; everything expressive uses the
+// vivid (blue→violet→pink) palette.
+function paletteFor(variant: AIOrbVariant): BloomVariant {
   switch (variant) {
     case 'ink':
     case 'error':
@@ -65,5 +65,5 @@ export function AIOrb({ variant = 'vivid', size = 'lg', reduceMotion }: AIOrbPro
   const paused = reduceMotion ?? systemReduceMotion ?? false;
   const px = typeof size === 'number' ? size : SIZE_PX[size];
 
-  return <SiriOrb size={px} variant={paletteFor(variant)} paused={paused} />;
+  return <SiriBloomOrb size={px} variant={paletteFor(variant)} paused={paused} />;
 }

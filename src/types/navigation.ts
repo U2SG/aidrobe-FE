@@ -87,6 +87,12 @@ export type SettingsStackParamList = {
 // (scope=item); `scope: 'today'` flows from Today; absent → global.
 export type AskStackParamList = {
   AskAidrobe: { focusedItemId?: string; scope?: 'today' } | undefined;
+  SenseCheck: undefined;
+  PackingList: undefined;
+  PackingListDetail: { id: string };
+  CreatePackingList: undefined;
+  Insights: undefined;
+  WardrobeReport: { period?: string } | undefined;
 };
 
 // V4 — Discover hub: wardrobe tools + seasonal insights.
