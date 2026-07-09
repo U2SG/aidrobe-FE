@@ -1,7 +1,8 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { useFocusEffect } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Image,
@@ -261,6 +262,11 @@ export function WardrobeListScreen({ navigation }: Props) {
     queryKey: ['wardrobeItems', category],
     queryFn: () => listWardrobeItems({ category, limit: 50 }),
     retry: 1,
+    // Freshness window so ordinary tab switches don't refetch. A cross-screen
+    // mutation (import/edit/delete/wear) calls invalidateQueries, which marks
+    // this query stale regardless of staleTime, so the focus refetch below still
+    // fires after those — but a plain tab flip within the window is spared.
+    staleTime: 60_000,
     refetchInterval: (q) => {
       const queued = (q.state.data?.items ?? []).some((it) => it.cutoutStatus === 'queued');
       if (!queued) {
@@ -272,6 +278,20 @@ export function WardrobeListScreen({ navigation }: Props) {
       return 4000;
     },
   });
+
+  // Wardrobe is a persistent tab (never unmounts), so an import's
+  // invalidateAfterConfirmImport only marks this query stale while it's
+  // inactive — React Query won't auto-refetch an inactive query, and switching
+  // back doesn't remount. Refetch when the tab regains focus so freshly-imported
+  // items appear without a manual pull-to-refresh. Gated on isStale, which the
+  // staleTime window above keeps false for mutation-free tab flips.
+  const refetch = query.refetch;
+  const isStale = query.isStale;
+  useFocusEffect(
+    useCallback(() => {
+      if (isStale) void refetch();
+    }, [isStale, refetch]),
+  );
 
   const insightsQuery = useQuery({
     queryKey: ['insightsSummary'],
