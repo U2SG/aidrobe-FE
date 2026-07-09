@@ -26,6 +26,7 @@ import { ContextualEntrySheet } from '@/components/discover/ContextualEntrySheet
 import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { useWardrobeItemNames } from '@/hooks/useWardrobeItemNames';
+import { enableMvpV2Ui } from '@/lib/featureFlags';
 import type { I18nKey } from '@/i18n';
 // useToastStore removed — contextual-entry toasts replaced with real navigation
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
@@ -551,7 +552,14 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
       hintKey: 'contextualEntry.style.hint',
       onPress: () => {
         setContextualSheetVisible(false);
-        navigation.getParent()?.navigate('ProfileTab', { screen: 'StyleInspirations' } as never);
+        if (enableMvpV2Ui) {
+          // V2: Ask is its own tab; StyleInspirations lives in the Profile stack.
+          navigation.getParent()?.navigate('ProfileTab', { screen: 'StyleInspirations' } as never);
+        } else {
+          // V1: Ask is mounted inside the Discover stack, where StyleInspirations
+          // is a sibling — and there is no ProfileTab to cross to.
+          navigation.navigate('StyleInspirations' as never);
+        }
       },
     },
   ];
