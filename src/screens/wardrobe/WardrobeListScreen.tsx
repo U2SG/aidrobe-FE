@@ -1,7 +1,8 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { useFocusEffect } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Image,
@@ -272,6 +273,19 @@ export function WardrobeListScreen({ navigation }: Props) {
       return 4000;
     },
   });
+
+  // Wardrobe is a persistent tab (never unmounts), so an import's
+  // invalidateAfterConfirmImport only marks this query stale while it's
+  // inactive — React Query won't auto-refetch an inactive query. Refetch when
+  // the tab regains focus so freshly-imported items appear without a manual
+  // pull-to-refresh. Only when stale, to avoid a redundant fetch on every focus.
+  const refetch = query.refetch;
+  const isStale = query.isStale;
+  useFocusEffect(
+    useCallback(() => {
+      if (isStale) void refetch();
+    }, [isStale, refetch]),
+  );
 
   const insightsQuery = useQuery({
     queryKey: ['insightsSummary'],

@@ -1,6 +1,19 @@
 
 ---
 
+## 本仓工程坑 (device testing / import / refresh)
+
+Hard-won during on-device testing — check these before "fixing" a symptom:
+
+- **Uploads are presigned POST; the client rewrites the internal host.** `POST /v1/uploads/presign` returns an `upload_url` whose host is the *in-cluster* endpoint (`minio:9000`). A real device (over Tailscale) can't resolve that, so `src/api/uploads.ts` `normalizePresignedUploadUrl()` rewrites internal hosts (`minio`/`localhost`/`127.0.0.1`/`0.0.0.0`) to the `file_url` host+port. This is SAFE because a presigned **POST** signs the form policy/fields, NOT the host. **So "device upload fails" is almost never the backend** — check `file_url` points at a device-reachable host (backend `S3_PUBLIC_BASE_URL` = Tailscale IP) and that `normalize` still runs, before touching storage config. Do NOT add a second upload-endpoint env; the client-side rewrite already owns this.
+- **`file_url` (read) vs internal endpoint (server put/get) are intentionally different hosts** — public/Tailscale for the device, `minio:9000` inside the cluster. Don't "unify" them.
+- **Wardrobe / Today / Ask / Profile are persistent tabs — they never unmount on tab switch.** So a mutation's `invalidateQueries` only marks an *inactive* tab's query stale; React Query won't auto-refetch it, and switching back does NOT remount → the screen shows the stale cache. If "list doesn't update after an action on another tab", add a **focus refetch** (`useFocusEffect` + refetch-when-stale), like `WardrobeListScreen`. Pull-to-refresh working while auto-refresh doesn't is the tell.
+- **Import is async**: `POST /v1/import-tasks` → 202 + arq worker `import_drain`. `task_status`: `waiting_confirm` (recognized, awaiting the confirm form) → `completed` (confirmed → a real `WardrobeItem` exists) → `failed` (`error_code=vision_failed`, e.g. `image_url is required` when the image didn't upload or a link parser returned no image). Batch album import fans out one task per image and **skips** failures (toast "N 张未导入") — partial failure is by-design degradation, not a bug.
+- **Link import (淘宝/京东/小红书/抖音) via server `og:image` scrape is unreliable** (JS render + anti-bot + login walls; og:image is often a logo → false positive). Real path is on-device webview capture; server scrape is best-effort only and must degrade to screenshot import, never silently fail.
+- **On-device gotcha (RN new arch):** a `Pressable` whose LAYOUT/visual props live in its `style={({pressed})=>({...})}` FUNCTION loses them on device (children stack, solid backgrounds vanish → white text on light bg). Web renders fine — so web preview won't catch it. Put layout on an inner `<View>`; keep only `opacity` in the style function.
+
+---
+
 ## Worktree 并行工作流
 
 多个 Claude session 并行干活，每个 worktree = 独立目录 + 独立分支，互不干扰；每个 session 出一个 PR。
