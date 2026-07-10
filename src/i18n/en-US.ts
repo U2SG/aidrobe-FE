@@ -489,8 +489,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'profile.hint.dataOwnership': 'Your data is yours alone. You can view, correct, or delete it at any time.',
   'profile.export.requested': "Export requested — we'll let you know when it's ready.",
   'profile.clearData.title': 'Clear all data',
-  'profile.clearData.unavailable':
-    "There's no one-tap clear yet. You can delete items one by one from item detail; it'll live here later.",
+  'profile.clearData.done': 'All cleared. Your account is still here — start fresh anytime.',
   'profile.deactivate.title': 'Delete data & account',
   'profile.deactivate.body':
     'This permanently deletes your account and all data, with no recovery. Are you sure?',
@@ -528,6 +527,19 @@ export const enUS: Record<keyof typeof zhCN, string> = {
     "These are things YIRAN learned from how you use it — not a form you filled in. Fix anything that's off.",
   'privacy.memory.empty':
     'Nothing learned to show yet. Use it a few more days and it will appear here — you can correct or delete anytime.',
+  'privacy.memory.markWrong': 'Not accurate',
+  'privacy.memory.delete': 'Delete',
+  'privacy.memory.markedWrong': "Noted — this one won't count anymore.",
+  'privacy.memory.deleted': 'Memory deleted.',
+  'privacy.memory.clearAll': 'Clear all memory',
+  'privacy.memory.clearedAll': 'Learned preferences cleared.',
+  'privacy.memory.clearAll.title': 'Clear all memory?',
+  'privacy.memory.clearAll.body':
+    'Everything YIRAN has learned about your preferences will be cleared and recommendations start fresh. Your items and records are untouched.',
+  'privacy.memory.clearAll.confirm': 'Clear',
+  'privacy.memory.source.explicit': 'You told YIRAN',
+  'privacy.memory.source.feedback': 'From your feedback',
+  'privacy.memory.source.inferred': 'Inferred from usage',
 
   // --- Departure time onboarding screen ------------------------------------
   'departure.stepLabel': '03',
