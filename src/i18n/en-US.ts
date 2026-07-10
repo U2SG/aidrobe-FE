@@ -22,6 +22,10 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'tabs.ask': 'Ask',
   'tabs.profile': 'Me',
 
+  // --- Navigation titles (visible native headers) ---------------------------
+  'nav.today.feedback': 'Feedback',
+  'nav.wardrobe.importConfirm': 'Confirm import',
+
   // --- Onboarding ----------------------------------------------------------
   'onboarding.privacyPolicy': 'View privacy policy',
   'onboarding.privacyPolicyOpenFailed': "Couldn't open the privacy policy. Please try again later.",

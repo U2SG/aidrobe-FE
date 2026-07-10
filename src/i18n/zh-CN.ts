@@ -22,6 +22,10 @@ export const zhCN = {
   'tabs.ask': 'Ask',
   'tabs.profile': '我的',
 
+  // --- Navigation titles (visible native headers) ---------------------------
+  'nav.today.feedback': '反馈',
+  'nav.wardrobe.importConfirm': '确认导入',
+
   // --- Onboarding ----------------------------------------------------------
   'onboarding.privacyPolicy': '了解隐私政策',
   'onboarding.privacyPolicyOpenFailed': '无法打开隐私政策，请稍后重试',
