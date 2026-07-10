@@ -108,8 +108,18 @@ function toToday(data: ServerTodayRecommendation): TodayRecommendation {
   };
 }
 
-export async function getTodayRecommendation(scene?: 'commute' | 'formal' | 'casual') {
-  return toToday(await apiGet<ServerTodayRecommendation>('/v1/recommendations/today', { scene }));
+// BE#77 — `targetDate` (YYYY-MM-DD, today or tomorrow only) switches Today to
+// date-aware mode; omitted → legacy today. Flag-off backends ignore the param.
+export async function getTodayRecommendation(
+  scene?: 'commute' | 'formal' | 'casual',
+  targetDate?: string,
+) {
+  return toToday(
+    await apiGet<ServerTodayRecommendation>('/v1/recommendations/today', {
+      scene,
+      target_date: targetDate,
+    }),
+  );
 }
 
 // BE #79 — cold-start feasibility gate. The verdict is derived from the same
@@ -135,11 +145,30 @@ export async function getFirstOutfitGate(): Promise<FirstOutfitGate> {
 // Regeneration drives several LLM calls and routinely takes ~25s — well over the
 // client's default 15s timeout, which surfaced as a bogus "网络异常" while the
 // backend actually succeeded. Give it a generous 60s budget.
-export async function refreshTodayRecommendation(scene?: 'commute' | 'formal' | 'casual') {
+// BE#78 — a chip or free-text context override applied as a session-scoped
+// constraint on this one regeneration; the response echoes `applied_context`.
+export interface ContextOverride {
+  text?: string;
+  source: 'chip' | 'free_text';
+  chipId?: string;
+}
+
+export async function refreshTodayRecommendation(
+  scene?: 'commute' | 'formal' | 'casual',
+  override?: ContextOverride,
+) {
   return toToday(
     await apiPost<ServerTodayRecommendation>(
       '/v1/recommendations/today/refresh',
-      null,
+      override
+        ? {
+            context_override: {
+              text: override.text ?? null,
+              source: override.source,
+              chip_id: override.chipId ?? null,
+            },
+          }
+        : null,
       { scene },
       { timeout: 60_000 },
     ),

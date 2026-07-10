@@ -19,7 +19,9 @@ type Props = {
   visible: boolean;
   onClose: () => void;
   suggestions: ContextOverrideSuggestion[];
-  onSelectSuggestion: (payload: string) => void;
+  // Passes the whole suggestion so the caller can attach chip identity
+  // (chip_id) to the BE#78 context-override contract, not just display text.
+  onSelectSuggestion: (suggestion: ContextOverrideSuggestion) => void;
   onSubmitText: (text: string) => void;
   disabled?: boolean;
 };
@@ -44,9 +46,9 @@ export function ContextOverrideBar({
   const { t } = useT();
   const [text, setText] = useState('');
 
-  const handleChip = (payload: string) => {
+  const handleChip = (suggestion: ContextOverrideSuggestion) => {
     if (disabled) return;
-    onSelectSuggestion(payload);
+    onSelectSuggestion(suggestion);
     onClose();
   };
 
@@ -90,7 +92,7 @@ export function ContextOverrideBar({
                 key={s.id}
                 accessibilityRole="button"
                 disabled={disabled}
-                onPress={() => handleChip(s.payload)}
+                onPress={() => handleChip(s)}
                 android_ripple={{ color: colors.fill }}
                 style={{ flex: 1 }}
               >

@@ -4,11 +4,13 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
+import { emitRecommendationEvent } from '@/api/events';
 import {
   favoriteOutfit,
   getTodayRecommendation,
   refreshTodayRecommendation,
   unfavoriteOutfit,
+  type ContextOverride,
 } from '@/api/recommendations';
 import { getUserSettings } from '@/api/settings';
 import { getWardrobeItem, listWardrobeItems } from '@/api/wardrobe';
@@ -81,12 +83,35 @@ export function TodayV2Screen({ navigation }: Props) {
     staleTime: 5 * 60 * 1000,
   });
 
+  // BE#77 — evening/late-night is tomorrow-oriented BY TIME (>= 18:00), so the
+  // decision which date to fetch can't depend on the fetch result. deriveTodayMode
+  // with hasTodayRecommendation:true is a pure time probe here; the real mode
+  // (incl. cold start) is derived below from actual data.
+  const wantTomorrow = isTomorrowOriented(
+    deriveTodayMode({
+      now: new Date(),
+      departureTime: null,
+      hasTodayRecommendation: true,
+    }),
+  );
+  const targetDate = useMemo(() => {
+    if (!wantTomorrow) return undefined;
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${mm}-${dd}`;
+  }, [wantTomorrow]);
+
   const todayQuery = useQuery({
-    queryKey: ['todayRecommendation'],
-    queryFn: () => getTodayRecommendation('commute'),
+    queryKey: ['todayRecommendation', targetDate ?? 'today'],
+    queryFn: () => getTodayRecommendation('commute', targetDate),
     staleTime: 60 * 1000,
     retry: 1,
   });
+  // True only when the backend actually served tomorrow (flag on) — a flag-off
+  // backend ignores target_date and this stays false → legacy preview framing.
+  const serverTomorrowActive = todayQuery.data?.mode === 'tomorrow';
 
   // Refresh weather on re-focus (skip the initial mount focus), matching V1.
   const firstFocus = useRef(true);
@@ -115,9 +140,13 @@ export function TodayV2Screen({ navigation }: Props) {
   for (const q of itemQueries) if (q.data) itemById.set(q.data.id, q.data);
 
   const refreshMutation = useMutation({
-    mutationFn: () => refreshTodayRecommendation('commute'),
+    // BE#78 — an optional context override rides along as a session-scoped
+    // constraint on this one regeneration; plain swaps pass undefined.
+    mutationFn: (override?: ContextOverride) => refreshTodayRecommendation('commute', override),
     onSuccess: (data) => {
-      qc.setQueryData(['todayRecommendation'], data);
+      // Refresh regenerates TODAY only — write today's cache key explicitly so
+      // a tomorrow-mode view is never clobbered with a today payload.
+      qc.setQueryData(['todayRecommendation', 'today'], data);
       showToast({ message: t('today.swapped'), kind: 'success' });
     },
     onError: (err: { response?: { status?: number } }) => {
@@ -155,6 +184,8 @@ export function TodayV2Screen({ navigation }: Props) {
     now: new Date(),
     departureTime,
     hasTodayRecommendation: hasRecommendation,
+    // In tomorrow mode the query result IS tomorrow's recommendation.
+    hasTomorrowRecommendation: wantTomorrow ? hasRecommendation : undefined,
   });
 
   const weather = todayQuery.data?.context?.weather ?? null;
@@ -166,9 +197,38 @@ export function TodayV2Screen({ navigation }: Props) {
     return parts.join(' · ') || null;
   }, [weather, outfit, t]);
 
-  // Real resurface insight only — none available from the BE yet, so this stays
-  // null and the card renders nothing (never a fabricated nudge).
-  const resurfaceInsight: ResurfaceInsight | null = null;
+  // BE#80 — real resurface insight from the Today payload only; absent → the
+  // card renders nothing (never a fabricated nudge). Viewing it feeds the BE's
+  // same-item cooldown via a weak resurface_insight_viewed event, once per id.
+  const serverInsight = todayQuery.data?.resurfaceInsight ?? null;
+  const resurfaceInsight: ResurfaceInsight | null = serverInsight
+    ? { id: serverInsight.id, text: serverInsight.text, itemId: serverInsight.itemId }
+    : null;
+  const lastViewedInsightId = useRef<string | null>(null);
+  useEffect(() => {
+    if (serverInsight && lastViewedInsightId.current !== serverInsight.id) {
+      lastViewedInsightId.current = serverInsight.id;
+      emitRecommendationEvent({
+        eventType: 'resurface_insight_viewed',
+        signalStrength: 'weak',
+        sourceSurface: 'today',
+        itemId: serverInsight.itemId,
+      });
+    }
+  }, [serverInsight]);
+  const openResurfaceItem = (insight: ResurfaceInsight) => {
+    if (insight.itemId) {
+      emitRecommendationEvent({
+        eventType: 'resurface_item_opened',
+        signalStrength: 'medium',
+        sourceSurface: 'today',
+        itemId: insight.itemId,
+      });
+      (
+        navigation.getParent() as { navigate: (name: string, params?: object) => void } | undefined
+      )?.navigate('WardrobeTab', { screen: 'ItemDetail', params: { itemId: insight.itemId } });
+    }
+  };
 
   const modeCopy = MODE_COPY[mode];
   // Evening / late-night switch focus to tomorrow. The BE has no tomorrow
@@ -207,12 +267,16 @@ export function TodayV2Screen({ navigation }: Props) {
     if (hasRecommendation) track('today_viewed', { mode });
   }, [mode, hasRecommendation, track]);
 
-  const submitOverride = (payload: string) => {
-    track('context_override_submitted', { payload, surface: 'today' });
-    // API_GAP: the BE /today refresh takes only a coarse `scene`, not free-text
-    // override context. Until the contract accepts it, we acknowledge + refresh;
-    // the payload is tracked so the override intent is not silently dropped.
-    refreshMutation.mutate();
+  // BE#78 — chips carry chip identity (deterministic constraint mapping on the
+  // BE); free text goes through the BE's LLM parse. The BE emits the
+  // context_override_submitted learning event server-side — no client event.
+  const submitChipOverride = (suggestion: ContextOverrideSuggestion) => {
+    track('context_override_submitted', { payload: suggestion.payload, surface: 'today' });
+    refreshMutation.mutate({ source: 'chip', chipId: suggestion.id, text: suggestion.payload });
+  };
+  const submitTextOverride = (text: string) => {
+    track('context_override_submitted', { payload: text, surface: 'today' });
+    refreshMutation.mutate({ source: 'free_text', text });
   };
 
   return (
@@ -240,9 +304,18 @@ export function TodayV2Screen({ navigation }: Props) {
           <DecisionOutfitCard
             outfit={outfit}
             pieces={resolveOutfitPieces(outfit, itemById)}
-            reasons={tomorrowOriented ? [] : buildRecommendationReasons(outfit)}
-            hint={tomorrowOriented ? t('today.v2.tomorrowPreview') : hint}
-            quote={tomorrowOriented ? null : todayQuery.data?.guidanceText ?? null}
+            // BE#77 — with a REAL tomorrow payload the reasons/weather/quote are
+            // tomorrow's own (forecast context), so show them; the neutral
+            // preview framing remains only for flag-off backends.
+            reasons={
+              tomorrowOriented && !serverTomorrowActive ? [] : buildRecommendationReasons(outfit)
+            }
+            hint={tomorrowOriented && !serverTomorrowActive ? t('today.v2.tomorrowPreview') : hint}
+            quote={
+              tomorrowOriented && !serverTomorrowActive
+                ? null
+                : todayQuery.data?.guidanceText ?? null
+            }
             isFavorited={favorited}
             onToggleFavorite={toggleFavorite}
             wearLabelKey={wearLabelKeyForMode(mode)}
@@ -251,12 +324,17 @@ export function TodayV2Screen({ navigation }: Props) {
               track('outfit_worn', { outfitId: outfit.id });
               navigation.navigate('OutfitDetail', { outfitId: outfit.id });
             }}
-            onSwap={() => refreshMutation.mutate()}
+            // Refresh regenerates TODAY only (no tomorrow-swap contract), so
+            // swapping is disabled while a real tomorrow payload is shown.
+            onSwap={() => {
+              if (serverTomorrowActive) return;
+              refreshMutation.mutate(undefined);
+            }}
             onViewDetail={() => navigation.navigate('OutfitDetail', { outfitId: outfit.id })}
-            swapBusy={refreshMutation.isPending}
+            swapBusy={refreshMutation.isPending || serverTomorrowActive}
           />
 
-          <ResurfaceInsightCard insight={resurfaceInsight} />
+          <ResurfaceInsightCard insight={resurfaceInsight} onPress={openResurfaceItem} />
 
           {/* Compact entry row — opens the context override sheet */}
           <Pressable
@@ -285,8 +363,8 @@ export function TodayV2Screen({ navigation }: Props) {
             visible={overrideSheetOpen}
             onClose={() => setOverrideSheetOpen(false)}
             suggestions={OVERRIDE_SUGGESTIONS}
-            onSelectSuggestion={submitOverride}
-            onSubmitText={submitOverride}
+            onSelectSuggestion={submitChipOverride}
+            onSubmitText={submitTextOverride}
             disabled={refreshMutation.isPending}
           />
         </>
