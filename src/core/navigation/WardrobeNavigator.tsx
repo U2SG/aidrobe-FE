@@ -6,12 +6,14 @@ import { ImportFailureScreen } from '@/screens/wardrobe/ImportFailureScreen';
 import { ItemDetailScreen } from '@/screens/wardrobe/ItemDetailScreen';
 import { WardrobeListScreen } from '@/screens/wardrobe/WardrobeListScreen';
 import { FirstOutfitScreen } from '@/screens/onboarding-v2/FirstOutfitScreen';
+import { useT } from '@/hooks/useT';
 import { colors } from '@/theme/design';
 import type { WardrobeStackParamList } from '@/types/navigation';
 
 const Stack = createNativeStackNavigator<WardrobeStackParamList>();
 
 export function WardrobeNavigator() {
+  const { t } = useT();
   return (
     <Stack.Navigator
       screenOptions={{
@@ -39,7 +41,7 @@ export function WardrobeNavigator() {
       <Stack.Screen
         name="ImportConfirm"
         component={ImportConfirmScreen}
-        options={{ title: '确认导入' }}
+        options={{ title: t('nav.wardrobe.importConfirm') }}
       />
       <Stack.Screen
         name="ImportFailure"

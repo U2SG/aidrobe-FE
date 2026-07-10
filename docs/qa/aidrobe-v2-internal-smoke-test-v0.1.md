@@ -108,12 +108,19 @@
 
 ---
 
-## 已知 BE 缺口（测到这些"没生效"不是 bug）
+## 已知缺口（测到这些"没生效"不是 bug）
+
+BE 侧 #77/#78/#80/#81/#82/#83 已全部合入 BE main（2026-07-10），但均为 **flag 默认关**，
+且 FE 尚未消费新契约 —— 现象不变，原因从"BE 未实现"变为"待开 flag + FE 接线"。
+
+对应 BE flag（dev 后端 `.env` 开启后 FE 才能接）：
+`ENABLE_DATE_AWARE_TODAY` / `ENABLE_CONTEXT_OVERRIDES` / `ENABLE_RESURFACE_INSIGHT` /
+`ENABLE_INDOOR_CLIMATE_INFERENCE` / `ENABLE_DATA_TRUST`（passive events 无 flag，直接可用）。
 
 | 现象 | 依赖 | 状态 |
 |---|---|---|
-| 晚间/深夜显示的"明日"仍是今日数据换语气 | BE #77 tomorrow recommendation | 未接 |
-| 特殊情况 override 选了不影响推荐内容 | BE #78 context override | 未接 |
-| Today 下方无 resurface insight 卡（不假造，直接空着） | BE #80 resurface insight | 未接 |
-| 太冷/太热等反馈不改变后续推荐 | BE #81 passive learning / #82 indoor climate | 未接 |
-| 记忆纠正/删除、清空数据的服务端真值 | BE #83 data trust endpoints | 未接 |
+| 晚间/深夜显示的"明日"仍是今日数据换语气 | BE #77 tomorrow recommendation | BE 已落地（flag 关），FE 待接 `target_date` |
+| 特殊情况 override 选了不影响推荐内容 | BE #78 context override | BE 已落地（flag 关），FE 待接 refresh `context_override` |
+| Today 下方无 resurface insight 卡（不假造，直接空着） | BE #80 resurface insight | BE 已落地（flag 关），FE 待接 `resurface_insight` |
+| 太冷/太热等反馈不改变后续推荐 | BE #81 passive learning / #82 indoor climate | BE 已落地（#82 flag 关），FE 待接 `POST /recommendations/events` |
+| 记忆纠正/删除、清空数据的服务端真值 | BE #83 data trust endpoints | BE 已落地（flag 关），FE 待接 `/v1/profile/*` |
