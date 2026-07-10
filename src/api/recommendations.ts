@@ -131,11 +131,18 @@ export async function getTodayRecommendation(
   scene?: 'commute' | 'formal' | 'casual',
   targetDate?: string,
 ) {
+  // Cold cache runs read-time LLM enrichment (reasoning/prep) and was measured
+  // at ~27s — past the default 15s timeout, which surfaced as a bogus "网络异常"
+  // while the backend actually succeeded. Same 60s budget as refresh/first-outfit.
   return toToday(
-    await apiGet<ServerTodayRecommendation>('/v1/recommendations/today', {
-      scene,
-      target_date: targetDate,
-    }),
+    await apiGet<ServerTodayRecommendation>(
+      '/v1/recommendations/today',
+      {
+        scene,
+        target_date: targetDate,
+      },
+      { timeout: 60_000 },
+    ),
   );
 }
 
