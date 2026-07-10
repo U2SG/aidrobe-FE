@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
+import { emitRecommendationEvent } from '@/api/events';
 import { sendOutfitFeedback } from '@/api/recommendations';
 import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
@@ -43,7 +44,18 @@ export function RecommendationFeedback({ outfitId, temperatureC }: Props) {
       setSubmittedChip(chip);
       showToast({ message: t('feedback.thanks'), kind: 'success' });
       const signal = detectIndoorClimateSignal(chip, temperatureC);
-      if (signal) track('temperature_mismatch_reported', { outfitId, reason: chip, temperatureC, signal });
+      if (signal) {
+        track('temperature_mismatch_reported', { outfitId, reason: chip, temperatureC, signal });
+        // BE#81/#82 — feed the indoor-climate inference. Strong: this is an
+        // explicit user report, and the BE's confidence gate ignores weak ones.
+        emitRecommendationEvent({
+          eventType: 'temperature_mismatch_reported',
+          signalStrength: 'strong',
+          sourceSurface: 'today',
+          outfitId,
+          metadata: { reason: chip, temperatureC, signal },
+        });
+      }
     },
     // On error: the apiClient interceptor already surfaces a global error toast,
     // so we don't add a second one. The mutation resets to idle (submittedChip

@@ -360,6 +360,19 @@ export interface ServerTodayContext {
   fetched_at?: string | null;
 }
 
+export interface AppliedContext {
+  overrideText: string | null;
+  constraints: string[];
+}
+
+export interface TodayResurfaceInsight {
+  id: string;
+  text: string;
+  itemId: string;
+  reason: string;
+  cooldownKey: string;
+}
+
 export interface TodayRecommendation {
   date: string;
   state: TodayState;
@@ -368,6 +381,9 @@ export interface TodayRecommendation {
   outfits: OutfitSummary[];
   styleContext?: StyleContext | null;
   context?: TodayContext | null;
+  appliedContext?: AppliedContext | null; // BE#78
+  resurfaceInsight?: TodayResurfaceInsight | null; // BE#80
+  mode?: 'today' | 'tomorrow' | null; // BE#77
 }
 
 export type OutfitDetail = OutfitSummary;
@@ -404,6 +420,21 @@ export interface ServerStyleContext {
   confidence: number;
 }
 
+// BE#78 — echo of the context override that shaped a refresh.
+export interface ServerAppliedContext {
+  override_text?: string | null;
+  constraints: string[];
+}
+
+// BE#80 — at most one forgotten-item nudge; absent when no genuine candidate.
+export interface ServerResurfaceInsight {
+  id: string;
+  text: string;
+  item_id: string;
+  reason: string;
+  cooldown_key: string;
+}
+
 export interface ServerTodayRecommendation {
   recommendation_date: string;
   status: TodayState;
@@ -411,6 +442,9 @@ export interface ServerTodayRecommendation {
   outfits: ServerOutfitResponse[];
   style_context?: ServerStyleContext | null;
   context?: ServerTodayContext | null;
+  applied_context?: ServerAppliedContext | null; // BE#78
+  resurface_insight?: ServerResurfaceInsight | null; // BE#80
+  mode?: 'today' | 'tomorrow' | null; // BE#77 — null on legacy / flag-off payloads
 }
 
 // BE #79 — first-outfit cold-start feasibility gate. The verdict derives from
