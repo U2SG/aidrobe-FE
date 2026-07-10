@@ -105,6 +105,23 @@ function toToday(data: ServerTodayRecommendation): TodayRecommendation {
         }
       : null,
     context: toContext(data.context),
+    // BE#78/#80/#77 — absent on legacy payloads; consumers handle null.
+    appliedContext: data.applied_context
+      ? {
+          overrideText: data.applied_context.override_text ?? null,
+          constraints: data.applied_context.constraints ?? [],
+        }
+      : null,
+    resurfaceInsight: data.resurface_insight
+      ? {
+          id: data.resurface_insight.id,
+          text: data.resurface_insight.text,
+          itemId: data.resurface_insight.item_id,
+          reason: data.resurface_insight.reason,
+          cooldownKey: data.resurface_insight.cooldown_key,
+        }
+      : null,
+    mode: data.mode ?? null,
   };
 }
 

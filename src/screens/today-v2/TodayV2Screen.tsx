@@ -144,9 +144,13 @@ export function TodayV2Screen({ navigation }: Props) {
     // constraint on this one regeneration; plain swaps pass undefined.
     mutationFn: (override?: ContextOverride) => refreshTodayRecommendation('commute', override),
     onSuccess: (data) => {
-      // Refresh regenerates TODAY only — write today's cache key explicitly so
-      // a tomorrow-mode view is never clobbered with a today payload.
-      qc.setQueryData(['todayRecommendation', 'today'], data);
+      // Refresh regenerates TODAY only. Swap/override are permitted only while
+      // the view is NOT a real tomorrow payload, so whatever key is active is
+      // showing today's data (possibly under the flag-off evening preview key)
+      // — write the ACTIVE key so the visible card updates, and the plain
+      // 'today' key so a later daytime view isn't stale.
+      qc.setQueryData(['todayRecommendation', targetDate ?? 'today'], data);
+      if (targetDate) qc.setQueryData(['todayRecommendation', 'today'], data);
       showToast({ message: t('today.swapped'), kind: 'success' });
     },
     onError: (err: { response?: { status?: number } }) => {
