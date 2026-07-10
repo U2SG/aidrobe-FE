@@ -1,9 +1,10 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { deactivateAccount, requestDataExport } from '@/api/account';
+import { clearAllData } from '@/api/profile';
 import { refreshTodayRecommendation } from '@/api/recommendations';
 import { getUserSettings, updateUserSettings } from '@/api/settings';
 import { DepartureTimeSheet } from '@/components/settings/DepartureTimeSheet';
@@ -268,7 +269,33 @@ export function ProfileV2Screen({ navigation }: Props) {
     },
   });
 
-  const confirmDeactivate = () => setDeleteDataOpen(true);
+  // BE#83 — clear ALL app data while KEEPING the account. Previously the
+  // "账号会保留" DeleteDataSheet was mis-wired to deactivateAccount (no clear
+  // endpoint existed); the sheet's promise and the action now match. Every
+  // cached query is stale after the wipe, so drop the whole cache.
+  const clearDataMutation = useMutation({
+    mutationFn: clearAllData,
+    onSuccess: () => {
+      setDeleteDataOpen(false);
+      queryClient.clear();
+      showToast({ message: t('profile.clearData.done'), kind: 'success' });
+    },
+  });
+
+  const confirmClearData = () => setDeleteDataOpen(true);
+
+  // Deactivation (permanent, deletes the ACCOUNT) keeps its own explicit
+  // confirm with the deactivation copy — never the keep-account sheet.
+  const confirmDeactivate = () => {
+    Alert.alert(t('profile.deactivate.title'), t('profile.deactivate.body'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('profile.deactivate.confirm'),
+        style: 'destructive',
+        onPress: () => deactivateMutation.mutate(),
+      },
+    ]);
+  };
 
   const signOut = () => {
     void resetToSignedOut();
@@ -397,6 +424,11 @@ export function ProfileV2Screen({ navigation }: Props) {
           onPress={signOut}
         />
         <Row
+          labelKey="profile.row.clearData"
+          onPress={confirmClearData}
+          danger
+        />
+        <Row
           labelKey="profile.row.deactivate"
           onPress={confirmDeactivate}
           danger
@@ -441,8 +473,8 @@ export function ProfileV2Screen({ navigation }: Props) {
       />
       <DeleteDataSheet
         visible={deleteDataOpen}
-        loading={deactivateMutation.isPending}
-        onConfirm={() => deactivateMutation.mutate()}
+        loading={clearDataMutation.isPending}
+        onConfirm={() => clearDataMutation.mutate()}
         onClose={() => setDeleteDataOpen(false)}
       />
     </>
