@@ -502,7 +502,11 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
         )}
 
         {/* ── OutfitBoard flat-lay ─────────────────────────────────────────── */}
-        <View style={{ marginTop: 16, alignItems: 'center' }}>
+        {/* No alignItems:'center' here: on device (Yoga) it shrinks the
+            width-less flex OutfitBoard to content width 0, so onLayout reports
+            0 and the pieces never mount — a ~400px blank wash panel. Web flex
+            stretches, which is why web preview never caught it. */}
+        <View style={{ marginTop: 16 }}>
           <OutfitBoard pieces={boardPieces} />
         </View>
 
