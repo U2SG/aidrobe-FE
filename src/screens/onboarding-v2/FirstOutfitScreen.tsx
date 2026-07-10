@@ -110,9 +110,13 @@ export function FirstOutfitScreen({ navigation, route }: Props) {
     }
     // Pop the activation gate off the Wardrobe stack first, so returning to the
     // Wardrobe tab later lands on the list — not back on this headerless gate —
-    // then cross-tab jump into Today.
+    // then cross-tab jump into Today. Target the nested Today home explicitly:
+    // TodayTab is a persistent stack, so a bare tab navigate would land on a
+    // stale nested screen (e.g. a previously opened OutfitDetail) instead of home.
     navigation.popToTop();
-    navigation.getParent()?.navigate('TodayTab' as never);
+    (
+      navigation.getParent() as { navigate: (name: string, params?: object) => void } | undefined
+    )?.navigate('TodayTab', { screen: 'Today' });
   };
 
   const items: WardrobeItem[] = wardrobeQuery.data?.items ?? [];

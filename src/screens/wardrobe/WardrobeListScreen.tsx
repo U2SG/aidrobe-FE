@@ -368,8 +368,15 @@ export function WardrobeListScreen({ navigation }: Props) {
     if (enableMvpV2Ui) {
       // Insights is no longer a primary tab under V2. Until the contextual-entry
       // phase wires a dedicated host, surface wardrobe questions through Ask so
-      // the banner never dead-ends on a missing DiscoverTab.
-      navigation.getParent()?.navigate('AskTab' as never);
+      // the banner never dead-ends on a missing DiscoverTab. AskTab is a
+      // persistent stack: clear focusedItemId/scope so a prior item-scoped Ask
+      // (opened from item detail) doesn't leak into this wardrobe/global entry.
+      (
+        navigation.getParent() as { navigate: (name: string, params?: object) => void } | undefined
+      )?.navigate('AskTab', {
+        screen: 'AskAidrobe',
+        params: { focusedItemId: undefined, scope: undefined },
+      });
       return;
     }
     navigation.getParent<MainTabsNavigation>()?.navigate('DiscoverTab', { screen: 'Insights' });
