@@ -1,9 +1,9 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useEffect, useState } from 'react';
-import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
-import { loginWithApple } from '@/api/auth';
+import { inviteLogin, loginWithApple } from '@/api/auth';
 import { APP_ENV } from '@/api/client';
 import { OutfitBoard } from '@/components/outfit/OutfitBoard';
 import { SystemIcon } from '@/components/ui/SystemIcon';
@@ -44,8 +44,16 @@ const HERO_PIECES: GarmentPiece[] = [
   { kind: 'sneaker',  x: 195, y: 195, scale: 0.65, rotate: '6deg'  },
 ];
 
+// True when we should show the invite-code flow instead of Apple Sign-In.
+// Android production only — web is excluded because token persistence relies
+// on expo-secure-store, which is unavailable on web (docs/web-dev-setup.md);
+// a "successful" web login would fail at setTokens and dead-end the user.
+const USE_INVITE_CODE = APP_ENV === 'production' && Platform.OS === 'android';
+
 export function WelcomeScreen({ navigation }: Props) {
   const [signingIn, setSigningIn] = useState(false);
+  const [inviteCode, setInviteCode] = useState('');
+  const [inviteError, setInviteError] = useState('');
   const setTokens = useAuthStore((state) => state.setTokens);
   const showToast = useToastStore((state) => state.show);
   const { t } = useT();
@@ -54,6 +62,12 @@ export function WelcomeScreen({ navigation }: Props) {
   useEffect(() => {
     track('onboarding_started');
   }, [track]);
+
+  // Shared post-login steps (token persist + navigate to Permission).
+  const afterLogin = async (tokens: Awaited<ReturnType<typeof loginWithApple>>) => {
+    await setTokens(tokens);
+    navigation.navigate('Permission');
+  };
 
   const signInWithApple = async () => {
     setSigningIn(true);
@@ -69,13 +83,29 @@ export function WelcomeScreen({ navigation }: Props) {
         return;
       }
       const tokens = await loginWithApple(credential.identityToken);
-      await setTokens(tokens);
       track('apple_login_completed');
-      navigation.navigate('Permission');
+      await afterLogin(tokens);
     } catch (error) {
       if ((error as { code?: string }).code !== 'ERR_REQUEST_CANCELED') {
         showToast({ message: 'Apple 登录失败，请稍后重试', kind: 'error' });
       }
+    } finally {
+      setSigningIn(false);
+    }
+  };
+
+  const signInWithInviteCode = async () => {
+    const code = inviteCode.trim();
+    if (!code) return;
+    setInviteError('');
+    setSigningIn(true);
+    try {
+      const tokens = await inviteLogin(code);
+      track('invite_login_completed');
+      await afterLogin(tokens);
+    } catch {
+      // 401 (invalid/disabled code) or network error — show inline error.
+      setInviteError(t('welcome.inviteCode.error'));
     } finally {
       setSigningIn(false);
     }
@@ -182,8 +212,74 @@ export function WelcomeScreen({ navigation }: Props) {
 
         {/* CTAs */}
         <View style={{ gap: 4 }}>
-          {/* Primary CTA: "开始整理衣橱" */}
-          {APP_ENV === 'production' ? (
+          {USE_INVITE_CODE ? (
+            /* ── Invite-code flow (non-iOS production) ── */
+            <>
+              {/* Invite code input */}
+              <View>
+                <TextInput
+                  value={inviteCode}
+                  onChangeText={(text) => {
+                    setInviteCode(text);
+                    if (inviteError) setInviteError('');
+                  }}
+                  placeholder={t('welcome.inviteCode.placeholder')}
+                  placeholderTextColor={T.ink3}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!signingIn}
+                  style={{
+                    height: 54,
+                    borderRadius: radius.md,
+                    borderWidth: 1,
+                    borderColor: inviteError ? colors.danger : T.divider,
+                    paddingHorizontal: 16,
+                    // Locked at 16 to prevent iOS auto-zoom on focus.
+                    fontSize: 16,
+                    color: T.ink,
+                    backgroundColor: T.bg,
+                  }}
+                />
+                {inviteError ? (
+                  <Text
+                    style={{
+                      ...typeTokens.caption,
+                      color: colors.danger,
+                      marginTop: 6,
+                      marginLeft: 4,
+                    }}
+                  >
+                    {inviteError}
+                  </Text>
+                ) : null}
+              </View>
+
+              {/* Primary: "使用邀请码登录" */}
+              <Pressable
+                onPress={signInWithInviteCode}
+                disabled={signingIn || inviteCode.trim().length === 0}
+                android_ripple={
+                  signingIn || inviteCode.trim().length === 0
+                    ? undefined
+                    : { color: 'rgba(255,255,255,0.14)' }
+                }
+                style={{
+                  height: 54,
+                  borderRadius: radius.md,
+                  backgroundColor: T.ink,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: signingIn || inviteCode.trim().length === 0 ? 0.5 : 1,
+                  marginTop: 4,
+                }}
+              >
+                <Text style={{ ...typeTokens.headline, color: T.inverse }}>
+                  {t('welcome.inviteCode.cta')}
+                </Text>
+              </Pressable>
+            </>
+          ) : APP_ENV === 'production' ? (
+            /* ── Apple Sign-In (iOS production) ── */
             <Pressable
               onPress={signInWithApple}
               disabled={signingIn}
@@ -202,6 +298,7 @@ export function WelcomeScreen({ navigation }: Props) {
               </Text>
             </Pressable>
           ) : (
+            /* ── Dev skip button ── */
             <Pressable
               onPress={() => navigation.navigate('Permission')}
               android_ripple={{ color: 'rgba(255,255,255,0.14)' }}
@@ -219,20 +316,22 @@ export function WelcomeScreen({ navigation }: Props) {
             </Pressable>
           )}
 
-          {/* Secondary: "登录已有账号" — calls signInWithApple in both envs */}
-          <Pressable
-            onPress={signInWithApple}
-            disabled={signingIn}
-            style={{
-              height: 48,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={{ ...typeTokens.callout, color: T.ink2 }}>
-              {t('welcome.loginExisting')}
-            </Text>
-          </Pressable>
+          {/* Secondary: "登录已有账号" — hidden on non-iOS production (invite flow covers it) */}
+          {!USE_INVITE_CODE && (
+            <Pressable
+              onPress={signInWithApple}
+              disabled={signingIn}
+              style={{
+                height: 48,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text style={{ ...typeTokens.callout, color: T.ink2 }}>
+                {t('welcome.loginExisting')}
+              </Text>
+            </Pressable>
+          )}
 
           {/* Privacy link */}
           <Pressable

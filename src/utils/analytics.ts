@@ -14,6 +14,7 @@ export const ANALYTICS_EVENTS = {
   import_task_created: 'import_task_created',
   import_confirm_viewed: 'import_confirm_viewed',
   apple_login_completed: 'apple_login_completed',
+  invite_login_completed: 'invite_login_completed',
   item_saved: 'item_saved',
   today_viewed: 'today_viewed',
   outfit_detail_viewed: 'outfit_detail_viewed',

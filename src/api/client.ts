@@ -3,7 +3,9 @@ import type { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } fro
 import Constants from 'expo-constants';
 
 import { isErrorToastSilenced } from '@/api/errorToast';
+import { queryClient } from '@/core/providers/queryClient';
 import { useAuthStore } from '@/store/auth';
+import { useOnboardingStore } from '@/store/onboarding';
 import { useDevUserStore } from '@/store/devUser';
 import { useToastStore } from '@/store/toast';
 import type { ApiEnvelope } from '@/types/api';
@@ -14,6 +16,9 @@ import type { ApiEnvelope } from '@/types/api';
 declare module 'axios' {
   interface AxiosRequestConfig {
     silentErrorToast?: boolean;
+    // Internal — marks a request that was already replayed after a token refresh.
+    // A 401 on a retry must NOT trigger another refresh (loop guard).
+    _isRetry?: boolean;
   }
 }
 
@@ -43,6 +48,22 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+// Single-flight refresh promise shared across concurrent 401s.
+let refreshPromise: Promise<void> | null = null;
+
+/**
+ * Perform a full sign-out reset: clears auth tokens, resets onboarding state
+ * (so RootNavigator flips back to Welcome), and clears the React Query cache.
+ * Shows the "session expired" toast.
+ */
+async function signOutReset(): Promise<void> {
+  const showToast = useToastStore.getState().show;
+  await useAuthStore.getState().clear();
+  useOnboardingStore.getState().setCompleted(false);
+  queryClient.clear();
+  showToast({ message: '登录已过期，请重新登录', kind: 'error' });
+}
+
 apiClient.interceptors.response.use(
   (response: AxiosResponse<ApiEnvelope<unknown>>) => {
     const body = response.data;
@@ -54,7 +75,82 @@ apiClient.interceptors.response.use(
     }
     return response;
   },
-  (error: AxiosError<ApiEnvelope<unknown>>) => {
+  async (error: AxiosError<ApiEnvelope<unknown>>) => {
+    const status = error.response?.status;
+    const message = error.response?.data?.message ?? '';
+    const config = error.config;
+
+    // ── 401 handling ─────────────────────────────────────────────────────────
+    if (status === 401) {
+      // V3+ E1: account deactivated — keep existing behavior unchanged.
+      if (message.includes('Account deactivated') || message.includes('deactivated')) {
+        const showToast = useToastStore.getState().show;
+        void useAuthStore.getState().clear();
+        showToast({ message: '账号已注销，请重新登录', kind: 'error' });
+        return Promise.reject(error);
+      }
+
+      // Auth endpoints themselves are excluded from refresh (would loop).
+      const isAuthEndpoint = config?.url?.startsWith('/v1/auth/');
+
+      // Already replayed → do not refresh again (loop guard).
+      const isRetry = config?._isRetry === true;
+
+      // Only engage the refresh path when a token-based session exists.
+      // Dev X-User-Id sessions (no stored tokens) skip this entirely.
+      const storedRefreshToken = useAuthStore.getState().refreshToken;
+      const hasTokenSession = Boolean(storedRefreshToken || useAuthStore.getState().accessToken);
+
+      if (!isAuthEndpoint && !isRetry && hasTokenSession && config) {
+        // Single-flight: if a refresh is already in progress, wait for it.
+        if (!refreshPromise) {
+          const { refreshToken: refreshTokenFn } = await import('./auth');
+          const currentRefreshToken = useAuthStore.getState().refreshToken;
+
+          if (!currentRefreshToken) {
+            // No refresh token available — sign out.
+            await signOutReset();
+            return Promise.reject(error);
+          }
+
+          refreshPromise = refreshTokenFn(currentRefreshToken)
+            .then(async (tokens) => {
+              await useAuthStore.getState().setTokens(tokens);
+            })
+            .catch(async () => {
+              await signOutReset();
+            })
+            .finally(() => {
+              refreshPromise = null;
+            });
+        }
+
+        try {
+          await refreshPromise;
+        } catch {
+          // refreshPromise itself doesn't reject (errors are handled inside);
+          // this catch is a safety net.
+          return Promise.reject(error);
+        }
+
+        // Check if sign-out happened during the refresh (tokens cleared).
+        if (!useAuthStore.getState().accessToken) {
+          // Sign-out already performed and toasted inside the refresh chain.
+          return Promise.reject(error);
+        }
+
+        // Replay the original request once. The request interceptor will
+        // pick up the new access token from the store automatically.
+        const retryConfig = { ...config, _isRetry: true };
+        return apiClient.request(retryConfig);
+      }
+
+      // Fallthrough: auth endpoint, retry, or no token session → generic toast.
+      handleHttpError(error);
+      return Promise.reject(error);
+    }
+
+    // ── All other errors ──────────────────────────────────────────────────────
     handleHttpError(error);
     return Promise.reject(error);
   },
