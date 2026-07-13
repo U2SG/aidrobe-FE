@@ -45,8 +45,10 @@ const HERO_PIECES: GarmentPiece[] = [
 ];
 
 // True when we should show the invite-code flow instead of Apple Sign-In.
-// Non-iOS production builds (Android / web) use invite-code only.
-const USE_INVITE_CODE = APP_ENV === 'production' && Platform.OS !== 'ios';
+// Android production only — web is excluded because token persistence relies
+// on expo-secure-store, which is unavailable on web (docs/web-dev-setup.md);
+// a "successful" web login would fail at setTokens and dead-end the user.
+const USE_INVITE_CODE = APP_ENV === 'production' && Platform.OS === 'android';
 
 export function WelcomeScreen({ navigation }: Props) {
   const [signingIn, setSigningIn] = useState(false);
