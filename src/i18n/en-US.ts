@@ -43,6 +43,9 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'welcome.sparkleHint': 'Add a few regulars and your first look is ready.',
   'welcome.cta': 'Start organising your wardrobe',
   'welcome.loginExisting': 'Sign in to existing account',
+  'welcome.inviteCode.placeholder': 'Enter invite code',
+  'welcome.inviteCode.cta': 'Sign in with invite code',
+  'welcome.inviteCode.error': 'Invalid invite code, please try again',
 
   // --- Settings ------------------------------------------------------------
   'settings.title': 'Settings',

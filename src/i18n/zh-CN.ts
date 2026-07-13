@@ -36,6 +36,9 @@ export const zhCN = {
   'welcome.sparkleHint': '先加几件常穿的，就能看到第一套。',
   'welcome.cta': '开始整理衣橱',
   'welcome.loginExisting': '登录已有账号',
+  'welcome.inviteCode.placeholder': '输入邀请码',
+  'welcome.inviteCode.cta': '使用邀请码登录',
+  'welcome.inviteCode.error': '邀请码无效，请重试',
 
   // --- Settings ------------------------------------------------------------
   'settings.title': '设置',
