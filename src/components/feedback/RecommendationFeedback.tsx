@@ -2,11 +2,14 @@ import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
+import { emitRecommendationEvent } from '@/api/events';
 import { sendOutfitFeedback } from '@/api/recommendations';
 import { useT } from '@/hooks/useT';
+import { useTrack } from '@/hooks/useTrack';
 import { REASON_TAG_KEYS } from '@/i18n/domainLabels';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, type } from '@/theme/design';
+import { detectIndoorClimateSignal } from '@/utils/climateSignals';
 
 import { reasonChipToFeedback, type FeedbackChip } from './feedbackChips';
 
@@ -16,18 +19,23 @@ import { reasonChipToFeedback, type FeedbackChip } from './feedbackChips';
 // Submitting disables the row (no duplicate taps); a failure is non-blocking and
 // the chips stay tappable to retry. Render only where an outfit_id exists.
 //
-// API_GAP (FE#72): (1) Ask answers carry no outfit_id/recommendation_id, so Ask
-// recommendation feedback is not wirable to this endpoint without a BE change to
-// AskResult (or an Ask-specific feedback route). (2) The BE feedback endpoint
-// takes no `source_surface`, so the today/ask surface origin is not recorded.
+// Ask feedback is intentionally separate: `/v1/ask/{ask_session_id}/feedback`
+// attributes the Ask recommendation id and source surface. This component stays
+// outfit-only because it submits to `/recommendations/outfits/{outfit_id}/feedback`;
+// Ask must use its dedicated route rather than fabricate an outfit id.
 
 interface Props {
   outfitId: string;
+  // Outdoor temperature at recommendation time, when known. Lets a too_cold /
+  // too_warm dislike that contradicts the weather be tracked as an indoor-climate
+  // signal (brief §9.2). Optional — omitted callers just skip the signal.
+  temperatureC?: number | null;
 }
 
-export function RecommendationFeedback({ outfitId }: Props) {
+export function RecommendationFeedback({ outfitId, temperatureC }: Props) {
   const { t, tEnum } = useT();
   const showToast = useToastStore((s) => s.show);
+  const track = useTrack();
   const [submittedChip, setSubmittedChip] = useState<FeedbackChip | null>(null);
 
   const mutation = useMutation({
@@ -35,6 +43,19 @@ export function RecommendationFeedback({ outfitId }: Props) {
     onSuccess: (_data, chip) => {
       setSubmittedChip(chip);
       showToast({ message: t('feedback.thanks'), kind: 'success' });
+      const signal = detectIndoorClimateSignal(chip, temperatureC);
+      if (signal) {
+        track('temperature_mismatch_reported', { outfitId, reason: chip, temperatureC, signal });
+        // BE#81/#82 — feed the indoor-climate inference. Strong: this is an
+        // explicit user report, and the BE's confidence gate ignores weak ones.
+        emitRecommendationEvent({
+          eventType: 'temperature_mismatch_reported',
+          signalStrength: 'strong',
+          sourceSurface: 'today',
+          outfitId,
+          metadata: { reason: chip, temperatureC, signal },
+        });
+      }
     },
     // On error: the apiClient interceptor already surfaces a global error toast,
     // so we don't add a second one. The mutation resets to idle (submittedChip

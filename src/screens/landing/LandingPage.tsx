@@ -50,7 +50,7 @@ export function LandingPage({ onEnterApp }: Props) {
               fontWeight: '700',
             }}
           >
-            AIDROBE
+            衣然 YIRAN
           </Text>
           <Pressable onPress={onEnterApp} hitSlop={12}>
             <Text style={{ ...type.footnote, color: colors.secondaryLabel, fontWeight: '600' }}>
@@ -87,7 +87,7 @@ export function LandingPage({ onEnterApp }: Props) {
             不是更多衣服，{'\n'}而是每天{'\n'}更快穿对。
           </Text>
           <Text style={{ marginTop: 18, ...type.body, color: colors.secondaryLabel, lineHeight: 24 }}>
-            Aidrobe 基于你真实拥有、现在能穿、找得到、来得及拿的衣服，在每天早上给出 3 套可执行穿搭决策。
+            衣然 基于你真实拥有、现在能穿、找得到、来得及拿的衣服，在每天早上给出 3 套可执行穿搭决策。
           </Text>
 
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 22 }}>
@@ -158,7 +158,7 @@ export function LandingPage({ onEnterApp }: Props) {
             right: 28,
             padding: 14,
             borderRadius: radius.lg,
-            backgroundColor: 'rgba(255,255,255,0.92)',
+            backgroundColor: colors.overlayStrong,
             borderWidth: 1,
             borderColor: colors.separatorSoft,
           }}
@@ -241,7 +241,7 @@ export function LandingPage({ onEnterApp }: Props) {
       >
         <Text style={{ ...type.headline, color: colors.label }}>内测说明</Text>
         <Text style={{ marginTop: 8, ...type.footnote, color: colors.secondaryLabel, lineHeight: 20 }}>
-          当前版本优先验证一个问题：你是否愿意每天早晨打开 Aidrobe，并采纳它给出的可执行推荐。
+          当前版本优先验证一个问题：你是否愿意每天早晨打开 衣然，并采纳它给出的可执行推荐。
         </Text>
       </View>
     </ScrollView>

@@ -12,10 +12,26 @@ export const colors = {
   quaternaryLabel: '#A7A09A',
   accent: '#B08D5B',
   accentSoft: '#F4E8D1',
+  // Warm-gold agent glow — quotation marks, star/sparkle accents; not for body
+  // text. Quiet readable body for soft secondary copy. From the V2 handoff.
+  agentGlow: '#D8B77A',
+  quietText: '#6B645B',
   success: '#3F8060',
   successBg: '#EDF4EE',
   warning: '#C8924A',
   warningBg: '#F8E9C8',
+  // Deeper amber for low-confidence / missing-slot text + icons (readable as a
+  // foreground where `warning` is a fill/background). From the V2 handoff.
+  cautionAmber: '#9A682E',
+  // Warm inks/borders paired with `warningBg` surfaces (obstacle banner,
+  // laundry markers) — same amber family, extracted from OutfitDetail.
+  warningBorder: '#E5D2A8',
+  warningBorderStrong: '#D4B687',
+  warningInk: '#5C4F3F',
+  warningInkMuted: '#7A6A55',
+  // Translucent white scrims laid over imagery/illustration surfaces.
+  overlaySoft: 'rgba(255,255,255,0.72)',
+  overlayStrong: 'rgba(255,255,255,0.9)',
   danger: '#B85C4A',
   dangerBg: '#F6DDD6',
   inverse: '#FFFFFF',

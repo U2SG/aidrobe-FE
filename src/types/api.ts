@@ -267,6 +267,24 @@ export interface ServerI18nMessage {
   fallback_text: string;
 }
 
+// Where a recommendation reason came from — drives the small provenance label
+// on each reason row (redesign brief v0.9 §9.3). Optional everywhere: the BE
+// currently returns reasons as plain text, so `source` is undefined until the
+// contract adds it, in which case the label is simply not rendered.
+export type RecommendationReasonSource =
+  | 'weather_rule'
+  | 'wardrobe_history'
+  | 'preference_memory'
+  | 'style_memory'
+  | 'indoor_climate_inference'
+  | 'llm';
+
+export interface RecommendationReason {
+  text: string;
+  source?: RecommendationReasonSource;
+  referencedItemIds?: string[];
+}
+
 export interface OutfitObstacle {
   kind: ObstacleKind;
   itemId: string;
@@ -342,6 +360,19 @@ export interface ServerTodayContext {
   fetched_at?: string | null;
 }
 
+export interface AppliedContext {
+  overrideText: string | null;
+  constraints: string[];
+}
+
+export interface TodayResurfaceInsight {
+  id: string;
+  text: string;
+  itemId: string;
+  reason: string;
+  cooldownKey: string;
+}
+
 export interface TodayRecommendation {
   date: string;
   state: TodayState;
@@ -350,6 +381,9 @@ export interface TodayRecommendation {
   outfits: OutfitSummary[];
   styleContext?: StyleContext | null;
   context?: TodayContext | null;
+  appliedContext?: AppliedContext | null; // BE#78
+  resurfaceInsight?: TodayResurfaceInsight | null; // BE#80
+  mode?: 'today' | 'tomorrow' | null; // BE#77
 }
 
 export type OutfitDetail = OutfitSummary;
@@ -386,6 +420,21 @@ export interface ServerStyleContext {
   confidence: number;
 }
 
+// BE#78 — echo of the context override that shaped a refresh.
+export interface ServerAppliedContext {
+  override_text?: string | null;
+  constraints: string[];
+}
+
+// BE#80 — at most one forgotten-item nudge; absent when no genuine candidate.
+export interface ServerResurfaceInsight {
+  id: string;
+  text: string;
+  item_id: string;
+  reason: string;
+  cooldown_key: string;
+}
+
 export interface ServerTodayRecommendation {
   recommendation_date: string;
   status: TodayState;
@@ -393,6 +442,29 @@ export interface ServerTodayRecommendation {
   outfits: ServerOutfitResponse[];
   style_context?: ServerStyleContext | null;
   context?: ServerTodayContext | null;
+  applied_context?: ServerAppliedContext | null; // BE#78
+  resurface_insight?: ServerResurfaceInsight | null; // BE#80
+  mode?: 'today' | 'tomorrow' | null; // BE#77 — null on legacy / flag-off payloads
+}
+
+// BE #79 — first-outfit cold-start feasibility gate. The verdict derives from
+// the same daily the Today pipeline persists, so gate and /today never diverge.
+export type FirstOutfitGateState = 'no_outfit' | 'single_outfit' | 'ready';
+
+export interface ServerFirstOutfitGate {
+  state: FirstOutfitGateState;
+  feasible_outfit_count: number;
+  missing_slots: string[];
+  first_outfit?: ServerOutfitResponse | null;
+  gate_failures: string[];
+}
+
+export interface FirstOutfitGate {
+  state: FirstOutfitGateState;
+  feasibleOutfitCount: number;
+  missingSlots: string[];
+  firstOutfit: OutfitSummary | null;
+  gateFailures: string[];
 }
 
 // V3+: 4-tier overall feedback. Old like/dislike still accepted.
@@ -485,6 +557,34 @@ export interface ServerOutfitHistoryResponse {
   items: ServerOutfitHistoryItem[];
   limit: number;
   offset: number;
+}
+
+// Wear-history record for one date (GET /v1/outfit-history/{worn_date}); also
+// the target of the OOTD photo attach (POST /v1/outfit-history/{id}/ootd).
+export interface WearHistoryEntry {
+  wearHistoryId: string;
+  wornDate: string;
+  outfit: {
+    outfitId: string;
+    outfitType: string;
+    title: string | null;
+    reasonText: string | null;
+  } | null;
+  ootdImageUrl: string | null;
+  selectedAt: string;
+}
+
+export interface ServerWearHistoryEntry {
+  wear_history_id: string;
+  worn_date: string;
+  outfit?: {
+    outfit_id: string;
+    outfit_type: string;
+    title?: string | null;
+    reason_text?: string | null;
+  } | null;
+  ootd_image_url?: string | null;
+  selected_at: string;
 }
 
 export interface OutfitHistoryQuery {
@@ -808,10 +908,11 @@ export type AskScope = 'global' | 'item' | 'today';
 export interface AskBody {
   question: string;
   context?: AskContext;
-  // Scope the ask to one wardrobe item ("style an outfit around this").
   focusedItemId?: string;
-  // BCP-47 locale controlling the answer language (e.g. "en-US", "zh-CN").
   locale?: string;
+  // Thread id for multi-turn continuity. Pass the conversation_id returned by
+  // the previous turn so the backend can include prior exchange context.
+  conversationId?: string | null;
 }
 
 // BE#29 — denormalized snapshot of a referenced wardrobe item, already
@@ -833,20 +934,41 @@ export interface AskItemRefSnapshot {
   thumbnailUrl: string | null;
 }
 
+// Multi-turn reasoning deltas — what the conversation carried into this answer.
+export interface AskDeltas {
+  reasoning: string | null;
+  appliedConstraints: string[];
+}
+
 export interface AskResult {
   askSessionId: string;
+  conversationId: string | null;
   answer: string;
   itemRefs: string[];
   itemRefSnapshots: AskItemRefSnapshot[];
   tokensUsed: number;
+  hasWardrobeContext: boolean;
+  deltas: AskDeltas | null;
+  recommendationId: string | null;
+  sourceSurface: string;
+}
+
+export interface ServerAskDeltas {
+  reasoning?: string | null;
+  applied_constraints?: string[];
 }
 
 export interface ServerAskResponse {
   ask_session_id: string;
+  conversation_id?: string | null;
   answer: string;
   item_refs: string[];
   item_ref_snapshots?: ServerAskItemRefSnapshot[];
   tokens_used: number;
+  has_wardrobe_context?: boolean;
+  deltas?: ServerAskDeltas | null;
+  recommendation_id?: string | null;
+  source_surface?: string;
 }
 
 export interface AskHistoryEntry {

@@ -10,10 +10,13 @@ import { GarmentSvg } from '@/components/ui/GarmentSvg';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
+import { enableMvpV2Ui } from '@/lib/featureFlags';
 import { invalidateAfterConfirmImport } from '@/state/invalidation';
+import { confirmationBudgetForImport } from '@/utils/timeUX';
+import { visibleImportFields } from './importConfirmFields';
 import { phaseFromFlags } from '@/state/operationState';
 import { useImportDraftStore } from '@/store/importDraft';
-import { colors, shadow } from '@/theme/design';
+import { colors, radius, shadow, type as typeScale } from '@/theme/design';
 import type { ConfirmImportTaskBody, FitIntent, ImportTask, ItemCategory } from '@/types/api';
 import type { WardrobeStackParamList } from '@/types/navigation';
 
@@ -36,13 +39,19 @@ const T = {
   accent: colors.accent,
   ok: colors.success,
   shadowSm: shadow.soft,
+  // radius shortcuts
+  rSm: radius.sm,
+  rMd: radius.md,
+  rLg: radius.lg,
+  rXl: radius.xl,
+  rPill: radius.pill,
 };
 
 export function ImportConfirmScreen({ navigation, route }: Props) {
   const { t, tEnum } = useT();
   const CATEGORY_OPTIONS = CATEGORY_KEYS.map((id) => ({ id, label: tEnum('category', id) }));
   const FIT_OPTIONS = FIT_KEYS.map((id) => ({ id, label: tEnum('fitIntent', id) }));
-  const { taskId, queue, queueIndex } = route.params;
+  const { taskId, queue, queueIndex, onboarding } = route.params;
   // Multi-image batch: confirm this task, then advance to the next one.
   const queueLen = queue?.length ?? 0;
   const inQueue = queueLen > 1;
@@ -52,10 +61,22 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
   const goNextOrExit = () => {
     const nextId = queue && queue[idx + 1];
     if (nextId) {
-      navigation.replace('ImportConfirm', { taskId: nextId, queue, queueIndex: idx + 1 });
+      navigation.replace('ImportConfirm', { taskId: nextId, queue, queueIndex: idx + 1, onboarding });
+    } else if (enableMvpV2Ui) {
+      // V2: after the last item, land on the First Outfit activation gate
+      // instead of dropping the user back onto the list. Forward `onboarding`
+      // so First Outfit continues onboarding (→ StyleMemory) rather than Today.
+      navigation.replace('FirstOutfit', onboarding ? { onboarding: true } : undefined);
     } else {
       navigation.popToTop();
     }
+  };
+  // Back/close/retake exits: in the wardrobe stack popToTop lands on the list;
+  // re-hosted in onboarding it would land on Welcome (step 1) — go back to the
+  // AddWardrobe step (2/6) instead.
+  const exitFlow = () => {
+    if (onboarding) navigation.navigate('AddWardrobe' as never);
+    else navigation.popToTop();
   };
   const qc = useQueryClient();
   const resetDraft = useImportDraftStore((state) => state.reset);
@@ -65,16 +86,22 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
   const query = useQuery({
     queryKey: ['importTask', taskId],
     queryFn: () => getImportTask(taskId),
-    refetchInterval: (queryInfo) =>
-      queryInfo.state.data?.status === 'waiting_confirm' ||
-      queryInfo.state.data?.status === 'failed'
-        ? false
-        : 1500,
+    retry: 1,
+    refetchInterval: (queryInfo) => {
+      const task = queryInfo.state.data;
+      if (!task || queryInfo.state.status === 'error') return false;
+      return task.status === 'waiting_confirm' || task.status === 'failed' ? false : 1500;
+    },
   });
 
   const [form, setForm] = useState<ConfirmImportTaskBody>({ name: '', category: 'top', color: '' });
   const [selectedFit, setSelectedFit] = useState('regular');
   const [saving, setSaving] = useState(false);
+  // Late-night low-friction: compute once on mount so the form doesn't
+  // reshuffle if the clock ticks past a threshold during editing.
+  const [budget] = useState(() => confirmationBudgetForImport(new Date()));
+  // Whether the user has tapped "改一下" to expand the collapsed fields.
+  const [expanded, setExpanded] = useState(false);
   // Surfaces save failure inline (in the SaveBar) instead of a 2.5s toast that
   // vanishes. The edited `form` state is never touched on failure, so retrying
   // resubmits the same content with no re-typing.
@@ -86,11 +113,15 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
 
   useEffect(() => { track('import_confirm_viewed', { taskId }); }, [taskId, track]);
 
+  const data = query.data;
+
   useEffect(() => {
-    const data = query.data;
     if (!data) return;
     if (data.status === 'failed') {
-      navigation.replace('ImportFailure', { reason: data.errorReason ?? 'recognition_failed' });
+      navigation.replace('ImportFailure', {
+        reason: data.errorReason ?? 'recognition_failed',
+        onboarding,
+      });
       return;
     }
     if (data.status === 'waiting_confirm' && data.recognized) {
@@ -100,9 +131,40 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
         color: data.recognized.color ?? '',
       });
     }
-  }, [query.data, navigation]);
+  }, [data, navigation, onboarding]);
 
-  const data = query.data;
+  if (query.isError && data?.status !== 'waiting_confirm') {
+    return (
+      <View style={{ flex: 1, backgroundColor: T.bg, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('common.back')}
+          onPress={exitFlow}
+          hitSlop={8}
+          style={{ position: 'absolute', top: 52, left: 20, padding: 4 }}
+        >
+          <SystemIcon name="chevronLeft" size={22} color={T.ink2} />
+        </Pressable>
+        <SystemIcon name="exclamation" size={28} color={colors.label} />
+        <Text style={{ ...typeScale.headline, color: T.ink, textAlign: 'center' }}>
+          {t('common.errorTitle')}
+        </Text>
+        <Text style={{ ...typeScale.callout, color: T.ink3, textAlign: 'center' }}>
+          {t('common.errorDescription')}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => void query.refetch()}
+          style={{ minHeight: 44, borderRadius: T.rMd, backgroundColor: T.ink, paddingHorizontal: 24, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Text style={{ ...typeScale.headline, color: colors.inverse }}>
+            {t('common.retry')}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   if (!data || data.status !== 'waiting_confirm') {
     return <ProcessingOverlay title={t('import.recognizing')} />;
   }
@@ -116,7 +178,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
         current={current}
         total={total}
         inQueue={inQueue}
-        onClose={() => navigation.popToTop()}
+        onClose={exitFlow}
         onAdvance={goNextOrExit}
       />
     );
@@ -159,40 +221,58 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
       {/* Nav */}
-      <View style={{ paddingTop: 52, paddingHorizontal: 16, paddingBottom: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Pressable onPress={() => navigation.popToTop()}>
-          <SystemIcon name="x" size={22} color={T.ink2} />
+      <View style={{ paddingTop: 52, paddingHorizontal: 20, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Pressable onPress={exitFlow} hitSlop={8} style={undefined}>
+          <SystemIcon name="chevronLeft" size={22} color={T.ink2} />
         </Pressable>
-        <Text style={{ fontSize: 13, color: T.ink2 }}>{t('import.progress', { current, total })}</Text>
-        <View style={{ width: 40 }} />
+        <Text style={{ ...typeScale.footnote, color: T.ink3 }}>{t('import.progress', { current, total })}</Text>
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 120 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={{ fontSize: 26, fontWeight: '600', color: T.ink, lineHeight: 32, marginBottom: 6 }}>
-          {t('import.confirmTitle')}
-        </Text>
-        <Text style={{ fontSize: 12, color: T.ink3, marginBottom: 18 }}>
-          {confidencePct !== null
-            ? t('import.confidence', { pct: confidencePct })
-            : t('import.confidenceUnknown')}
-        </Text>
+        {/* Title block */}
+        <View style={{ marginBottom: 20, marginTop: 4 }}>
+          <Text style={{ ...typeScale.largeTitle, color: T.ink, marginBottom: 6 }}>
+            {t('import.confirmTitle')}
+          </Text>
+          <Text style={{ ...typeScale.footnote, color: T.ink3 }}>
+            {confidencePct !== null
+              ? t('import.confidence', { pct: confidencePct })
+              : t('import.confidenceUnknown')}
+          </Text>
+        </View>
 
-        {/* Image */}
+        {/* Late-night low-friction hint (brief §6.4): past the confirmation
+            budget, nudge "先收下，之后再整理" instead of pressing for edits. */}
+        {budget === 0 ? (
+          <View
+            style={{
+              backgroundColor: T.cardSoft,
+              borderRadius: T.rMd,
+              paddingHorizontal: 14,
+              paddingVertical: 11,
+              marginBottom: 16,
+            }}
+          >
+            <Text style={{ ...typeScale.footnote, color: T.ink2 }}>{t('import.lateNightHint')}</Text>
+          </View>
+        ) : null}
+
+        {/* Image card */}
         <View
           style={{
-            height: 240,
+            height: 260,
             backgroundColor: T.card,
-            borderRadius: 18,
+            borderRadius: T.rXl,
             alignItems: 'center',
             justifyContent: 'center',
             ...T.shadowSm,
-            marginBottom: 18,
-            position: 'relative',
+            marginBottom: 16,
             overflow: 'hidden',
           }}
         >
@@ -209,72 +289,126 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
                 left: 12,
                 paddingHorizontal: 10,
                 paddingVertical: 4,
-                backgroundColor: 'rgba(26,23,20,0.8)',
-                borderRadius: 999,
+                backgroundColor: T.ink,
+                borderRadius: T.rPill,
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 5,
               }}
             >
-              <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#9ED9A1' }} />
-              <Text style={{ fontSize: 10, color: colors.inverse, fontFamily: 'monospace', letterSpacing: 0.5 }}>
+              <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: colors.success }} />
+              <Text style={{ ...typeScale.caption, color: colors.inverse, letterSpacing: 0.4 }}>
                 {t('import.confidenceBadge', { pct: confidencePct })}
               </Text>
             </View>
           )}
         </View>
 
-        {/* Name field */}
-        <View style={{ backgroundColor: T.card, borderRadius: 14, padding: 14, marginBottom: 12, ...T.shadowSm }}>
-          <Text style={{ fontSize: 11, color: T.ink3, marginBottom: 6 }}>{t('import.fieldName')}</Text>
-          <TextInput
-            value={form.name}
-            onChangeText={(name) => setForm((c) => ({ ...c, name }))}
-            placeholder={t('import.namePlaceholder')}
-            placeholderTextColor={T.ink4}
-            style={{ fontSize: 17, fontWeight: '600', color: T.ink }}
-          />
-        </View>
+        {/* Fields card: name always visible; category/color/fit conditionally
+            shown based on late-night budget. Dividers are leading elements of
+            each conditional block to avoid dangling separators. */}
+        {(() => {
+          const fields = visibleImportFields(budget);
+          const showExpander = !expanded && !(fields.category && fields.color && fields.fit);
+          const showCategory = fields.category || expanded;
+          const showColor = fields.color || expanded;
+          const showFit = fields.fit || expanded;
+          return (
+            <View style={{ backgroundColor: T.card, borderRadius: T.rLg, ...T.shadowSm, marginBottom: 16, overflow: 'hidden' }}>
+              {/* Name — always visible, no leading divider */}
+              <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12 }}>
+                <Text style={{ ...typeScale.caption, color: T.ink3, marginBottom: 6 }}>{t('import.fieldName')}</Text>
+                <TextInput
+                  value={form.name}
+                  onChangeText={(name) => setForm((c) => ({ ...c, name }))}
+                  placeholder={t('import.namePlaceholder')}
+                  placeholderTextColor={T.ink4}
+                  style={{ ...typeScale.headline, color: T.ink }}
+                />
+              </View>
 
-        {/* Category */}
-        <FieldGroup label={t('import.fieldCategory')}>
-          {CATEGORY_OPTIONS.map((o) => (
-            <ChoiceChip
-              key={o.id}
-              active={form.category === o.id}
-              onPress={() => setForm((c) => ({ ...c, category: o.id }))}
-              label={o.label}
-            />
-          ))}
-        </FieldGroup>
+              {/* Expander row — visible when one or more fields are collapsed */}
+              {showExpander && (
+                <>
+                  <View style={{ height: 1, backgroundColor: T.divider, marginHorizontal: 16 }} />
+                  <Pressable
+                    onPress={() => setExpanded(true)}
+                    style={{
+                      minHeight: 44,
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text style={{ ...typeScale.callout, color: T.accent }}>{t('item.change')}</Text>
+                  </Pressable>
+                </>
+              )}
 
-        {/* Color */}
-        <View style={{ backgroundColor: T.card, borderRadius: 14, padding: 14, marginBottom: 12, ...T.shadowSm }}>
-          <Text style={{ fontSize: 11, color: T.ink3, marginBottom: 6 }}>{t('import.fieldColor')}</Text>
-          <TextInput
-            value={form.color}
-            onChangeText={(color) => setForm((c) => ({ ...c, color }))}
-            placeholder={t('import.colorPlaceholder')}
-            placeholderTextColor={T.ink4}
-            style={{ fontSize: 15, color: T.ink }}
-          />
-        </View>
+              {/* Category — leading divider + field */}
+              {showCategory && (
+                <>
+                  <View style={{ height: 1, backgroundColor: T.divider, marginHorizontal: 16 }} />
+                  <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14 }}>
+                    <Text style={{ ...typeScale.caption, color: T.ink3, marginBottom: 10 }}>{t('import.fieldCategory')}</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                      {CATEGORY_OPTIONS.map((o) => (
+                        <ChoiceChip
+                          key={o.id}
+                          active={form.category === o.id}
+                          onPress={() => setForm((c) => ({ ...c, category: o.id }))}
+                          label={o.label}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                </>
+              )}
 
-        {/* Fit */}
-        <FieldGroup label={t('import.fieldFit')}>
-          {FIT_OPTIONS.map((o) => (
-            <ChoiceChip
-              key={o.id}
-              active={selectedFit === o.id}
-              onPress={() => setSelectedFit(o.id)}
-              label={o.label}
-            />
-          ))}
-        </FieldGroup>
+              {/* Color — leading divider + field */}
+              {showColor && (
+                <>
+                  <View style={{ height: 1, backgroundColor: T.divider, marginHorizontal: 16 }} />
+                  <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 }}>
+                    <Text style={{ ...typeScale.caption, color: T.ink3, marginBottom: 6 }}>{t('import.fieldColor')}</Text>
+                    <TextInput
+                      value={form.color}
+                      onChangeText={(color) => setForm((c) => ({ ...c, color }))}
+                      placeholder={t('import.colorPlaceholder')}
+                      placeholderTextColor={T.ink4}
+                      style={{ ...typeScale.body, color: T.ink }}
+                    />
+                  </View>
+                </>
+              )}
+
+              {/* Fit — leading divider + field */}
+              {showFit && (
+                <>
+                  <View style={{ height: 1, backgroundColor: T.divider, marginHorizontal: 16 }} />
+                  <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14 }}>
+                    <Text style={{ ...typeScale.caption, color: T.ink3, marginBottom: 10 }}>{t('import.fieldFit')}</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                      {FIT_OPTIONS.map((o) => (
+                        <ChoiceChip
+                          key={o.id}
+                          active={selectedFit === o.id}
+                          onPress={() => setSelectedFit(o.id)}
+                          label={o.label}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                </>
+              )}
+            </View>
+          );
+        })()}
 
         {/* Info note */}
-        <View style={{ marginTop: 14, padding: 12, backgroundColor: T.cardSoft, borderRadius: 12 }}>
-          <Text style={{ fontSize: 12, color: T.ink2, lineHeight: 19 }}>
+        <View style={{ paddingHorizontal: 14, paddingVertical: 11, backgroundColor: T.cardSoft, borderRadius: T.rMd }}>
+          <Text style={{ ...typeScale.footnote, color: T.ink2, lineHeight: 20 }}>
             {t('import.note')}
           </Text>
         </View>
@@ -286,7 +420,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
         saveLabel={t('import.save')}
         onSave={save}
         secondaryLabel={inQueue ? t('import.skip') : t('import.reshoot')}
-        onSecondary={() => (inQueue ? goNextOrExit() : navigation.popToTop())}
+        onSecondary={() => (inQueue ? goNextOrExit() : exitFlow())}
         errorText={t('import.saveBarError')}
       />
     </View>
@@ -383,12 +517,12 @@ function MultiCandidateConfirm({
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
-      <View style={{ paddingTop: 52, paddingHorizontal: 16, paddingBottom: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Pressable onPress={onClose}>
-          <SystemIcon name="x" size={22} color={T.ink2} />
+      <View style={{ paddingTop: 52, paddingHorizontal: 20, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Pressable onPress={onClose} hitSlop={8} style={undefined}>
+          <SystemIcon name="chevronLeft" size={22} color={T.ink2} />
         </Pressable>
-        <Text style={{ fontSize: 13, color: T.ink2 }}>{t('import.progress', { current, total })}</Text>
-        <View style={{ width: 40 }} />
+        <Text style={{ ...typeScale.footnote, color: T.ink3 }}>{t('import.progress', { current, total })}</Text>
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView
@@ -397,19 +531,22 @@ function MultiCandidateConfirm({
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={{ fontSize: 24, fontWeight: '600', color: T.ink, lineHeight: 30, marginBottom: 4 }}>
-          {t('import.multiTitle', { count: drafts.length })}
-        </Text>
-        <Text style={{ fontSize: 12, color: T.ink3, marginBottom: 16 }}>{t('import.multiSubtitle')}</Text>
+        <View style={{ marginBottom: 20, marginTop: 4 }}>
+          <Text style={{ ...typeScale.title1, color: T.ink, marginBottom: 6 }}>
+            {t('import.multiTitle', { count: drafts.length })}
+          </Text>
+          <Text style={{ ...typeScale.footnote, color: T.ink3 }}>{t('import.multiSubtitle')}</Text>
+        </View>
 
         {drafts.map((d) => {
           const disabled = d.tempItemId === null;
           return (
             <View
               key={d.key}
-              style={{ backgroundColor: T.card, borderRadius: 16, padding: 14, marginBottom: 12, opacity: disabled ? 0.5 : 1, ...T.shadowSm }}
+              style={{ backgroundColor: T.card, borderRadius: T.rLg, marginBottom: 12, opacity: disabled ? 0.5 : 1, ...T.shadowSm, overflow: 'hidden' }}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              {/* Row header: checkbox + thumbnail + name */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 }}>
                 <Pressable
                   onPress={() => !disabled && update(d.key, { selected: !d.selected })}
                   hitSlop={8}
@@ -426,11 +563,11 @@ function MultiCandidateConfirm({
                 >
                   {d.selected ? <SystemIcon name="check" size={14} color={colors.inverse} /> : null}
                 </Pressable>
-                <View style={{ width: 52, height: 52, borderRadius: 10, overflow: 'hidden', backgroundColor: T.cardSoft, alignItems: 'center', justifyContent: 'center' }}>
+                <View style={{ width: 64, height: 64, borderRadius: T.rMd, overflow: 'hidden', backgroundColor: T.cardSoft, alignItems: 'center', justifyContent: 'center' }}>
                   {d.imageUrl ? (
                     <Image source={{ uri: d.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                   ) : (
-                    <GarmentSvg kind="shirt" size={34} />
+                    <GarmentSvg kind="shirt" size={38} />
                   )}
                 </View>
                 <TextInput
@@ -439,38 +576,47 @@ function MultiCandidateConfirm({
                   editable={!disabled}
                   placeholder={t('import.namePlaceholder')}
                   placeholderTextColor={T.ink4}
-                  style={{ flex: 1, fontSize: 16, fontWeight: '600', color: T.ink }}
+                  style={{ flex: 1, ...typeScale.headline, color: T.ink }}
                 />
               </View>
 
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-                {CATEGORY_OPTIONS.map((o) => (
-                  <ChoiceChip
-                    key={o.id}
-                    active={d.category === o.id}
-                    onPress={() => !disabled && update(d.key, { category: o.id })}
-                    label={o.label}
-                  />
-                ))}
+              <View style={{ height: 1, backgroundColor: T.divider, marginHorizontal: 14 }} />
+
+              {/* Category chips */}
+              <View style={{ paddingHorizontal: 14, paddingTop: 10, paddingBottom: 10 }}>
+                <Text style={{ ...typeScale.caption, color: T.ink3, marginBottom: 8 }}>{t('import.fieldCategory')}</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  {CATEGORY_OPTIONS.map((o) => (
+                    <ChoiceChip
+                      key={o.id}
+                      active={d.category === o.id}
+                      onPress={() => !disabled && update(d.key, { category: o.id })}
+                      label={o.label}
+                    />
+                  ))}
+                </View>
               </View>
 
-              <View style={{ backgroundColor: T.cardInner, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}>
-                <Text style={{ fontSize: 10, color: T.ink3, marginBottom: 2 }}>{t('import.fieldColor')}</Text>
+              <View style={{ height: 1, backgroundColor: T.divider, marginHorizontal: 14 }} />
+
+              {/* Color */}
+              <View style={{ paddingHorizontal: 14, paddingTop: 10, paddingBottom: 12 }}>
+                <Text style={{ ...typeScale.caption, color: T.ink3, marginBottom: 6 }}>{t('import.fieldColor')}</Text>
                 <TextInput
                   value={d.color}
                   onChangeText={(color) => update(d.key, { color })}
                   editable={!disabled}
                   placeholder={t('import.colorPlaceholder')}
                   placeholderTextColor={T.ink4}
-                  style={{ fontSize: 14, color: T.ink }}
+                  style={{ ...typeScale.body, color: T.ink }}
                 />
               </View>
             </View>
           );
         })}
 
-        <View style={{ marginTop: 6, padding: 12, backgroundColor: T.cardSoft, borderRadius: 12 }}>
-          <Text style={{ fontSize: 12, color: T.ink2, lineHeight: 19 }}>{t('import.note')}</Text>
+        <View style={{ paddingHorizontal: 14, paddingVertical: 11, backgroundColor: T.cardSoft, borderRadius: T.rMd }}>
+          <Text style={{ ...typeScale.footnote, color: T.ink2, lineHeight: 20 }}>{t('import.note')}</Text>
         </View>
       </ScrollView>
 
@@ -487,31 +633,24 @@ function MultiCandidateConfirm({
   );
 }
 
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <View style={{ marginBottom: 12 }}>
-      <Text style={{ fontSize: 11, color: colors.tertiaryLabel, marginBottom: 8, paddingHorizontal: 4, letterSpacing: 0.4 }}>
-        {label}
-      </Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>{children}</View>
-    </View>
-  );
-}
-
 function ChoiceChip({ active, onPress, label }: { active: boolean; onPress: () => void; label: string }) {
   return (
     <Pressable
       onPress={onPress}
+      hitSlop={4}
       style={{
         paddingHorizontal: 14,
         paddingVertical: 7,
-        borderRadius: 999,
+        minHeight: 34,
+        borderRadius: radius.pill,
         backgroundColor: active ? colors.label : 'transparent',
         borderWidth: 1,
         borderColor: active ? colors.label : colors.separator,
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
     >
-      <Text style={{ fontSize: 12, color: active ? colors.inverse : colors.secondaryLabel }}>{label}</Text>
+      <Text style={{ ...typeScale.caption, color: active ? colors.inverse : colors.secondaryLabel }}>{label}</Text>
     </Pressable>
   );
 }

@@ -49,7 +49,7 @@ export function Card({
       <Pressable
         onPress={onPress}
         android_ripple={{ color: colors.fill }}
-        style={({ pressed }) => [base, pressed && { opacity: 0.85 }]}
+        style={base}
       >
         {children}
       </Pressable>

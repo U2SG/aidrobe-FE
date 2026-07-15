@@ -3,6 +3,7 @@ import type {
   FeedbackBundleBody,
   FeedbackBundleResult,
   FeedbackTagsResponse,
+  FirstOutfitGate,
   OutfitDetail,
   OutfitObstacle,
   OutfitReplacementCandidate,
@@ -11,6 +12,7 @@ import type {
   SendFeedbackBody,
   ServerFeedbackTagsResponse,
   ServerFavoriteOutfitResponse,
+  ServerFirstOutfitGate,
   ServerOutfitObstacle,
   ServerOutfitResponse,
   ServerOutfitReplacementsResponse,
@@ -103,11 +105,63 @@ function toToday(data: ServerTodayRecommendation): TodayRecommendation {
         }
       : null,
     context: toContext(data.context),
+    // BE#78/#80/#77 — absent on legacy payloads; consumers handle null.
+    appliedContext: data.applied_context
+      ? {
+          overrideText: data.applied_context.override_text ?? null,
+          constraints: data.applied_context.constraints ?? [],
+        }
+      : null,
+    resurfaceInsight: data.resurface_insight
+      ? {
+          id: data.resurface_insight.id,
+          text: data.resurface_insight.text,
+          itemId: data.resurface_insight.item_id,
+          reason: data.resurface_insight.reason,
+          cooldownKey: data.resurface_insight.cooldown_key,
+        }
+      : null,
+    mode: data.mode ?? null,
   };
 }
 
-export async function getTodayRecommendation(scene?: 'commute' | 'formal' | 'casual') {
-  return toToday(await apiGet<ServerTodayRecommendation>('/v1/recommendations/today', { scene }));
+// BE#77 — `targetDate` (YYYY-MM-DD, today or tomorrow only) switches Today to
+// date-aware mode; omitted → legacy today. Flag-off backends ignore the param.
+export async function getTodayRecommendation(
+  scene?: 'commute' | 'formal' | 'casual',
+  targetDate?: string,
+) {
+  // Cold cache runs read-time LLM enrichment (reasoning/prep) and was measured
+  // at ~27s — past the default 15s timeout, which surfaced as a bogus "网络异常"
+  // while the backend actually succeeded. Same 60s budget as refresh/first-outfit.
+  return toToday(
+    await apiGet<ServerTodayRecommendation>(
+      '/v1/recommendations/today',
+      {
+        scene,
+        target_date: targetDate,
+      },
+      { timeout: 60_000 },
+    ),
+  );
+}
+
+// BE #79 — cold-start feasibility gate. The verdict is derived from the same
+// daily the Today pipeline persists (BE generates it on first call if absent),
+// so this can take as long as a refresh (~25s of LLM work) — same 60s budget.
+export async function getFirstOutfitGate(): Promise<FirstOutfitGate> {
+  const data = await apiGet<ServerFirstOutfitGate>(
+    '/v1/recommendations/first-outfit',
+    undefined,
+    { timeout: 60_000 },
+  );
+  return {
+    state: data.state,
+    feasibleOutfitCount: data.feasible_outfit_count,
+    missingSlots: data.missing_slots,
+    firstOutfit: data.first_outfit ? toOutfit(data.first_outfit) : null,
+    gateFailures: data.gate_failures,
+  };
 }
 
 // V3+ D3 — user-initiated refresh. Rate-limited (default 3/day).
@@ -115,11 +169,30 @@ export async function getTodayRecommendation(scene?: 'commute' | 'formal' | 'cas
 // Regeneration drives several LLM calls and routinely takes ~25s — well over the
 // client's default 15s timeout, which surfaced as a bogus "网络异常" while the
 // backend actually succeeded. Give it a generous 60s budget.
-export async function refreshTodayRecommendation(scene?: 'commute' | 'formal' | 'casual') {
+// BE#78 — a chip or free-text context override applied as a session-scoped
+// constraint on this one regeneration; the response echoes `applied_context`.
+export interface ContextOverride {
+  text?: string;
+  source: 'chip' | 'free_text';
+  chipId?: string;
+}
+
+export async function refreshTodayRecommendation(
+  scene?: 'commute' | 'formal' | 'casual',
+  override?: ContextOverride,
+) {
   return toToday(
     await apiPost<ServerTodayRecommendation>(
       '/v1/recommendations/today/refresh',
-      null,
+      override
+        ? {
+            context_override: {
+              text: override.text ?? null,
+              source: override.source,
+              chip_id: override.chipId ?? null,
+            },
+          }
+        : null,
       { scene },
       { timeout: 60_000 },
     ),

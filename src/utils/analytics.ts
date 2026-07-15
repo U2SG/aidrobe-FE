@@ -14,6 +14,7 @@ export const ANALYTICS_EVENTS = {
   import_task_created: 'import_task_created',
   import_confirm_viewed: 'import_confirm_viewed',
   apple_login_completed: 'apple_login_completed',
+  invite_login_completed: 'invite_login_completed',
   item_saved: 'item_saved',
   today_viewed: 'today_viewed',
   outfit_detail_viewed: 'outfit_detail_viewed',
@@ -37,8 +38,20 @@ export const ANALYTICS_EVENTS = {
   ootd_poster_started: 'ootd_poster_started',
   ootd_poster_generated: 'ootd_poster_generated',
   ootd_poster_shared: 'ootd_poster_shared',
+  // Best-effort OOTD selfie attach onto today's wear-history record.
+  ootd_attached_to_history: 'ootd_attached_to_history',
+  ootd_attach_skipped: 'ootd_attach_skipped',
   outfit_item_replaced: 'outfit_item_replaced',
   outfit_obstacle_ignored: 'outfit_obstacle_ignored',
+  // Today v2: user submitted a context override (chip or free text).
+  context_override_submitted: 'context_override_submitted',
+  // First Outfit activation reached the ready/single state.
+  first_outfit_generated: 'first_outfit_generated',
+  // Indoor climate P1.5: a too_cold/too_warm feedback contradicted the outdoor
+  // temperature (medium indoor-climate signal). Never labels the user.
+  temperature_mismatch_reported: 'temperature_mismatch_reported',
+  // Optional departure micro-question: how much outdoor exposure the commute has.
+  commute_exposure_selected: 'commute_exposure_selected',
 } as const;
 
 export type AnalyticsEvent = keyof typeof ANALYTICS_EVENTS;

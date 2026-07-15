@@ -1,7 +1,8 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { useFocusEffect } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Image,
@@ -9,10 +10,11 @@ import {
   RefreshControl,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 
-import { getInsightsSummary, getTopItems } from '@/api/insights';
+import { getInsightsSummary } from '@/api/insights';
 import { listWardrobeItems } from '@/api/wardrobe';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
@@ -25,6 +27,7 @@ import { SystemIcon } from '@/components/ui/SystemIcon';
 import { Tag } from '@/components/ui/Tag';
 import { WardrobeShowcaseEmpty } from '@/components/wardrobe/WardrobeShowcaseEmpty';
 import { useT, type UseT } from '@/hooks/useT';
+import { enableMvpV2Ui } from '@/lib/featureFlags';
 import { resolveItemDisplayName, SEASON_VALUES, tColorFilterLabel } from '@/i18n/domainLabels';
 import { colors, radius, shadow } from '@/theme/design';
 import type { ItemCategory, ItemStatus, WardrobeItem } from '@/types/api';
@@ -58,11 +61,11 @@ const DEFAULT_FILTERS: FilterValues = {
 };
 
 const T = {
-  bg: colors.groupedBackground,
+  bg: colors.background,
   bgAlt: colors.background,
   card: colors.elevated,
   cardSoft: colors.secondaryElevated,
-  cardInner: colors.background,
+  cardInner: colors.groupedBackground,
   ink: colors.label,
   ink2: colors.secondaryLabel,
   ink3: colors.tertiaryLabel,
@@ -73,6 +76,19 @@ const T = {
   shadowSm: shadow.soft,
   shadowMd: shadow.elevated,
 };
+
+/** Days between an ISO date string and today; null if date is falsy or invalid. */
+function daysSince(isoDate: string | null | undefined): number | null {
+  if (!isoDate) return null;
+  const parts = isoDate.split('-').map(Number);
+  if (parts.length < 3) return null;
+  const [y, m, d] = parts;
+  const then = new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1);
+  if (isNaN(then.getTime())) return null;
+  const now = new Date();
+  const msPerDay = 86400000;
+  return Math.max(0, Math.floor((now.getTime() - then.getTime()) / msPerDay));
+}
 
 function ItemCard({
   item,
@@ -89,6 +105,20 @@ function ItemCard({
     displayName: item.displayName,
     localizedNames: item.localizedNames,
   });
+
+  // Meta line: status dot + label, or wear-record text when available.
+  // Rule: if lastWorn is present and item is wearable, show wear-record copy.
+  // Otherwise show wearable/unavailable status via StatusPill.
+  const wearDays = daysSince(item.lastWorn);
+  const showWearRecord = item.status === 'wearable' && wearDays !== null;
+  const IDLE_THRESHOLD_DAYS = 30;
+  const wearMeta =
+    showWearRecord && wearDays !== null
+      ? wearDays >= IDLE_THRESHOLD_DAYS
+        ? t.t('wardrobe.item.notWornDays', { days: String(wearDays) })
+        : t.t('wardrobe.item.wornDaysAgo', { days: String(wearDays) })
+      : null;
+
   return (
     <Pressable onPress={onPress} style={{ flex: 1 }}>
       <View
@@ -123,20 +153,28 @@ function ItemCard({
           )}
         </View>
         <View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-            <Text
-              numberOfLines={1}
-              style={{ fontSize: 14, fontWeight: '600', color: T.ink, flex: 1 }}
-            >
-              {displayName}
-            </Text>
-          </View>
+          <Text
+            numberOfLines={1}
+            style={{ fontSize: 14, fontWeight: '600', color: T.ink, marginBottom: 5 }}
+          >
+            {displayName}
+          </Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <StatusPill
-              kind={item.status === 'wearable' ? 'ok' : 'warn'}
-              label={t.tEnum('status', item.status)}
-            />
-            <Text style={{ fontSize: 10, color: T.ink4 }}>{t.tEnum('color', item.color)}</Text>
+            {wearMeta ? (
+              <Text style={{ fontSize: 11, color: T.ink3 }}>{wearMeta}</Text>
+            ) : (
+              <StatusPill
+                kind={item.status === 'wearable' ? 'ok' : 'warn'}
+                label={t.tEnum('status', item.status)}
+              />
+            )}
+            <Pressable
+              hitSlop={8}
+              onPress={onPress}
+              style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <SystemIcon name="more" size={16} color={T.ink4} />
+            </Pressable>
           </View>
         </View>
       </View>
@@ -212,6 +250,7 @@ export function WardrobeListScreen({ navigation }: Props) {
   const [category, setCategory] = useState<ItemCategory | 'all'>('all');
   const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS);
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
+  const [search, setSearch] = useState('');
   const CATEGORIES = CATEGORY_KEYS.map((key) => ({
     key,
     label: key === 'all' ? t.t('common.all') : t.tEnum('category', key),
@@ -223,6 +262,11 @@ export function WardrobeListScreen({ navigation }: Props) {
     queryKey: ['wardrobeItems', category],
     queryFn: () => listWardrobeItems({ category, limit: 50 }),
     retry: 1,
+    // Freshness window so ordinary tab switches don't refetch. A cross-screen
+    // mutation (import/edit/delete/wear) calls invalidateQueries, which marks
+    // this query stale regardless of staleTime, so the focus refetch below still
+    // fires after those — but a plain tab flip within the window is spared.
+    staleTime: 60_000,
     refetchInterval: (q) => {
       const queued = (q.state.data?.items ?? []).some((it) => it.cutoutStatus === 'queued');
       if (!queued) {
@@ -235,16 +279,23 @@ export function WardrobeListScreen({ navigation }: Props) {
     },
   });
 
+  // Wardrobe is a persistent tab (never unmounts), so an import's
+  // invalidateAfterConfirmImport only marks this query stale while it's
+  // inactive — React Query won't auto-refetch an inactive query, and switching
+  // back doesn't remount. Refetch when the tab regains focus so freshly-imported
+  // items appear without a manual pull-to-refresh. Gated on isStale, which the
+  // staleTime window above keeps false for mutation-free tab flips.
+  const refetch = query.refetch;
+  const isStale = query.isStale;
+  useFocusEffect(
+    useCallback(() => {
+      if (isStale) void refetch();
+    }, [isStale, refetch]),
+  );
+
   const insightsQuery = useQuery({
     queryKey: ['insightsSummary'],
     queryFn: getInsightsSummary,
-    staleTime: 5 * 60 * 1000,
-    retry: 1,
-  });
-
-  const topItemsQuery = useQuery({
-    queryKey: ['topItems'],
-    queryFn: () => getTopItems(1),
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
@@ -266,15 +317,25 @@ export function WardrobeListScreen({ navigation }: Props) {
   // API_GAP[untracked]: GET /v1/wardrobe-items lacks status/season/color filters.
   // Fallback: category is still server-side; these fields filter the fetched page locally.
   const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return items.filter((item) => {
       if (filters.status !== 'all' && item.status !== filters.status) return false;
       if (filters.season !== 'all' && !(item.seasonTags ?? []).includes(filters.season)) return false;
       if (filters.color !== 'all' && item.color.trim().toLowerCase() !== filters.color.toLowerCase()) {
         return false;
       }
+      if (q) {
+        const name = resolveItemDisplayName(t.locale, {
+          name: item.name,
+          nameSource: item.nameSource,
+          displayName: item.displayName,
+          localizedNames: item.localizedNames,
+        }).toLowerCase();
+        if (!name.includes(q) && !item.color.toLowerCase().includes(q)) return false;
+      }
       return true;
     });
-  }, [filters, items]);
+  }, [filters, items, search, t.locale]);
 
   const clientFilterCount =
     (filters.status !== 'all' ? 1 : 0) +
@@ -283,28 +344,12 @@ export function WardrobeListScreen({ navigation }: Props) {
   const activeFilterCount = clientFilterCount + (category !== 'all' ? 1 : 0);
   const hasActiveFilters = activeFilterCount > 0;
   const hasClientFilters = clientFilterCount > 0;
-  const displayedTotal = hasClientFilters ? filteredItems.length : (query.data?.total ?? 0);
-  const insightChips = [
-    {
-      label: t.t('wardrobe.insights.mainColor'),
-      value: insightsQuery.data?.favoriteColor ?? '—',
-      meta: insightsQuery.data?.activeRate
-        ? `${Math.round(insightsQuery.data.activeRate * 100)}%`
-        : '',
-    },
-    {
-      label: t.t('wardrobe.insights.mostWorn'),
-      value: topItemsQuery.data?.[0]?.name ?? insightsQuery.data?.mostWornCategory ?? '—',
-      meta: topItemsQuery.data?.[0]?.wearCount ? `${topItemsQuery.data[0].wearCount}×` : '',
-    },
-    {
-      label: t.t('wardrobe.insights.idle'),
-      value: insightsQuery.data
-        ? `${insightsQuery.data.idleCount} ${t.t('wardrobe.itemUnit')}`
-        : '—',
-      meta: insightsQuery.data ? `${insightsQuery.data.idleThresholdDays}d+` : '',
-    },
-  ];
+  const isSearching = search.trim().length > 0;
+  const displayedTotal =
+    hasClientFilters || isSearching ? filteredItems.length : (query.data?.total ?? 0);
+
+  const idleCount = insightsQuery.data?.idleCount ?? 0;
+  const showIdleHint = idleCount > 0;
 
   const renderItem = ({ item }: { item: WardrobeItem }) => (
     <ItemCard
@@ -320,6 +365,20 @@ export function WardrobeListScreen({ navigation }: Props) {
   };
 
   const openInsights = () => {
+    if (enableMvpV2Ui) {
+      // Insights is no longer a primary tab under V2. Until the contextual-entry
+      // phase wires a dedicated host, surface wardrobe questions through Ask so
+      // the banner never dead-ends on a missing DiscoverTab. AskTab is a
+      // persistent stack: clear focusedItemId/scope so a prior item-scoped Ask
+      // (opened from item detail) doesn't leak into this wardrobe/global entry.
+      (
+        navigation.getParent() as { navigate: (name: string, params?: object) => void } | undefined
+      )?.navigate('AskTab', {
+        screen: 'AskAidrobe',
+        params: { focusedItemId: undefined, scope: undefined },
+      });
+      return;
+    }
     navigation.getParent<MainTabsNavigation>()?.navigate('DiscoverTab', { screen: 'Insights' });
   };
 
@@ -339,32 +398,31 @@ export function WardrobeListScreen({ navigation }: Props) {
               }}
             >
               <View>
-                <Text style={{ fontSize: 30, fontWeight: '600', color: T.ink }}>{t.t('wardrobe.title')}</Text>
+                <Text style={{ fontSize: 30, fontWeight: '700', color: T.ink }}>{t.t('wardrobe.title')}</Text>
                 {query.isSuccess && (
-                  <View style={{ flexDirection: 'row', gap: 4, marginTop: 8, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 13, color: T.ink2 }}>{t.t('wardrobe.stored')} </Text>
-                    <Text
-                      style={{ fontSize: 18, fontWeight: '600', color: T.accent }}
-                    >
-                      {displayedTotal}
-                    </Text>
-                    <Text style={{ fontSize: 13, color: T.ink2 }}> {t.t('wardrobe.itemUnit')}</Text>
-                  </View>
+                  <Text style={{ fontSize: 13, color: T.ink2, marginTop: 4 }}>
+                    {t.t('wardrobe.stored')} {displayedTotal} {t.t('wardrobe.itemUnit')}
+                  </Text>
                 )}
               </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Pressable
-                  onPress={() => navigation.navigate('AddItem')}
-                  hitSlop={8}
-                  style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <SystemIcon name="plus" size={24} color={T.ink} />
-                </Pressable>
-                {/* Bell icon */}
-                <View style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}>
-                  <SystemIcon name="bell" size={22} color={T.ink2} />
-                </View>
-              </View>
+              {/* Circular add button */}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t.t('add.title')}
+                onPress={() => navigation.navigate('AddItem')}
+                hitSlop={4}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: colors.accentSoft,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginTop: 2,
+                }}
+              >
+                <SystemIcon name="plus" size={22} color={T.ink} />
+              </Pressable>
             </View>
 
             {/* Search bar */}
@@ -383,7 +441,25 @@ export function WardrobeListScreen({ navigation }: Props) {
                 }}
               >
                 <SystemIcon name="search" size={17} color={T.ink3} />
-                <Text style={{ color: T.ink4, fontSize: 14 }}>{t.t('wardrobe.searchPlaceholder')}</Text>
+                <TextInput
+                  value={search}
+                  onChangeText={setSearch}
+                  placeholder={t.t('wardrobe.searchPlaceholder')}
+                  placeholderTextColor={T.ink4}
+                  returnKeyType="search"
+                  clearButtonMode="while-editing"
+                  style={{ flex: 1, color: T.ink, fontSize: 16, padding: 0 }}
+                />
+                {search.length > 0 ? (
+                  <Pressable
+                    onPress={() => setSearch('')}
+                    accessibilityRole="button"
+                    accessibilityLabel={t.t('common.clear')}
+                    hitSlop={8}
+                  >
+                    <SystemIcon name="x" size={16} color={T.ink3} />
+                  </Pressable>
+                ) : null}
               </View>
               <Pressable
                 accessibilityRole="button"
@@ -452,12 +528,14 @@ export function WardrobeListScreen({ navigation }: Props) {
                 <Pressable
                   onPress={() => setCategory(cat.key)}
                   style={{
+                    minHeight: 44,
                     paddingHorizontal: 16,
-                    paddingVertical: 8,
+                    paddingVertical: 10,
                     borderRadius: radius.pill,
                     backgroundColor: category === cat.key ? T.ink : 'transparent',
                     borderWidth: 1,
                     borderColor: category === cat.key ? T.ink : T.divider,
+                    justifyContent: 'center',
                   }}
                 >
                   <Text
@@ -473,56 +551,28 @@ export function WardrobeListScreen({ navigation }: Props) {
               )}
             />
 
-            {/* Insight banner */}
-            <Pressable
-              onPress={openInsights}
-              style={{
-                marginHorizontal: 20,
-                marginTop: 14,
-                padding: 14,
-                backgroundColor: T.cardSoft,
-                borderRadius: 16,
-                gap: 10,
-              }}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <SystemIcon name="chart" size={18} color={T.ink2} />
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: T.ink }}>{t.t('wardrobe.insights')}</Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                  <Text style={{ fontSize: 11, color: T.ink3 }}>{t.t('common.viewAll')}</Text>
-                  <SystemIcon name="chevronRight" size={13} color={T.ink3} />
-                </View>
-              </View>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                {insightChips.map((chip, i) => (
-                  <View
-                    key={i}
-                    style={{
-                      flex: 1,
-                      padding: 10,
-                      backgroundColor: T.card,
-                      borderRadius: 14,
-                      gap: 4,
-                    }}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
-                      <Text style={{ fontSize: 11, color: T.ink3 }}>{chip.label}</Text>
-                      {!!chip.meta && (
-                        <Text style={{ fontSize: 10, color: T.ink3 }}>{chip.meta}</Text>
-                      )}
-                    </View>
-                    <Text
-                      numberOfLines={1}
-                      style={{ fontSize: 14, fontWeight: '600', color: T.ink }}
-                    >
-                      {chip.value}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </Pressable>
+            {/* Idle-hint banner — only shown when there are idle items */}
+            {showIdleHint && (
+              <Pressable
+                onPress={openInsights}
+                style={{
+                  marginHorizontal: 20,
+                  marginTop: 12,
+                  paddingVertical: 12,
+                  paddingHorizontal: 14,
+                  backgroundColor: colors.accentSoft,
+                  borderRadius: radius.md,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Text style={{ fontSize: 13, color: T.ink2, flex: 1 }}>
+                  {t.t('wardrobe.idle.hint', { count: String(idleCount) })}
+                </Text>
+                <SystemIcon name="chevronRight" size={15} color={T.ink3} />
+              </Pressable>
+            )}
 
             <View style={{ height: 14 }} />
           </View>

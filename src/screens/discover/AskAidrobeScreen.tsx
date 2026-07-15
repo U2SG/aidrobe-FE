@@ -21,15 +21,23 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { ItemRefsRow } from '@/components/wardrobe/ItemRefsRow';
+import type { ContextualEntry } from '@/components/discover/ContextualEntrySheet';
+import { ContextualEntrySheet } from '@/components/discover/ContextualEntrySheet';
 import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { useWardrobeItemNames } from '@/hooks/useWardrobeItemNames';
+import { enableMvpV2Ui } from '@/lib/featureFlags';
+import type { I18nKey } from '@/i18n';
+// useToastStore removed — contextual-entry toasts replaced with real navigation
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { AskHistoryEntry, AskItemRefSnapshot, AskScope } from '@/types/api';
-import type { DiscoverStackParamList } from '@/types/navigation';
+import type { AskStackParamList } from '@/types/navigation';
 import { httpStatus } from '@/utils/http';
 
-type Props = NativeStackScreenProps<DiscoverStackParamList, 'AskAidrobe'>;
+// Typed against the narrow AskStackParamList so this screen mounts in both the
+// V2 Ask tab (exact match) and the V1 Discover stack (its wider navigation is
+// assignable to this narrower requirement). It only ever calls goBack().
+type Props = NativeStackScreenProps<AskStackParamList, 'AskAidrobe'>;
 
 type Turn = {
   id: string;
@@ -39,10 +47,63 @@ type Turn = {
   itemRefSnapshots: AskItemRefSnapshot[];
   pending: boolean;
   failed?: boolean;
+  // Constraints the multi-turn conversation carried into this answer (BE
+  // deltas.applied_constraints) — shown so continuity is visible, not silent.
+  appliedConstraints?: string[];
 };
 
 const FALLBACK_COMPOSER_HEIGHT = 112;
 const HISTORY_LIMIT = 20;
+
+// Suggestion prompts shown in the idle/empty state hero card (brief v0.9 Ask V2).
+const SUGGESTIONS = [
+  { key: 's1', icon: 'sparkle', labelKey: 'ask.v2.s1' },
+  { key: 's2', icon: 'compass', labelKey: 'ask.v2.s2' },
+  { key: 's3', icon: 'suitcase', labelKey: 'ask.v2.s3' },
+] as const satisfies ReadonlyArray<{ key: string; icon: string; labelKey: I18nKey }>;
+
+// One tappable icon+label+chevron row in the idle hero card. The row layout
+// deliberately sits on an inner View: putting flexDirection etc. in a
+// Pressable style FUNCTION loses the layout on-device (new arch) and the
+// children render stacked; web is unaffected, which is how it slipped past
+// web-based verification.
+function HeroRow({
+  icon,
+  label,
+  onPress,
+  accessibilityLabel,
+}: {
+  icon: React.ComponentProps<typeof SystemIcon>['name'];
+  label: string;
+  onPress: () => void;
+  accessibilityLabel?: string;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      android_ripple={{ color: colors.fill }}
+      style={({ pressed }) => ({ opacity: pressed ? 0.65 : 1 })}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingVertical: 13,
+          paddingHorizontal: 4,
+          minHeight: 44,
+        }}
+      >
+        <SystemIcon name={icon} size={18} color={T.ink3} strokeWidth={1.7} />
+        <Text style={{ ...type.body, color: T.ink2, flex: 1, marginLeft: 12 }} numberOfLines={1}>
+          {label}
+        </Text>
+        <SystemIcon name="chevronRight" size={16} color={T.ink3} strokeWidth={1.7} />
+      </View>
+    </Pressable>
+  );
+}
 
 const T = {
   bg: colors.groupedBackground,
@@ -78,6 +139,7 @@ function formatHistoryDate(value: string, locale: string) {
 }
 
 function TurnView({ turn, onRetry, retryBusy }: { turn: Turn; onRetry: () => void; retryBusy: boolean }) {
+  const { t } = useT();
   return (
     <View style={{ width: '100%', gap: 10, flexShrink: 0, marginBottom: 16 }}>
       {/* Question bubble */}
@@ -107,7 +169,9 @@ function TurnView({ turn, onRetry, retryBusy }: { turn: Turn; onRetry: () => voi
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: turn.pending ? 0 : 8 }}>
           <SystemIcon name="sparkle" size={14} color={T.accent} strokeWidth={1.9} />
-          <Text style={{ ...type.caption, color: T.accent, fontWeight: '700', letterSpacing: 0.5 }}>AIDROBE</Text>
+          <Text style={{ ...type.caption, color: T.accent, fontWeight: '700', letterSpacing: 0.5 }}>
+            {t('ask.turn.brand')}
+          </Text>
         </View>
         {turn.pending ? (
           // AI "thinking" presence — the small vivid orb shares the motion
@@ -120,6 +184,11 @@ function TurnView({ turn, onRetry, retryBusy }: { turn: Turn; onRetry: () => voi
             <Text style={{ ...type.body, color: turn.failed ? T.ink3 : T.ink2, lineHeight: 22 }}>
               {turn.answer}
             </Text>
+            {!turn.failed && turn.appliedConstraints?.length ? (
+              <Text style={{ ...type.caption, color: T.ink3, marginTop: 6 }} numberOfLines={2}>
+                {t('ask.appliedConstraints', { list: turn.appliedConstraints.join(' · ') })}
+              </Text>
+            ) : null}
             {turn.failed ? (
               // Retry re-fires the original question (kept on the turn), so the
               // user never has to retype.
@@ -150,15 +219,17 @@ function AskHistoryRow({
       onPress={onPress}
       accessibilityRole="button"
       android_ripple={{ color: colors.fill }}
-      style={({ pressed }) => ({
-        backgroundColor: colors.secondaryElevated,
-        borderRadius: radius.lg,
-        padding: 14,
-        borderWidth: 1,
-        borderColor: colors.separatorSoft,
-        opacity: pressed ? 0.78 : 1,
-      })}
+      style={({ pressed }) => ({ opacity: pressed ? 0.78 : 1 })}
     >
+      <View
+        style={{
+          backgroundColor: colors.secondaryElevated,
+          borderRadius: radius.lg,
+          padding: 14,
+          borderWidth: 1,
+          borderColor: colors.separatorSoft,
+        }}
+      >
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={{ ...type.body, color: colors.label, fontWeight: '600' }} numberOfLines={2}>
@@ -178,6 +249,7 @@ function AskHistoryRow({
         ) : null}
       </View>
       <ItemRefsRow snapshots={entry.itemRefSnapshots} ids={entry.itemRefs} />
+      </View>
     </Pressable>
   );
 }
@@ -288,10 +360,15 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   const focusedNames = useWardrobeItemNames(focusedItemId ? [focusedItemId] : []);
   const focusedName = focusedItemId ? focusedNames.get(focusedItemId) : undefined;
   const [turns, setTurns] = useState<Turn[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [historyVisible, setHistoryVisible] = useState(false);
+  const [contextualSheetVisible, setContextualSheetVisible] = useState(false);
   const [composerHeight, setComposerHeight] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
+  // Conversation generation. Bumped on new-chat / scope change so an in-flight
+  // request's late callback can't reseed conversationId/turns (review on #96).
+  const conversationEpoch = useRef(0);
 
   useEffect(() => {
     track('ask_viewed', { scope });
@@ -312,19 +389,26 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     retry: 1,
   });
 
-  // If the scope / focused item changes while the screen stays mounted (e.g.
-  // a global Ask tab, then opening Ask from an item-detail CTA), drop the
-  // previous scope's live turns so they don't bleed into the new visit.
+  // If the scope / focused item changes while the screen stays mounted, drop
+  // the previous session's turns and conversation thread.
   useEffect(() => {
+    conversationEpoch.current += 1;
     setTurns([]);
+    setConversationId(null);
   }, [scope, focusedItemId]);
 
   const askMutation = useMutation({
-    mutationFn: (vars: { tempId: string; question: string }) =>
+    mutationFn: (vars: {
+      tempId: string;
+      question: string;
+      conversationId: string | null;
+      epoch: number;
+    }) =>
       askAidrobe({
         question: vars.question,
         focusedItemId,
         locale,
+        conversationId: vars.conversationId,
       }),
     onMutate: (vars) => {
       // Idempotent on tempId: a retry reuses the failed turn's own id (already
@@ -346,6 +430,13 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
       );
     },
     onSuccess: (result, vars) => {
+      // The question really happened — record it — but if the user started a
+      // new chat while this was in flight, discard the UI/thread reseed.
+      track('ask_sent', { scope });
+      if (vars.epoch !== conversationEpoch.current) return;
+      // Thread the conversation forward so subsequent sends continue the same
+      // multi-turn session on the backend.
+      setConversationId(result.conversationId);
       setTurns((t) =>
         t.map((x) =>
           x.id === vars.tempId
@@ -356,13 +447,16 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
                 itemRefs: result.itemRefs,
                 itemRefSnapshots: result.itemRefSnapshots,
                 pending: false,
+                appliedConstraints: result.deltas?.appliedConstraints ?? [],
               }
             : x,
         ),
       );
-      track('ask_sent', { scope });
     },
     onError: (err, vars) => {
+      // Stale (new chat started mid-flight): the turn was already cleared, so
+      // there is nothing to mark failed.
+      if (vars.epoch !== conversationEpoch.current) return;
       const code = httpStatus(err);
       setTurns((prev) =>
         prev.map((x) =>
@@ -379,11 +473,22 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     },
   });
 
-  const send = () => {
-    const q = input.trim();
+  const submitQuestion = (question: string) => {
+    const q = question.trim();
     if (!q || askMutation.isPending) return;
     setInput('');
-    askMutation.mutate({ tempId: `local-${Date.now()}`, question: q });
+    askMutation.mutate({
+      tempId: `local-${Date.now()}`,
+      question: q,
+      conversationId,
+      epoch: conversationEpoch.current,
+    });
+  };
+
+  const send = () => {
+    if (!input.trim()) return;
+    setInput('');
+    submitQuestion(input);
   };
 
   // Retry a failed turn without re-typing: reset it to pending in place
@@ -397,8 +502,67 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         x.id === turn.id ? { ...x, pending: true, failed: false, answer: null } : x,
       ),
     );
-    askMutation.mutate({ tempId: turn.id, question: turn.question });
+    askMutation.mutate({
+      tempId: turn.id,
+      question: turn.question,
+      conversationId,
+      epoch: conversationEpoch.current,
+    });
   };
+
+  // Contextual entry sheet entries. SenseCheck / PackingList / Insights /
+  // WardrobeReport are registered in AskNavigator so they push within the Ask
+  // tab. StyleInspirations lives in SettingsStack (ProfileTab) — navigated via
+  // getParent() cross-tab.
+  const contextualEntries: ContextualEntry[] = [
+    {
+      key: 'shopping',
+      icon: 'bag',
+      labelKey: 'contextualEntry.shopping.label',
+      hintKey: 'contextualEntry.shopping.hint',
+      onPress: () => {
+        setContextualSheetVisible(false);
+        navigation.navigate('SenseCheck');
+      },
+    },
+    {
+      key: 'trip',
+      icon: 'suitcase',
+      labelKey: 'contextualEntry.trip.label',
+      hintKey: 'contextualEntry.trip.hint',
+      onPress: () => {
+        setContextualSheetVisible(false);
+        navigation.navigate('PackingList');
+      },
+    },
+    {
+      key: 'insights',
+      icon: 'chart',
+      labelKey: 'contextualEntry.insights.label',
+      hintKey: 'contextualEntry.insights.hint',
+      onPress: () => {
+        setContextualSheetVisible(false);
+        navigation.navigate('Insights');
+      },
+    },
+    {
+      key: 'style',
+      icon: 'bookmark',
+      labelKey: 'contextualEntry.style.label',
+      hintKey: 'contextualEntry.style.hint',
+      onPress: () => {
+        setContextualSheetVisible(false);
+        if (enableMvpV2Ui) {
+          // V2: Ask is its own tab; StyleInspirations lives in the Profile stack.
+          navigation.getParent()?.navigate('ProfileTab', { screen: 'StyleInspirations' } as never);
+        } else {
+          // V1: Ask is mounted inside the Discover stack, where StyleInspirations
+          // is a sibling — and there is no ProfileTab to cross to.
+          navigation.navigate('StyleInspirations' as never);
+        }
+      },
+    },
+  ];
 
   const isEmpty = turns.length === 0;
   // Header sits in normal flow (repo standard — see SenseCheckScreen / ItemDetailScreen;
@@ -418,11 +582,29 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         title={t('ask.title')}
         onBack={() => navigation.goBack()}
         right={
-          <HeaderIconButton
-            icon="clock"
-            onPress={openHistory}
-            accessibilityLabel={t('ask.history.open')}
-          />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            {turns.length > 0 ? (
+              // Start a fresh conversation without restarting the app: drops
+              // the rendered turns and the backend conversation thread.
+              <HeaderIconButton
+                icon="refresh"
+                onPress={() => {
+                  // Bump the epoch so any in-flight request's late callback is
+                  // discarded and can't reseed this fresh chat.
+                  conversationEpoch.current += 1;
+                  setTurns([]);
+                  setConversationId(null);
+                  setInput('');
+                }}
+                accessibilityLabel={t('ask.newConversation')}
+              />
+            ) : null}
+            <HeaderIconButton
+              icon="clock"
+              onPress={openHistory}
+              accessibilityLabel={t('ask.history.open')}
+            />
+          </View>
         }
       />
 
@@ -440,14 +622,103 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         keyboardShouldPersistTaps="handled"
       >
         {isEmpty ? (
-          <View style={{ paddingVertical: 48, alignItems: 'center' }}>
-            <AIOrb variant="vivid" size={140} />
-            <Text style={{ ...type.headline, color: T.ink, marginTop: 12, textAlign: 'center' }}>
-              {t('ask.emptyTitle')}
+          <View style={{ paddingTop: 8, paddingBottom: 24 }}>
+            {/* Screen subtitle */}
+            <Text style={{ ...type.callout, color: T.ink3, marginBottom: 24, lineHeight: 22 }}>
+              {t('ask.v2.subtitle')}
             </Text>
-            <Text style={{ ...type.callout, color: T.ink3, marginTop: 6, textAlign: 'center' }}>
-              {t('ask.emptyHint')}
-            </Text>
+            {/* Hero card */}
+            <View
+              style={{
+                backgroundColor: T.card,
+                borderRadius: radius.xl,
+                paddingTop: 28,
+                paddingBottom: 8,
+                paddingHorizontal: 20,
+                ...shadow.elevated,
+              }}
+            >
+              {/* Warm-gold agent glow (matches the handoff Ask orb + the editorial
+                  gold palette — not the vivid blue/violet orb, which is reserved
+                  for the in-flight "thinking" state below). */}
+              <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                <View
+                  style={{
+                    width: 72,
+                    height: 72,
+                    borderRadius: 36,
+                    backgroundColor: colors.accentSoft,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.agentGlow }} />
+                </View>
+              </View>
+              {/* Card title */}
+              <Text style={{ ...type.title2, color: T.ink, textAlign: 'center', marginBottom: 8 }}>
+                {t('ask.v2.cardTitle')}
+              </Text>
+              {/* Card subtitle */}
+              <Text
+                style={{
+                  ...type.callout,
+                  color: T.ink3,
+                  textAlign: 'center',
+                  marginBottom: 20,
+                  lineHeight: 22,
+                }}
+              >
+                {t('ask.v2.cardSub')}
+              </Text>
+              {/* Divider */}
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: colors.separatorSoft,
+                  marginHorizontal: -20,
+                  marginBottom: 4,
+                }}
+              />
+              {/* Suggestion rows. Layout lives on an inner View, NOT on the
+                  Pressable's style function — on-device (new arch) the
+                  function-style layout props get dropped and children stack
+                  vertically; web renders both fine. */}
+              {SUGGESTIONS.map((s) => (
+                <HeroRow
+                  key={s.key}
+                  icon={s.icon}
+                  label={t(s.labelKey)}
+                  onPress={() => submitQuestion(t(s.labelKey))}
+                />
+              ))}
+              {/* Item-scoped ask hand-off: real per-item questions start from
+                  the wardrobe (item detail → 用这件搭一套); a canned fake-item
+                  text here would mislead. */}
+              <HeroRow
+                icon="wardrobe"
+                label={t('ask.v2.pickItem')}
+                onPress={() =>
+                  navigation.getParent()?.navigate('WardrobeTab' as never)
+                }
+              />
+              {/* Contextual entry trigger — "more" affordance below suggestions */}
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: colors.separatorSoft,
+                  marginHorizontal: -20,
+                  marginTop: 2,
+                  marginBottom: 2,
+                }}
+              />
+              <HeroRow
+                icon="plus"
+                label={t('contextualEntry.trigger')}
+                accessibilityLabel={t('contextualEntry.triggerA11y')}
+                onPress={() => setContextualSheetVisible(true)}
+              />
+            </View>
           </View>
         ) : (
           turns.map((turn) => (
@@ -493,16 +764,31 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
             }}
           >
             <SystemIcon name="sparkle" size={12} color={T.accent} strokeWidth={1.9} />
-            <Text style={{ ...type.caption, color: T.ink2 }} numberOfLines={1}>
+            <Text style={{ ...type.caption, color: T.ink2, flexShrink: 1 }} numberOfLines={1}>
               {t('ask.focusedChip', { name: focusedName ?? t('ask.focusedFallback') })}
             </Text>
+            {/* Clear the item focus without leaving the screen. Dropping the
+                param flips scope back to global; the scope-change effect
+                already resets turns + conversation. */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('ask.focusedClear')}
+              onPress={() => navigation.setParams({ focusedItemId: undefined })}
+              hitSlop={10}
+              style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+            >
+              <SystemIcon name="x" size={13} color={T.ink3} strokeWidth={2} />
+            </Pressable>
           </View>
         ) : null}
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10 }}>
           <TextInput
             value={input}
             onChangeText={setInput}
-            placeholder={focusedItemId ? t('ask.placeholderFocused') : t('ask.placeholder')}
+            maxLength={2000}
+            placeholder={
+              focusedItemId ? t('ask.placeholderFocused') : t('ask.v2.placeholder')
+            }
             placeholderTextColor={colors.quaternaryLabel}
             multiline
             style={{
@@ -513,11 +799,15 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
               paddingHorizontal: 14,
               paddingVertical: 12,
               ...type.body,
+              // iOS auto-zooms inputs with fontSize < 16; hard-pin to 16 to prevent it.
+              fontSize: 16,
               color: T.ink,
               ...shadow.soft,
             }}
           />
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('ask.send')}
             onPress={send}
             disabled={input.trim().length === 0 || askMutation.isPending}
             style={{
@@ -533,6 +823,13 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
             <SystemIcon name="chevronRight" size={20} color={colors.inverse} />
           </Pressable>
         </View>
+        {!focusedItemId ? (
+          <Text
+            style={{ ...type.footnote, color: T.ink3, marginTop: 6, textAlign: 'center' }}
+          >
+            {t('ask.v2.inputHint')}
+          </Text>
+        ) : null}
       </View>
 
       <AskHistorySheet
@@ -542,6 +839,12 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         error={historyQuery.isError && !historyQuery.isFetching}
         onClose={() => setHistoryVisible(false)}
         onRetry={() => void historyQuery.refetch()}
+      />
+
+      <ContextualEntrySheet
+        visible={contextualSheetVisible}
+        onClose={() => setContextualSheetVisible(false)}
+        entries={contextualEntries}
       />
     </View>
   );

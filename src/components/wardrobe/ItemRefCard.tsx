@@ -1,10 +1,31 @@
 import { Text, View } from 'react-native';
 
+import type { GarmentPiece } from '@/components/outfit/garments';
+import { GarmentSvg } from '@/components/ui/GarmentSvg';
 import { ImageThumb } from '@/components/ui/ImageThumb';
 import { useT } from '@/hooks/useT';
 import { colors, radius, type } from '@/theme/design';
 
 const SIZE = 60;
+
+// Category → garment silhouette for the no-thumbnail fallback (mirrors
+// OutfitDetail's mapping) — a recognizable sketch beats a warning glyph.
+function categoryToGarment(cat?: string | null): GarmentPiece['kind'] {
+  switch (cat) {
+    case 'bottom':
+      return 'trousers';
+    case 'outerwear':
+      return 'blazer';
+    case 'dress':
+      return 'dress';
+    case 'shoes':
+      return 'loafer';
+    case 'accessory':
+      return 'bag';
+    default:
+      return 'shirt';
+  }
+}
 
 export interface ItemRefCardData {
   itemId: string;
@@ -40,6 +61,7 @@ export function ItemRefCard({ item, size = SIZE }: Props) {
         uri={item.thumbnailUrl}
         size={size}
         cornerRadius={radius.sm}
+        icon={<GarmentSvg kind={categoryToGarment(item.category)} size={size * 0.62} />}
         fallbackLabel={categoryLabel || colorLabel || t('ask.itemFallback')}
         accessibilityLabel={fallbackLabel}
       />

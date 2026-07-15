@@ -17,12 +17,24 @@ const API_BASE_URL =
 const DEV_USER_ID =
   process.env.DEV_USER_ID ?? '00000000-0000-4000-8000-000000000001';
 
+// MVP V2 redesign shell master switch. Off by default so the existing UI keeps
+// running; flip to 'true' to opt this build into the V2 IA / Today experience.
+// Single coarse flag — this is a system-level experience rewrite, not a per-
+// feature rollout, so no gradual gating (see redesign brief v0.9 §3.3).
+const ENABLE_MVP_V2_UI = (process.env.ENABLE_MVP_V2_UI ?? 'false') === 'true';
+
 const androidConfig: NonNullable<ExpoConfig['android']> & {
   usesCleartextTraffic?: boolean;
 } = {
   package: 'app.aidrobe.android',
   versionCode: 6,
   usesCleartextTraffic: APP_ENV !== 'production',
+  // 衣然 YIRAN adaptive launcher icon: the primary mark on the warm-white brand
+  // background (docs/design/brand/logo/final-v1).
+  adaptiveIcon: {
+    foregroundImage: './assets/adaptive-icon.png',
+    backgroundColor: '#FAF7F0',
+  },
 };
 
 const withAndroidCleartextTraffic: ConfigPlugin = (config) =>
@@ -48,6 +60,20 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   platforms: ['ios', 'android', 'web'],
   orientation: 'portrait',
   userInterfaceStyle: 'automatic',
+  // 衣然 YIRAN brand icon + splash (docs/design/brand/logo/final-v1). Warm-white
+  // brand background #FAF7F0 to match the app's morning surface.
+  icon: './assets/icon.png',
+  // Spread-cast: expo honors a top-level `splash` at build time, but SDK 56
+  // dropped it from the ExpoConfig type (it moved to the expo-splash-screen
+  // plugin, which is not installed here). Spreading bypasses the excess-property
+  // check while keeping the branded launch screen.
+  ...({
+    splash: {
+      image: './assets/splash-icon.png',
+      resizeMode: 'contain',
+      backgroundColor: '#FAF7F0',
+    },
+  } as unknown as Partial<ExpoConfig>),
   ios: {
     supportsTablet: false,
     bundleIdentifier: 'app.aidrobe.ios',
@@ -99,6 +125,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     APP_ENV,
     API_BASE_URL,
     DEV_USER_ID,
+    ENABLE_MVP_V2_UI,
     eas: {
       projectId: '8c50e01b-2844-473e-adec-3668fc2c2e9c',
     },

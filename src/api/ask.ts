@@ -33,13 +33,24 @@ export async function askAidrobe(body: AskBody): Promise<AskResult> {
       : null,
     focused_item_id: body.focusedItemId ?? null,
     locale: body.locale ?? null,
+    conversation_id: body.conversationId ?? null,
   });
   return {
     askSessionId: data.ask_session_id,
+    conversationId: data.conversation_id ?? null,
     answer: data.answer,
     itemRefs: data.item_refs,
     itemRefSnapshots: mapSnapshots(data.item_ref_snapshots),
     tokensUsed: data.tokens_used,
+    hasWardrobeContext: data.has_wardrobe_context ?? false,
+    deltas: data.deltas
+      ? {
+          reasoning: data.deltas.reasoning ?? null,
+          appliedConstraints: data.deltas.applied_constraints ?? [],
+        }
+      : null,
+    recommendationId: data.recommendation_id ?? null,
+    sourceSurface: data.source_surface ?? 'ask',
   };
 }
 
