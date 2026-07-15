@@ -49,6 +49,8 @@ export async function askAidrobe(body: AskBody): Promise<AskResult> {
           appliedConstraints: data.deltas.applied_constraints ?? [],
         }
       : null,
+    recommendationId: data.recommendation_id ?? null,
+    sourceSurface: data.source_surface ?? 'ask',
   };
 }
 

@@ -19,10 +19,10 @@ import { reasonChipToFeedback, type FeedbackChip } from './feedbackChips';
 // Submitting disables the row (no duplicate taps); a failure is non-blocking and
 // the chips stay tappable to retry. Render only where an outfit_id exists.
 //
-// API_GAP (FE#72): (1) Ask answers carry no outfit_id/recommendation_id, so Ask
-// recommendation feedback is not wirable to this endpoint without a BE change to
-// AskResult (or an Ask-specific feedback route). (2) The BE feedback endpoint
-// takes no `source_surface`, so the today/ask surface origin is not recorded.
+// Ask feedback is intentionally separate: `/v1/ask/{ask_session_id}/feedback`
+// attributes the Ask recommendation id and source surface. This component stays
+// outfit-only because it submits to `/recommendations/outfits/{outfit_id}/feedback`;
+// Ask must use its dedicated route rather than fabricate an outfit id.
 
 interface Props {
   outfitId: string;

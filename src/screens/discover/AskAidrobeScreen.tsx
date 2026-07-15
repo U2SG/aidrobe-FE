@@ -785,6 +785,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
           <TextInput
             value={input}
             onChangeText={setInput}
+            maxLength={2000}
             placeholder={
               focusedItemId ? t('ask.placeholderFocused') : t('ask.v2.placeholder')
             }
@@ -805,6 +806,8 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
             }}
           />
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('ask.send')}
             onPress={send}
             disabled={input.trim().length === 0 || askMutation.isPending}
             style={{

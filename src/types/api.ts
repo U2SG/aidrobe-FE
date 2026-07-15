@@ -949,6 +949,8 @@ export interface AskResult {
   tokensUsed: number;
   hasWardrobeContext: boolean;
   deltas: AskDeltas | null;
+  recommendationId: string | null;
+  sourceSurface: string;
 }
 
 export interface ServerAskDeltas {
@@ -965,6 +967,8 @@ export interface ServerAskResponse {
   tokens_used: number;
   has_wardrobe_context?: boolean;
   deltas?: ServerAskDeltas | null;
+  recommendation_id?: string | null;
+  source_surface?: string;
 }
 
 export interface AskHistoryEntry {

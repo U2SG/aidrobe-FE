@@ -9,6 +9,9 @@ export const zhCN = {
   'common.cancel': '取消',
   'common.delete': '删除',
   'common.retry': '重试',
+  'common.errorTitle': '出错了',
+  'common.errorDescription': '请检查网络后重试',
+  'common.loading': '加载中…',
   'common.gotIt': '知道了',
   'common.viewAll': '查看全部',
   'common.back': '返回',
@@ -237,6 +240,7 @@ export const zhCN = {
 
   // --- Ask Aidrobe ---------------------------------------------------------
   'ask.title': '问 衣然',
+  'ask.send': '发送',
   'ask.barHint': '问问 衣然，比如「这件配什么」',
   'ask.relatedItems': '衣橱里的相关单品',
   'ask.itemFallback': '单品',

@@ -86,11 +86,12 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
   const query = useQuery({
     queryKey: ['importTask', taskId],
     queryFn: () => getImportTask(taskId),
-    refetchInterval: (queryInfo) =>
-      queryInfo.state.data?.status === 'waiting_confirm' ||
-      queryInfo.state.data?.status === 'failed'
-        ? false
-        : 1500,
+    retry: 1,
+    refetchInterval: (queryInfo) => {
+      const task = queryInfo.state.data;
+      if (!task || queryInfo.state.status === 'error') return false;
+      return task.status === 'waiting_confirm' || task.status === 'failed' ? false : 1500;
+    },
   });
 
   const [form, setForm] = useState<ConfirmImportTaskBody>({ name: '', category: 'top', color: '' });
@@ -112,8 +113,9 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
 
   useEffect(() => { track('import_confirm_viewed', { taskId }); }, [taskId, track]);
 
+  const data = query.data;
+
   useEffect(() => {
-    const data = query.data;
     if (!data) return;
     if (data.status === 'failed') {
       navigation.replace('ImportFailure', {
@@ -129,9 +131,40 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
         color: data.recognized.color ?? '',
       });
     }
-  }, [query.data, navigation, onboarding]);
+  }, [data, navigation, onboarding]);
 
-  const data = query.data;
+  if (query.isError && data?.status !== 'waiting_confirm') {
+    return (
+      <View style={{ flex: 1, backgroundColor: T.bg, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('common.back')}
+          onPress={exitFlow}
+          hitSlop={8}
+          style={{ position: 'absolute', top: 52, left: 20, padding: 4 }}
+        >
+          <SystemIcon name="chevronLeft" size={22} color={T.ink2} />
+        </Pressable>
+        <SystemIcon name="exclamation" size={28} color={colors.label} />
+        <Text style={{ ...typeScale.headline, color: T.ink, textAlign: 'center' }}>
+          {t('common.errorTitle')}
+        </Text>
+        <Text style={{ ...typeScale.callout, color: T.ink3, textAlign: 'center' }}>
+          {t('common.errorDescription')}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => void query.refetch()}
+          style={{ minHeight: 44, borderRadius: T.rMd, backgroundColor: T.ink, paddingHorizontal: 24, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Text style={{ ...typeScale.headline, color: colors.inverse }}>
+            {t('common.retry')}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   if (!data || data.status !== 'waiting_confirm') {
     return <ProcessingOverlay title={t('import.recognizing')} />;
   }

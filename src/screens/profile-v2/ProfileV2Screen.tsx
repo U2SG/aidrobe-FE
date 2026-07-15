@@ -375,7 +375,24 @@ export function ProfileV2Screen({ navigation }: Props) {
       <DataHintBanner text={t('profile.hint.dataOwnership')} />
 
       {/* Section: 日常设置 */}
-      <Section title={t('profile.section.daily')}>
+      {settingsQuery.isLoading && !settings ? (
+        <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+          <Text style={{ ...type.callout, color: colors.tertiaryLabel }}>{t('common.loading')}</Text>
+        </View>
+      ) : settingsQuery.isError && !settings ? (
+        <View style={{ alignItems: 'center', gap: 8, paddingVertical: 24 }}>
+          <Text style={{ ...type.headline, color: colors.label }}>{t('common.errorTitle')}</Text>
+          <Text style={{ ...type.callout, color: colors.tertiaryLabel }}>{t('common.errorDescription')}</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void settingsQuery.refetch()}
+            style={{ minHeight: 44, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text style={{ ...type.headline, color: colors.accent }}>{t('common.retry')}</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <Section title={t('profile.section.daily')}>
         <Row
           labelKey="profile.row.departureTime"
           value={settings?.departureTime ?? notSet}
@@ -402,7 +419,8 @@ export function ProfileV2Screen({ navigation }: Props) {
           onPress={() => setLanguageOpen(true)}
           last
         />
-      </Section>
+        </Section>
+      )}
 
       {/* Section: 隐私与数据 */}
       <Section title={t('profile.section.privacy')}>

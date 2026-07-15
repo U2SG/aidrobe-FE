@@ -1,6 +1,7 @@
 import { Text, View } from 'react-native';
 
 import { PrimaryButton } from '@/components/forms/PrimaryButton';
+import { useT } from '@/hooks/useT';
 import { colors, type } from '@/theme/design';
 
 interface Props {
@@ -9,7 +10,8 @@ interface Props {
   onRetry?: () => void;
 }
 
-export function ErrorState({ title = '出错了', description = '请检查网络后重试', onRetry }: Props) {
+export function ErrorState({ title, description, onRetry }: Props) {
+  const { t } = useT();
   return (
     <View
       style={{
@@ -20,7 +22,9 @@ export function ErrorState({ title = '出错了', description = '请检查网络
         paddingVertical: 48,
       }}
     >
-      <Text style={{ ...type.headline, color: colors.label, textAlign: 'center' }}>{title}</Text>
+      <Text style={{ ...type.headline, color: colors.label, textAlign: 'center' }}>
+        {title ?? t('common.errorTitle')}
+      </Text>
       <Text
         style={{
           ...type.callout,
@@ -29,11 +33,11 @@ export function ErrorState({ title = '出错了', description = '请检查网络
           textAlign: 'center',
         }}
       >
-        {description}
+        {description ?? t('common.errorDescription')}
       </Text>
       {onRetry ? (
         <View style={{ marginTop: 24, width: '100%', maxWidth: 320 }}>
-          <PrimaryButton label="重试" onPress={onRetry} />
+          <PrimaryButton label={t('common.retry')} onPress={onRetry} />
         </View>
       ) : null}
     </View>

@@ -9,6 +9,9 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'common.cancel': 'Cancel',
   'common.delete': 'Delete',
   'common.retry': 'Retry',
+  'common.errorTitle': 'Something went wrong',
+  'common.errorDescription': 'Check your connection and try again.',
+  'common.loading': 'Loading…',
   'common.gotIt': 'Got it',
   'common.viewAll': 'View all',
   'common.back': 'Back',
@@ -248,6 +251,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
 
   // --- Ask Aidrobe ---------------------------------------------------------
   'ask.title': 'Ask YIRAN',
+  'ask.send': 'Send',
   'ask.barHint': 'Ask YIRAN, e.g. "What goes with this"',
   'ask.relatedItems': 'Related items in your wardrobe',
   'ask.itemFallback': 'Item',

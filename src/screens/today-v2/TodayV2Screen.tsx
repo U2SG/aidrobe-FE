@@ -37,8 +37,8 @@ import type { TodayStackParamList } from '@/types/navigation';
 
 type Props = NativeStackScreenProps<TodayStackParamList, 'Today'>;
 
-// Context override chips (brief v0.9 §5.4). labelKey → i18n; payload is the free
-// text an override represents (tracked + sent to refresh). iconName is optional —
+// Context override chips (brief v0.9 §5.4). labelKey → i18n; payload is the
+// backend refresh text and is deliberately excluded from client analytics. iconName is optional —
 // only assigned where a clean SystemIcon glyph exists; others are text-only.
 const OVERRIDE_SUGGESTIONS: ContextOverrideSuggestion[] = [
   { id: 'meeting', labelKey: 'today.override.chip.meeting', payload: '今天有会', iconName: 'suitcase' },
@@ -50,7 +50,6 @@ const OVERRIDE_SUGGESTIONS: ContextOverrideSuggestion[] = [
   { id: 'stayIn', labelKey: 'today.override.chip.stayIn', payload: '不怎么出门' },
 ];
 
-const SCENE_LABEL: Record<string, string> = { commute: '通勤', formal: '正式', casual: '休闲' };
 
 // Minutes until departure, clamped to the ring's [0, 90] range; null if unknown.
 function remainingMinutes(departureTime: string | null): number | null {
@@ -72,7 +71,7 @@ const MODE_COPY: Record<TodayMode, { title: I18nKey; subtitle: I18nKey }> = {
 };
 
 export function TodayV2Screen({ navigation }: Props) {
-  const { t } = useT();
+  const { t, tEnum } = useT();
   const track = useTrack();
   const qc = useQueryClient();
   const showToast = useToastStore((s) => s.show);
@@ -235,15 +234,15 @@ export function TodayV2Screen({ navigation }: Props) {
   };
 
   const modeCopy = MODE_COPY[mode];
-  // Evening / late-night switch focus to tomorrow. The BE has no tomorrow
-  // endpoint yet (API_GAP): we surface today's outfit as a tomorrow *preview*.
-  // The CTA copy flips (wearLabelKeyForMode) AND today-framed reasons + the
-  // live weather hint are dropped in favour of a neutral preview label, so no
-  // stale "today" framing shows at night (brief §4.4). Swap into a real tomorrow
-  // feed when the contract lands.
+  // Evening / late-night request tomorrow through `target_date`. Date-aware
+  // backends return `mode=tomorrow`; legacy/flag-off backends ignore the query,
+  // in which case the UI keeps a neutral preview and drops today's reasons and
+  // live-weather framing. A real tomorrow payload keeps its own context but
+  // disables swap because the refresh endpoint currently regenerates today only
+  // (brief §4.4).
   const tomorrowOriented = isTomorrowOriented(mode);
 
-  const scene = SCENE_LABEL[todayQuery.data?.context?.scene ?? 'commute'] ?? '通勤';
+  const scene = tEnum('scene', todayQuery.data?.context?.scene) || t('today.scene.commute');
   const remaining = remainingMinutes(departureTime);
   // The departure countdown ring is a morning "getting ready" affordance only —
   // not after departure and not at night.
@@ -275,11 +274,9 @@ export function TodayV2Screen({ navigation }: Props) {
   // BE); free text goes through the BE's LLM parse. The BE emits the
   // context_override_submitted learning event server-side — no client event.
   const submitChipOverride = (suggestion: ContextOverrideSuggestion) => {
-    track('context_override_submitted', { payload: suggestion.payload, surface: 'today' });
     refreshMutation.mutate({ source: 'chip', chipId: suggestion.id, text: suggestion.payload });
   };
   const submitTextOverride = (text: string) => {
-    track('context_override_submitted', { payload: text, surface: 'today' });
     refreshMutation.mutate({ source: 'free_text', text });
   };
 

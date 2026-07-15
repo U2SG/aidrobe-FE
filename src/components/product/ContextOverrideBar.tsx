@@ -162,6 +162,7 @@ export function ContextOverrideBar({
         <TextInput
           value={text}
           onChangeText={setText}
+          maxLength={200}
           editable={!disabled}
           placeholder={t('today.override.placeholder')}
           placeholderTextColor={colors.quaternaryLabel}

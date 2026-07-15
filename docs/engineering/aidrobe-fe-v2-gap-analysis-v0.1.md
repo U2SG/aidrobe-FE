@@ -1,5 +1,8 @@
 # Aidrobe FE V2 现状差距分析（Gap Analysis）
 
+> Historical snapshot, superseded on 2026-07-15. The status tables and old
+> `BE blocked` / `file:line` evidence below are not current acceptance criteria;
+> use the current code, latest OpenAPI, and `docs/qa/aidrobe-v2-internal-smoke-test-v0.1.md`.
 **Version:** v0.1
 **Status:** 审计成稿（只读调研，未改生产代码）
 **基准分支:** `redesign/mvp-v0.8-ui`

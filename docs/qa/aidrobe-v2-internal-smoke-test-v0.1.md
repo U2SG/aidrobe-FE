@@ -7,7 +7,7 @@
 
 **测（UI 流程验证）**：状态机对不对、路径顺不顺、有没有假数据、有没有卡住、错误文案是否清晰、有没有打扰感。
 
-**不测（推荐质量验证）**：推荐"准不准"。多条智能链路目前只有 FE 形态，BE 契约未接（见文末缺口表）——把这些当 bug 报会浪费一轮。
+**不以主观推荐质量作为退出标准**：当前 FE 已消费主要 V2 契约；本轮要验证 flag 开启后约束是否真实生效、状态是否可恢复、事件与数据操作是否可追溯。推荐是否“更准”进入后续受控评测，不以个人观感代替链路验收。
 
 **环境注意**：
 
@@ -60,7 +60,7 @@
 | 4.4 | 不喜欢 展开原因反馈（单选 + 可选备注） | | |
 | 4.5 | 查看详情 进入 outfit 详情，条目可点进单品 | | |
 | 4.6 | 空态（后端无推荐）：衣橱有缺口时显示具体缺口（缺下装/鞋…），衣橱查询失败时退回通用文案，**不许编造缺口** | | |
-| 4.7 | 特殊情况入口 → 底部弹窗（chips 优先 + 文字输入），选完关闭并刷新 | | ⚠️ 目前只 track+refresh，不影响推荐结果（BE #78） |
+| 4.7 | 特殊情况入口 → 底部弹窗（chips 优先 + 文字输入），选完关闭并刷新 | | 验证 7 个 chips / free text 真实影响 `applied_context`；失败、429、flag-off 均不得显示假成功 |
 
 ## 5. 时间状态机（改系统时间）
 
@@ -68,8 +68,8 @@
 |---|---|---|---|---|
 | 5.1 | 08:00（出门时间前窗口内） | morning_today（含倒计时） | | |
 | 5.2 | 14:00 | daytime_today | | |
-| 5.3 | 19:00 | evening_tomorrow（明日预览语气） | | ⚠️ 内容仍是今日数据换文案，真·明日等 BE #77 |
-| 5.4 | 23:00 | late_night_tomorrow | | 同上 |
+| 5.3 | 19:00 | evening_tomorrow（明日预览语气） | | flag-on 应请求真实 `target_date` / `mode=tomorrow`；真实明日 payload 当前禁用“换一套” |
+| 5.4 | 23:00 | late_night_tomorrow | | flag-off 后端可回退为中性明日预览，但不得把今日天气/理由伪装成明日数据 |
 
 ## 6. Ask
 
@@ -84,7 +84,7 @@
 
 | # | 检查项 | 结果 | 备注 |
 |---|---|---|---|
-| 7.1 | 「衣然记住的关于你」能打开；无假记忆（没有的就说没有） | | ⚠️ 纠正/删除真值等 BE #83 |
+| 7.1 | 「衣然记住的关于你」能打开；无假记忆（没有的就说没有） | | 已接 `/v1/profile/memory`；覆盖 flag-off 403、真实 empty、纠正、单条删除与全部清除 |
 | 7.2 | 你的数据 / 隐私说明是人话，无夸大承诺 | | |
 | 7.3 | 日常设置三行点开即编辑（出门时间轮选 / 位置输入 / 语言选择），保存后行值更新 | | |
 | 7.4 | 位置行不显示裸坐标（GPS 模式显示「使用当前位置」） | | |
@@ -97,7 +97,7 @@
 | # | 检查项 | 结果 | 备注 |
 |---|---|---|---|
 | 8.1 | 反馈单选含 太冷 / 太热 类原因，提交成功有确认 | | |
-| 8.2 | 提交后不重复弹出、不打扰 | | ⚠️ 学习沉淀等 BE #81 |
+| 8.2 | 提交后不重复弹出、不打扰 | | passive event 已接；本轮验证事件发送与频率约束，不要求一次反馈立刻改变推荐 |
 
 ## 9. V1 回退
 
@@ -108,19 +108,21 @@
 
 ---
 
-## 已知缺口（测到这些"没生效"不是 bug）
+## 已知边界与环境前置
 
-BE 侧 #77/#78/#80/#81/#82/#83 已全部合入 BE main（2026-07-10），但均为 **flag 默认关**，
-且 FE 尚未消费新契约 —— 现象不变，原因从"BE 未实现"变为"待开 flag + FE 接线"。
+BE #102–#108 对应的 V2 能力已进入 main，当前 FE head 也已消费 `target_date`、`context_override`、`resurface_insight`、passive events、Profile data trust、presign/auth 等契约。以下现象只有在 flag-off、资格未命中或明确产品边界下才是预期；所需 flag 已开启却不生效，应按 bug 记录。
 
-对应 BE flag（dev 后端 `.env` 开启后 FE 才能接）：
+内部环境应显式记录并开启：
+`ENABLE_TODAY_REFRESH` / `ENABLE_TODAY_CONTEXT` / `ENABLE_TODAY_REASONING` /
 `ENABLE_DATE_AWARE_TODAY` / `ENABLE_CONTEXT_OVERRIDES` / `ENABLE_RESURFACE_INSIGHT` /
-`ENABLE_INDOOR_CLIMATE_INFERENCE` / `ENABLE_DATA_TRUST`（passive events 无 flag，直接可用）。
+`ENABLE_INDOOR_CLIMATE_INFERENCE` / `ENABLE_DATA_TRUST`（passive events 无 flag）。
 
-| 现象 | 依赖 | 状态 |
+| 场景 | 当前边界 / 验收口径 | 是否报 bug |
 |---|---|---|
-| 晚间/深夜显示的"明日"仍是今日数据换语气 | BE #77 tomorrow recommendation | BE 已落地（flag 关），FE 待接 `target_date` |
-| 特殊情况 override 选了不影响推荐内容 | BE #78 context override | BE 已落地（flag 关），FE 待接 refresh `context_override` |
-| Today 下方无 resurface insight 卡（不假造，直接空着） | BE #80 resurface insight | BE 已落地（flag 关），FE 待接 `resurface_insight` |
-| 太冷/太热等反馈不改变后续推荐 | BE #81 passive learning / #82 indoor climate | BE 已落地（#82 flag 关），FE 待接 `POST /recommendations/events` |
-| 记忆纠正/删除、清空数据的服务端真值 | BE #83 data trust endpoints | BE 已落地（flag 关），FE 待接 `/v1/profile/*` |
+| 晚间/深夜 Today | flag-on 必须返回真实 `target_date` 与 `mode=tomorrow`；真实明日 payload 暂不支持 refresh | 请求/日期/文案不一致时报 bug；“换一套”禁用是已知边界 |
+| Context Override | FE 已发送 `context_override` 并展示服务端 `applied_context` | flag-on 不生效、失败后假成功或原文进入通用 analytics 均报 bug |
+| Resurface Insight | FE 已消费并发送 viewed/opened；未满足资格或冷却期时允许不展示 | 伪造卡片或违反冷却时报 bug |
+| Passive learning / indoor climate | 事件入口已接；一次反馈不保证立刻改变下一套 | 事件未发送、频率失控或硬约束被弱信号覆盖时报 bug |
+| Profile memory / clear data | FE 已接 `/v1/profile/*`；flag-off 403 与真实 empty 都必须诚实呈现 | 纠正/删除/清空未落到服务端，或 UI 保留旧缓存时报 bug |
+| 上传与对象删除 | 默认 presign 路径可用，STS 为受 flag 控制的直传能力；对象 key 必须按用户隔离 | 上传鉴权绕过、跨用户 key、清空/注销后对象残留时报 bug |
+| 登录与 token refresh | Android 邀请码、Apple 登录、single-flight refresh 已接 | 同码跨设备共享衣橱、并发 401 多次 refresh、失败后缓存未清时报 bug |

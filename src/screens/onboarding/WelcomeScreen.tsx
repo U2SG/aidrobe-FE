@@ -256,6 +256,7 @@ export function WelcomeScreen({ navigation }: Props) {
 
               {/* Primary: "使用邀请码登录" */}
               <Pressable
+                accessibilityRole="button"
                 onPress={signInWithInviteCode}
                 disabled={signingIn || inviteCode.trim().length === 0}
                 android_ripple={
@@ -281,6 +282,7 @@ export function WelcomeScreen({ navigation }: Props) {
           ) : APP_ENV === 'production' ? (
             /* ── Apple Sign-In (iOS production) ── */
             <Pressable
+              accessibilityRole="button"
               onPress={signInWithApple}
               disabled={signingIn}
               android_ripple={signingIn ? undefined : { color: 'rgba(255,255,255,0.14)' }}
@@ -300,6 +302,7 @@ export function WelcomeScreen({ navigation }: Props) {
           ) : (
             /* ── Dev skip button ── */
             <Pressable
+              accessibilityRole="button"
               onPress={() => navigation.navigate('Permission')}
               android_ripple={{ color: 'rgba(255,255,255,0.14)' }}
               style={{
@@ -319,6 +322,7 @@ export function WelcomeScreen({ navigation }: Props) {
           {/* Secondary: "登录已有账号" — hidden on non-iOS production (invite flow covers it) */}
           {!USE_INVITE_CODE && (
             <Pressable
+              accessibilityRole="button"
               onPress={signInWithApple}
               disabled={signingIn}
               style={{
@@ -335,6 +339,7 @@ export function WelcomeScreen({ navigation }: Props) {
 
           {/* Privacy link */}
           <Pressable
+            accessibilityRole="link"
             onPress={openPrivacyPolicy}
             style={{
               height: 44,
