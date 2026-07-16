@@ -70,7 +70,11 @@ export async function getItemWearHistory(itemId: string, days = 60): Promise<Ite
 
 export async function listWardrobeItems(query: ListWardrobeItemsQuery = {}) {
   const data = await apiGet<ServerListWardrobeItemsResponse>('/v1/wardrobe-items', {
+    query: query.query?.trim() || undefined,
     category: query.category === 'all' ? undefined : query.category,
+    status: query.status === 'all' ? undefined : query.status,
+    season: query.season === 'all' ? undefined : query.season,
+    color: query.color === 'all' ? undefined : query.color,
     limit: query.limit ?? 20,
     offset: query.offset ?? 0,
   });

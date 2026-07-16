@@ -3,6 +3,22 @@
 > Historical snapshot, superseded on 2026-07-15. The status tables and old
 > `BE blocked` / `file:line` evidence below are not current acceptance criteria;
 > use the current code, latest OpenAPI, and `docs/qa/aidrobe-v2-internal-smoke-test-v0.1.md`.
+
+## 2026-07-16 P0 Release 更新
+
+旧表保留为历史审计，不再用于发布判断。`redesign/mvp-v0.8-ui@d480635e` 之后的 P0 只跟踪以下真实差距：
+
+| P0 项 | 本轮处理 | 发布验收 |
+|---|---|---|
+| Feedback 真实交互 | 删除未落库备注和假「提交并换一套」；原因改为可选 | 无静默丢输入、无按钮假承诺 |
+| Today/Tomorrow | refresh 携带显示中的 `target_date`，按用户 timezone 与具体日期隔离缓存；动作由服务端 capability 控制 | 明日 revision 不覆盖今日；跨 18:00/午夜重算；flag-off/额度耗尽不显示死动作 |
+| 长等待与恢复 | 复用 Daily Recommendation / First Outfit Gate 与 React Query；使用诚实 AI 等待文案 | 可切 tab/离开并在返回后读取已完成结果，无伪阶段 |
+| Wardrobe 50+ 正确性 | 服务端 query/category/status/season/color + filtered total + 稳定 offset 分页 | 跨页搜索、组合筛选、计数、空态可信 |
+| UI 基础 | 复用既有 `ScreenContainer`、`LoadingState`、`Button`、错误/空态组件 | Safe Area、Dynamic Type、下一页失败不清空现有结果 |
+| 文档漂移 | smoke 6.3 改为真实情境页；新增 P0 Release Gate 用例 | FAIL 附设备、时间、flag、request id、复现步骤 |
+
+模型复用结论：现有 `DailyRecommendation` revision、持久化 `outfit_id`、Import task 与查询缓存足以承载 P0；不新增 Recommendation Session 或前端任务状态机。
+
 **Version:** v0.1
 **Status:** 审计成稿（只读调研，未改生产代码）
 **基准分支:** `redesign/mvp-v0.8-ui`

@@ -2,7 +2,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { AppState, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { emitRecommendationEvent } from '@/api/events';
 import {
@@ -15,12 +15,13 @@ import {
 import { getUserSettings } from '@/api/settings';
 import { getWardrobeItem, listWardrobeItems } from '@/api/wardrobe';
 import { ErrorState } from '@/components/feedback/ErrorState';
-import { LoadingBlock } from '@/components/feedback/LoadingBlock';
+import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { resolveOutfitPieces } from '@/components/outfit/resolvePieces';
 import { ContextOverrideBar, type ContextOverrideSuggestion } from '@/components/product/ContextOverrideBar';
 import { DecisionOutfitCard } from '@/components/product/DecisionOutfitCard';
 import { ResurfaceInsightCard, type ResurfaceInsight } from '@/components/product/ResurfaceInsightCard';
 import { SlotGapEmptyState } from '@/components/product/SlotGapEmptyState';
+import { LoadingState } from '@/components/states/LoadingState';
 import { CountdownRing } from '@/components/ui/CountdownRing';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
@@ -28,11 +29,18 @@ import type { I18nKey } from '@/i18n';
 import { useTrack } from '@/hooks/useTrack';
 import { countByCategory, missingCoreSlots } from '@/screens/onboarding-v2/firstOutfit';
 import { todayBoardMode } from '@/screens/today/todayBoard';
-import { deriveTodayMode, isTomorrowOriented, wearLabelKeyForMode, type TodayMode } from '@/screens/today-v2/todayMode';
+import {
+  deriveTodayMode,
+  isTomorrowOriented,
+  todayRecommendationQueryKey,
+  wearLabelKeyForMode,
+  type TodayMode,
+  type TodayRecommendationQueryKey,
+} from '@/screens/today-v2/todayMode';
 import { buildRecommendationReasons } from '@/screens/today-v2/todayReasons';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, type } from '@/theme/design';
-import type { WardrobeItem } from '@/types/api';
+import type { TodayRecommendation, WardrobeItem } from '@/types/api';
 import type { TodayStackParamList } from '@/types/navigation';
 
 type Props = NativeStackScreenProps<TodayStackParamList, 'Today'>;
@@ -52,15 +60,58 @@ const OVERRIDE_SUGGESTIONS: ContextOverrideSuggestion[] = [
 
 
 // Minutes until departure, clamped to the ring's [0, 90] range; null if unknown.
-function remainingMinutes(departureTime: string | null): number | null {
+function remainingMinutes(departureTime: string | null, now: Date): number | null {
   if (!departureTime) return null;
   const [h, m] = departureTime.split(':');
-  const now = new Date();
   const dep = new Date(now);
   dep.setHours(Number(h ?? 8), Number(m ?? 30), 0, 0);
   const diff = Math.round((dep.getTime() - now.getTime()) / 60000);
   return Math.max(0, Math.min(90, diff));
 }
+
+function localDateValue(value: Date): string {
+  const mm = String(value.getMonth() + 1).padStart(2, '0');
+  const dd = String(value.getDate()).padStart(2, '0');
+  return `${value.getFullYear()}-${mm}-${dd}`;
+}
+
+function clockInTimeZone(value: Date, timeZone?: string | null): Date {
+  if (!timeZone) return new Date(value);
+  try {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(value);
+    const byType = new Map(parts.map((part) => [part.type, part.value]));
+    const values = ['year', 'month', 'day', 'hour', 'minute', 'second'].map((key) =>
+      Number(byType.get(key)),
+    );
+    if (values.some((part) => !Number.isFinite(part))) return new Date(value);
+    const [year, month, day, hour, minute, second] = values as [
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+    ];
+    return new Date(year, month - 1, day, hour, minute, second);
+  } catch {
+    return new Date(value);
+  }
+}
+
+type RefreshMutationVariables = {
+  override?: ContextOverride;
+  targetDate?: string;
+  cacheKey: TodayRecommendationQueryKey;
+};
 
 const MODE_COPY: Record<TodayMode, { title: I18nKey; subtitle: I18nKey }> = {
   morning_today: { title: 'today.mode.morning.title', subtitle: 'today.mode.morning.subtitle' },
@@ -75,12 +126,31 @@ export function TodayV2Screen({ navigation }: Props) {
   const track = useTrack();
   const qc = useQueryClient();
   const showToast = useToastStore((s) => s.show);
+  const [now, setNow] = useState(() => new Date());
+
+  // Today is a persistent tab. Advance the date/mode while it stays mounted so
+  // crossing 18:00 or midnight cannot keep a stale Today/Tomorrow cache identity.
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000);
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') setNow(new Date());
+    });
+    return () => {
+      clearInterval(timer);
+      subscription.remove();
+    };
+  }, []);
 
   const settingsQuery = useQuery({
     queryKey: ['userSettings'],
     queryFn: getUserSettings,
     staleTime: 5 * 60 * 1000,
+    retry: 1,
   });
+  const userNow = useMemo(
+    () => clockInTimeZone(now, settingsQuery.data?.timezone),
+    [now, settingsQuery.data?.timezone],
+  );
 
   // BE#77 — evening/late-night is tomorrow-oriented BY TIME (>= 18:00), so the
   // decision which date to fetch can't depend on the fetch result. deriveTodayMode
@@ -88,34 +158,41 @@ export function TodayV2Screen({ navigation }: Props) {
   // (incl. cold start) is derived below from actual data.
   const wantTomorrow = isTomorrowOriented(
     deriveTodayMode({
-      now: new Date(),
+      now: userNow,
       departureTime: null,
       hasTodayRecommendation: true,
     }),
   );
+  const localDateKey = useMemo(() => localDateValue(userNow), [userNow]);
   const targetDate = useMemo(() => {
     if (!wantTomorrow) return undefined;
-    const d = new Date();
+    const d = new Date(userNow);
     d.setDate(d.getDate() + 1);
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${d.getFullYear()}-${mm}-${dd}`;
-  }, [wantTomorrow]);
+    return localDateValue(d);
+  }, [userNow, wantTomorrow]);
+  const activeRecommendationQueryKey = todayRecommendationQueryKey(localDateKey, targetDate);
 
   const todayQuery = useQuery({
-    queryKey: ['todayRecommendation', targetDate ?? 'today'],
+    queryKey: activeRecommendationQueryKey,
     queryFn: () => getTodayRecommendation('commute', targetDate),
     staleTime: 60 * 1000,
     retry: 1,
+    enabled: !settingsQuery.isLoading,
   });
   // True only when the backend actually served tomorrow (flag on) — a flag-off
   // backend ignores target_date and this stays false → legacy preview framing.
   const serverTomorrowActive = todayQuery.data?.mode === 'tomorrow';
+  const canRefreshDisplayedDate =
+    todayQuery.data?.canRefresh === true && (!wantTomorrow || serverTomorrowActive);
+  const canOverrideDisplayedDate =
+    todayQuery.data?.canContextOverride === true &&
+    (!wantTomorrow || serverTomorrowActive);
 
   // Refresh weather on re-focus (skip the initial mount focus), matching V1.
   const firstFocus = useRef(true);
   useFocusEffect(
     useCallback(() => {
+      setNow(new Date());
       if (firstFocus.current) {
         firstFocus.current = false;
         return;
@@ -141,23 +218,38 @@ export function TodayV2Screen({ navigation }: Props) {
   const refreshMutation = useMutation({
     // BE#78 — an optional context override rides along as a session-scoped
     // constraint on this one regeneration; plain swaps pass undefined.
-    mutationFn: (override?: ContextOverride) => refreshTodayRecommendation('commute', override),
+    mutationFn: ({ override, targetDate: requestedDate }: RefreshMutationVariables) =>
+      refreshTodayRecommendation('commute', override, requestedDate),
     onSuccess: (data) => {
-      // Refresh regenerates TODAY only. Swap/override are permitted only while
-      // the view is NOT a real tomorrow payload, so whatever key is active is
-      // showing today's data (possibly under the flag-off evening preview key)
-      // — write the ACTIVE key so the visible card updates, and the plain
-      // 'today' key so a later daytime view isn't stale.
-      qc.setQueryData(['todayRecommendation', targetDate ?? 'today'], data);
-      if (targetDate) qc.setQueryData(['todayRecommendation', 'today'], data);
+      // The response date is authoritative. A request that finishes across a
+      // mode/date boundary must never write into the newly active date's key.
+      qc.setQueryData(
+        todayRecommendationQueryKey(
+          data.date,
+          data.mode === 'tomorrow' ? data.date : undefined,
+        ),
+        data,
+      );
       showToast({ message: t('today.swapped'), kind: 'success' });
     },
-    onError: (err: { response?: { status?: number } }) => {
+    onError: (err: { response?: { status?: number } }, variables) => {
+      if (err?.response?.status === 403 || err?.response?.status === 429) {
+        qc.setQueryData<TodayRecommendation>(
+          variables.cacheKey,
+          (current) =>
+            current
+              ? { ...current, canRefresh: false, canContextOverride: false }
+              : current,
+        );
+      }
       if (err?.response?.status === 429) {
         showToast({ message: t('today.refreshExhausted'), kind: 'error' });
       }
     },
   });
+  const requestRefresh = (override?: ContextOverride) => {
+    refreshMutation.mutate({ override, targetDate, cacheKey: activeRecommendationQueryKey });
+  };
 
   const boardMode = todayBoardMode({
     state: todayQuery.data?.state,
@@ -184,7 +276,7 @@ export function TodayV2Screen({ navigation }: Props) {
   }, [wardrobeQuery.isSuccess, wardrobeQuery.data]);
   const departureTime = settingsQuery.data?.departureTime ?? null;
   const mode = deriveTodayMode({
-    now: new Date(),
+    now: userNow,
     departureTime,
     hasTodayRecommendation: hasRecommendation,
     // In tomorrow mode the query result IS tomorrow's recommendation.
@@ -238,12 +330,12 @@ export function TodayV2Screen({ navigation }: Props) {
   // backends return `mode=tomorrow`; legacy/flag-off backends ignore the query,
   // in which case the UI keeps a neutral preview and drops today's reasons and
   // live-weather framing. A real tomorrow payload keeps its own context but
-  // disables swap because the refresh endpoint currently regenerates today only
-  // (brief §4.4).
+  // disables date-specific actions only when an older/flag-off backend ignored
+  // the requested tomorrow date.
   const tomorrowOriented = isTomorrowOriented(mode);
 
   const scene = tEnum('scene', todayQuery.data?.context?.scene) || t('today.scene.commute');
-  const remaining = remainingMinutes(departureTime);
+  const remaining = remainingMinutes(departureTime, userNow);
   // The departure countdown ring is a morning "getting ready" affordance only —
   // not after departure and not at night.
   const showRing = mode === 'morning_today' && remaining != null && remaining > 0;
@@ -274,18 +366,19 @@ export function TodayV2Screen({ navigation }: Props) {
   // BE); free text goes through the BE's LLM parse. The BE emits the
   // context_override_submitted learning event server-side — no client event.
   const submitChipOverride = (suggestion: ContextOverrideSuggestion) => {
-    refreshMutation.mutate({ source: 'chip', chipId: suggestion.id, text: suggestion.payload });
+    requestRefresh({ source: 'chip', chipId: suggestion.id, text: suggestion.payload });
   };
   const submitTextOverride = (text: string) => {
-    refreshMutation.mutate({ source: 'free_text', text });
+    requestRefresh({ source: 'free_text', text });
   };
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 64, paddingBottom: 120, gap: 20 }}
-      showsVerticalScrollIndicator={false}
-    >
+    <ScreenContainer padded={false}>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: colors.background }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 120, gap: 20 }}
+        showsVerticalScrollIndicator={false}
+      >
       {/* Header: mode-aware greeting + departure subtitle, with the countdown
           ring on the right (morning/today only). Matches the handoff Today. */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -296,8 +389,8 @@ export function TodayV2Screen({ navigation }: Props) {
         {showRing && remaining != null ? <CountdownRing minutes={remaining} /> : null}
       </View>
 
-      {todayQuery.isLoading ? (
-        <LoadingBlock />
+      {settingsQuery.isLoading || todayQuery.isLoading ? (
+        <LoadingState label={t('today.loading.long')} />
       ) : todayQuery.isError ? (
         <ErrorState onRetry={() => todayQuery.refetch()} />
       ) : hasRecommendation && outfit ? (
@@ -325,49 +418,52 @@ export function TodayV2Screen({ navigation }: Props) {
               track('outfit_worn', { outfitId: outfit.id });
               navigation.navigate('OutfitDetail', { outfitId: outfit.id });
             }}
-            // Refresh regenerates TODAY only (no tomorrow-swap contract), so
-            // swapping is disabled while a real tomorrow payload is shown.
             onSwap={() => {
-              if (serverTomorrowActive) return;
-              refreshMutation.mutate(undefined);
+              if (!canRefreshDisplayedDate) return;
+              requestRefresh();
             }}
             onViewDetail={() => navigation.navigate('OutfitDetail', { outfitId: outfit.id })}
-            swapBusy={refreshMutation.isPending || serverTomorrowActive}
+            showSwap={canRefreshDisplayedDate}
+            swapBusy={refreshMutation.isPending}
           />
 
           <ResurfaceInsightCard insight={resurfaceInsight} onPress={openResurfaceItem} />
 
           {/* Compact entry row — opens the context override sheet */}
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setOverrideSheetOpen(true)}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 10,
-              paddingVertical: 14,
-              paddingHorizontal: 16,
-              borderRadius: radius.md,
-              borderWidth: 1,
-              borderColor: colors.separator,
-              backgroundColor: colors.elevated,
-            }}
-          >
-            <SystemIcon name="sparkle" size={16} color={colors.tertiaryLabel} strokeWidth={1.6} />
-            <Text style={{ flex: 1, ...type.callout, color: colors.tertiaryLabel }}>
-              {t('today.override.entryLabel')}
-            </Text>
-            <SystemIcon name="chevronRight" size={16} color={colors.quaternaryLabel} strokeWidth={1.6} />
-          </Pressable>
+          {canOverrideDisplayedDate ? (
+            <>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setOverrideSheetOpen(true)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                  paddingVertical: 14,
+                  paddingHorizontal: 16,
+                  borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.separator,
+                  backgroundColor: colors.elevated,
+                }}
+              >
+                <SystemIcon name="sparkle" size={16} color={colors.tertiaryLabel} strokeWidth={1.6} />
+                <Text style={{ flex: 1, ...type.callout, color: colors.tertiaryLabel }}>
+                  {t('today.override.entryLabel')}
+                </Text>
+                <SystemIcon name="chevronRight" size={16} color={colors.quaternaryLabel} strokeWidth={1.6} />
+              </Pressable>
 
-          <ContextOverrideBar
-            visible={overrideSheetOpen}
-            onClose={() => setOverrideSheetOpen(false)}
-            suggestions={OVERRIDE_SUGGESTIONS}
-            onSelectSuggestion={submitChipOverride}
-            onSubmitText={submitTextOverride}
-            disabled={refreshMutation.isPending}
-          />
+              <ContextOverrideBar
+                visible={overrideSheetOpen}
+                onClose={() => setOverrideSheetOpen(false)}
+                suggestions={OVERRIDE_SUGGESTIONS}
+                onSelectSuggestion={submitChipOverride}
+                onSubmitText={submitTextOverride}
+                disabled={refreshMutation.isPending}
+              />
+            </>
+          ) : null}
         </>
       ) : coldStartMissingSlots && coldStartMissingSlots.length > 0 ? (
         // Wardrobe has real gaps — point at exactly what to add.
@@ -399,6 +495,7 @@ export function TodayV2Screen({ navigation }: Props) {
           </Text>
         </View>
       )}
-    </ScrollView>
+      </ScrollView>
+    </ScreenContainer>
   );
 }

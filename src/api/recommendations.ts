@@ -122,6 +122,8 @@ function toToday(data: ServerTodayRecommendation): TodayRecommendation {
         }
       : null,
     mode: data.mode ?? null,
+    canRefresh: data.can_refresh ?? false,
+    canContextOverride: data.can_context_override ?? false,
   };
 }
 
@@ -165,7 +167,7 @@ export async function getFirstOutfitGate(): Promise<FirstOutfitGate> {
 }
 
 // V3+ D3 — user-initiated refresh. Rate-limited (default 3/day).
-// Server returns 429 when the daily limit is exhausted; 503 when the feature flag is off.
+// Server returns 429 when the daily limit is exhausted; 403 when the feature flag is off.
 // Regeneration drives several LLM calls and routinely takes ~25s — well over the
 // client's default 15s timeout, which surfaced as a bogus "网络异常" while the
 // backend actually succeeded. Give it a generous 60s budget.
@@ -180,6 +182,7 @@ export interface ContextOverride {
 export async function refreshTodayRecommendation(
   scene?: 'commute' | 'formal' | 'casual',
   override?: ContextOverride,
+  targetDate?: string,
 ) {
   return toToday(
     await apiPost<ServerTodayRecommendation>(
@@ -193,7 +196,7 @@ export async function refreshTodayRecommendation(
             },
           }
         : null,
-      { scene },
+      { scene, target_date: targetDate },
       { timeout: 60_000 },
     ),
   );

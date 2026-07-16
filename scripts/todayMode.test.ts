@@ -8,6 +8,7 @@ import {
   deriveTodayMode,
   isMorningPrepWindow,
   parseDepartureMinutes,
+  todayRecommendationQueryKey,
   wearLabelKeyForMode,
 } from '../src/screens/today-v2/todayMode.ts';
 
@@ -135,4 +136,26 @@ assert.equal(
   'late night → set for tomorrow (never "wear today")',
 );
 
-console.log('todayMode: 30/30 cases passed');
+// --- Cache identity across midnight -------------------------------------------
+// 16 Jul evening asks for 17 Jul tomorrow; after midnight, 17 Jul asks for
+// today. A flag-off/legacy backend can return different payload semantics, so
+// these must never share a React Query key even though the calendar date matches.
+const eveningTomorrowKey = todayRecommendationQueryKey('2026-07-16', '2026-07-17');
+const afterMidnightTodayKey = todayRecommendationQueryKey('2026-07-17');
+assert.deepEqual(
+  eveningTomorrowKey,
+  ['todayRecommendation', '2026-07-17', 'tomorrow'],
+  'evening request includes tomorrow direction',
+);
+assert.deepEqual(
+  afterMidnightTodayKey,
+  ['todayRecommendation', '2026-07-17', 'today'],
+  'after-midnight request includes today direction',
+);
+assert.notDeepEqual(
+  eveningTomorrowKey,
+  afterMidnightTodayKey,
+  'same calendar date across midnight has distinct cache identities',
+);
+
+console.log('todayMode: 33/33 cases passed');

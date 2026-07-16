@@ -33,6 +33,29 @@ export type TodayMode =
   | 'late_night_tomorrow'
   | 'empty_or_cold_start';
 
+export type TodayRecommendationQueryKey = readonly [
+  'todayRecommendation',
+  string,
+  'today' | 'tomorrow',
+];
+
+/**
+ * Keep a date-aware cache split between a request for today's recommendation
+ * and the previous evening's request for tomorrow. Those requests can name the
+ * same calendar date across midnight, but they are not interchangeable when a
+ * legacy or flag-off backend ignores target_date.
+ */
+export function todayRecommendationQueryKey(
+  localDate: string,
+  targetDate?: string,
+): TodayRecommendationQueryKey {
+  return [
+    'todayRecommendation',
+    targetDate ?? localDate,
+    targetDate ? 'tomorrow' : 'today',
+  ] as const;
+}
+
 /** True when the mode is tomorrow-oriented (evening / late night). */
 export function isTomorrowOriented(mode: TodayMode): boolean {
   return mode === 'evening_tomorrow' || mode === 'late_night_tomorrow';

@@ -174,6 +174,23 @@ const VARIANT: Record<AppLocale, Record<'safe' | 'fast' | 'stylish', string>> = 
   'en-US': { safe: 'Safe', fast: 'Fast', stylish: 'Stylish' },
 };
 
+export const WARDROBE_COLOR_FILTER_VALUES = [
+  'white',
+  'black',
+  'beige',
+  'blue',
+  'brown',
+  'gray',
+  'green',
+  'red',
+  'pink',
+  'purple',
+  'yellow',
+  'orange',
+  'navy',
+  'cream',
+] as const;
+
 const COLOR: Record<AppLocale, Record<string, string>> = {
   'zh-CN': {
     white: '白色',

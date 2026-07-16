@@ -8,6 +8,7 @@ function toLocalePref(value: string | null | undefined): LocalePref | null {
 function toUserSettings(data: ServerUserSettings): UserSettings {
   return {
     departureTime: data.departure_time ?? null,
+    timezone: data.timezone ?? null,
     deviceToken: data.device_token ?? null,
     pushEnabled: data.push_enabled ?? null,
     location: data.location ?? null,
@@ -23,6 +24,7 @@ export async function updateUserSettings(body: UpdateUserSettingsBody) {
   return toUserSettings(
     await apiPatch<ServerUserSettings>('/v1/user/settings', {
       departure_time: body.departureTime,
+      timezone: body.timezone,
       device_token: body.deviceToken,
       push_enabled: body.pushEnabled,
       location: body.location,

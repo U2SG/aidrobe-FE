@@ -1,8 +1,8 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
-import { useQuery } from '@tanstack/react-query';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Image,
@@ -16,6 +16,7 @@ import {
 
 import { getInsightsSummary } from '@/api/insights';
 import { listWardrobeItems } from '@/api/wardrobe';
+import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { CutoutBadge } from '@/components/ui/CutoutBadge';
@@ -28,7 +29,12 @@ import { Tag } from '@/components/ui/Tag';
 import { WardrobeShowcaseEmpty } from '@/components/wardrobe/WardrobeShowcaseEmpty';
 import { useT, type UseT } from '@/hooks/useT';
 import { enableMvpV2Ui } from '@/lib/featureFlags';
-import { resolveItemDisplayName, SEASON_VALUES, tColorFilterLabel } from '@/i18n/domainLabels';
+import {
+  resolveItemDisplayName,
+  SEASON_VALUES,
+  tColorFilterLabel,
+  WARDROBE_COLOR_FILTER_VALUES,
+} from '@/i18n/domainLabels';
 import { colors, radius, shadow } from '@/theme/design';
 import type { ItemCategory, ItemStatus, WardrobeItem } from '@/types/api';
 import type { MainTabsParamList, WardrobeStackParamList } from '@/types/navigation';
@@ -59,6 +65,7 @@ const DEFAULT_FILTERS: FilterValues = {
   season: 'all',
   color: 'all',
 };
+const PAGE_SIZE = 24;
 
 const T = {
   bg: colors.background,
@@ -251,6 +258,11 @@ export function WardrobeListScreen({ navigation }: Props) {
   const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS);
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
   const CATEGORIES = CATEGORY_KEYS.map((key) => ({
     key,
     label: key === 'all' ? t.t('common.all') : t.tEnum('category', key),
@@ -258,9 +270,23 @@ export function WardrobeListScreen({ navigation }: Props) {
   // Poll while any item is still being cut out; give up after ~90s (the worker's
   // reconcile job will flip stragglers to 'failed' and the original photo stays).
   const pollStartRef = useRef<number | null>(null);
-  const query = useQuery({
-    queryKey: ['wardrobeItems', category],
-    queryFn: () => listWardrobeItems({ category, limit: 50 }),
+  const query = useInfiniteQuery({
+    queryKey: ['wardrobeItems', 'list', category, debouncedSearch, filters],
+    queryFn: ({ pageParam }) =>
+      listWardrobeItems({
+        query: debouncedSearch,
+        category,
+        status: filters.status,
+        season: filters.season,
+        color: filters.color,
+        limit: PAGE_SIZE,
+        offset: pageParam,
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      const nextOffset = lastPage.offset + lastPage.items.length;
+      return nextOffset < lastPage.total ? nextOffset : undefined;
+    },
     retry: 1,
     // Freshness window so ordinary tab switches don't refetch. A cross-screen
     // mutation (import/edit/delete/wear) calls invalidateQueries, which marks
@@ -268,7 +294,9 @@ export function WardrobeListScreen({ navigation }: Props) {
     // fires after those — but a plain tab flip within the window is spared.
     staleTime: 60_000,
     refetchInterval: (q) => {
-      const queued = (q.state.data?.items ?? []).some((it) => it.cutoutStatus === 'queued');
+      const queued = (q.state.data?.pages ?? [])
+        .flatMap((page) => page.items)
+        .some((it) => it.cutoutStatus === 'queued');
       if (!queued) {
         pollStartRef.current = null;
         return false;
@@ -300,53 +328,23 @@ export function WardrobeListScreen({ navigation }: Props) {
     retry: 1,
   });
 
-  const items = query.data?.items ?? [];
-  const colorOptions = useMemo(() => {
-    const byKey = new Map<string, string>();
-    items.forEach((item) => {
-      const color = item.color.trim();
-      if (!color) return;
-      const key = color.toLowerCase();
-      if (!byKey.has(key)) byKey.set(key, color);
-    });
-    return Array.from(byKey.values()).sort((a, b) =>
-      tColorFilterLabel(t.locale, a).localeCompare(tColorFilterLabel(t.locale, b)),
-    );
-  }, [items, t]);
+  const items = useMemo(
+    () => query.data?.pages.flatMap((page) => page.items) ?? [],
+    [query.data?.pages],
+  );
+  // Keep facets stable across pages. Custom colors remain discoverable through
+  // server search until the API owns a complete distinct-color facet contract.
+  const colorOptions = WARDROBE_COLOR_FILTER_VALUES;
 
-  // API_GAP[untracked]: GET /v1/wardrobe-items lacks status/season/color filters.
-  // Fallback: category is still server-side; these fields filter the fetched page locally.
-  const filteredItems = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return items.filter((item) => {
-      if (filters.status !== 'all' && item.status !== filters.status) return false;
-      if (filters.season !== 'all' && !(item.seasonTags ?? []).includes(filters.season)) return false;
-      if (filters.color !== 'all' && item.color.trim().toLowerCase() !== filters.color.toLowerCase()) {
-        return false;
-      }
-      if (q) {
-        const name = resolveItemDisplayName(t.locale, {
-          name: item.name,
-          nameSource: item.nameSource,
-          displayName: item.displayName,
-          localizedNames: item.localizedNames,
-        }).toLowerCase();
-        if (!name.includes(q) && !item.color.toLowerCase().includes(q)) return false;
-      }
-      return true;
-    });
-  }, [filters, items, search, t.locale]);
-
-  const clientFilterCount =
+  const filterCount =
     (filters.status !== 'all' ? 1 : 0) +
     (filters.season !== 'all' ? 1 : 0) +
     (filters.color !== 'all' ? 1 : 0);
-  const activeFilterCount = clientFilterCount + (category !== 'all' ? 1 : 0);
+  const activeFilterCount = filterCount + (category !== 'all' ? 1 : 0);
   const hasActiveFilters = activeFilterCount > 0;
-  const hasClientFilters = clientFilterCount > 0;
   const isSearching = search.trim().length > 0;
-  const displayedTotal =
-    hasClientFilters || isSearching ? filteredItems.length : (query.data?.total ?? 0);
+  const hasQueryConstraints = hasActiveFilters || isSearching;
+  const displayedTotal = query.data?.pages[0]?.total ?? 0;
 
   const idleCount = insightsQuery.data?.idleCount ?? 0;
   const showIdleHint = idleCount > 0;
@@ -362,6 +360,10 @@ export function WardrobeListScreen({ navigation }: Props) {
   const resetFilters = () => {
     setCategory('all');
     setFilters(DEFAULT_FILTERS);
+  };
+  const resetQuery = () => {
+    resetFilters();
+    setSearch('');
   };
 
   const openInsights = () => {
@@ -383,10 +385,11 @@ export function WardrobeListScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: T.bg }}>
+    <ScreenContainer padded={false}>
       <FlatList
+        style={{ flex: 1, backgroundColor: T.bg }}
         ListHeaderComponent={
-          <View style={{ paddingTop: 52 }}>
+          <View style={{ paddingTop: 20 }}>
             {/* Header */}
             <View
               style={{
@@ -497,7 +500,7 @@ export function WardrobeListScreen({ navigation }: Props) {
                 >
                   {t.t('wardrobe.filter')}
                 </Text>
-                {hasClientFilters ? (
+                {filterCount > 0 ? (
                   <View
                     style={{
                       minWidth: 18,
@@ -510,7 +513,7 @@ export function WardrobeListScreen({ navigation }: Props) {
                     }}
                   >
                     <Text style={{ fontSize: 11, fontWeight: '700', color: colors.inverse }}>
-                      {clientFilterCount}
+                      {filterCount}
                     </Text>
                   </View>
                 ) : null}
@@ -577,21 +580,42 @@ export function WardrobeListScreen({ navigation }: Props) {
             <View style={{ height: 14 }} />
           </View>
         }
-        data={filteredItems}
+        data={items}
         keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperStyle={{ gap: 12, marginBottom: 12, paddingHorizontal: 20 }}
         contentContainerStyle={{ paddingBottom: 100 }}
         refreshControl={
-          <RefreshControl refreshing={query.isRefetching} onRefresh={() => query.refetch()} />
+          <RefreshControl
+            refreshing={query.isRefetching && !query.isFetchingNextPage}
+            onRefresh={() => query.refetch()}
+          />
         }
+        onEndReached={() => {
+          if (query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage();
+        }}
+        onEndReachedThreshold={0.4}
         renderItem={renderItem}
+        ListFooterComponent={
+          query.isFetchingNextPage ? (
+            <LoadingBlock label={t.t('common.loading')} />
+          ) : query.isFetchNextPageError ? (
+            <View style={{ paddingHorizontal: 20, paddingVertical: 16, alignItems: 'center' }}>
+              <Button
+                label={t.t('common.retry')}
+                onPress={() => void query.fetchNextPage()}
+                variant="secondary"
+                size="sm"
+              />
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           query.isLoading ? (
             <LoadingBlock />
           ) : query.isError ? (
             <ErrorState onRetry={() => query.refetch()} />
-          ) : hasActiveFilters ? (
+          ) : hasQueryConstraints ? (
             <View style={{ paddingHorizontal: 28, paddingTop: 36, gap: 14, alignItems: 'center' }}>
               <Text style={{ fontSize: 16, fontWeight: '600', color: T.ink }}>
                 {t.t('wardrobe.filter.empty')}
@@ -601,7 +625,7 @@ export function WardrobeListScreen({ navigation }: Props) {
               </Text>
               <Button
                 label={t.t('wardrobe.filter.clear')}
-                onPress={resetFilters}
+                onPress={resetQuery}
                 variant="secondary"
                 size="sm"
               />
@@ -675,6 +699,6 @@ export function WardrobeListScreen({ navigation }: Props) {
           />
         </View>
       </BottomSheet>
-    </View>
+    </ScreenContainer>
   );
 }

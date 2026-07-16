@@ -1,9 +1,11 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { sendOutfitFeedback } from '@/api/recommendations';
+import { Button } from '@/components/ui/Button';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
@@ -15,21 +17,9 @@ import type { TodayStackParamList } from '@/types/navigation';
 // FeedbackSheetScreen v2 restyle — pixel-fidelity pass matching the
 // aidrobe-v2-08-feedback-sheet prototype.
 //
-// Interaction model (matches prototype):
-//   • Single-select reason grid (2 columns) from REASON_TAG_KEYS
-//   • Optional free-text note field (≤ 100 chars)
-//   • Two actions: "提交并换一套" / "只提交反馈"
-//     Both submit then navigation.goBack(). Swap is a UX signal only —
-//     API_GAP[FE#73-swap]: FeedbackSheet has no callback channel to trigger
-//     a wardrobe swap from within a modal child; the parent (OutfitDetail)
-//     would need a route-param callback or a Zustand signal. For now both
-//     CTAs submit + goBack(), preserving the existing flow.
-//
-// Note field is UI-only — API_GAP[BE#69-feedback-note]: the feedback endpoint
-// does not accept a free-text field; notes are not sent to the server.
-//
-// Existing submit logic reused: sendOutfitFeedback (single-event endpoint),
-// track, showToast, navigation.goBack().
+// P0 truthful-interaction contract: the reason is optional and the only action
+// records feedback. Free-text note and submit+swap are intentionally absent
+// until the backend owns those behaviors.
 
 type Props = NativeStackScreenProps<TodayStackParamList, 'FeedbackSheet'>;
 
@@ -57,36 +47,37 @@ const T = {
   bg: colors.groupedBackground,
 };
 
-const MAX_NOTE_CHARS = 100;
-
 export function FeedbackSheetScreen({ navigation, route }: Props) {
   const { outfitId } = route.params;
   const isLocal = outfitId === 'local-showcase';
   const { t, tEnum } = useT();
   const showToast = useToastStore((state) => state.show);
   const track = useTrack();
+  const insets = useSafeAreaInsets();
 
   const [selectedReason, setSelectedReason] = useState<ReasonTagKey | null>(null);
-  const [note, setNote] = useState('');
 
   const mutation = useMutation({
-    mutationFn: (reason: ReasonTagKey) =>
+    mutationFn: (reason: ReasonTagKey | null) =>
       isLocal
         ? Promise.resolve({ success: true })
-        : sendOutfitFeedback(outfitId, { kind: 'dislike', reasonTags: [reason] }),
+        : sendOutfitFeedback(outfitId, {
+            kind: 'dislike',
+            reasonTags: reason ? [reason] : [],
+          }),
     onSuccess: (_data, reason) => {
-      track('outfit_feedback_sent', { outfitId, kind: 'dislike', reasonTags: [reason] });
-      showToast({ message: t('feedback.thanks'), kind: 'success' });
+      track('outfit_feedback_sent', {
+        outfitId,
+        kind: 'dislike',
+        reasonTags: reason ? [reason] : [],
+      });
+      showToast({ message: t('feedback.submitted'), kind: 'success' });
       navigation.goBack();
     },
     // On error: apiClient interceptor already shows a toast; keep user on screen to retry.
   });
 
   const submit = () => {
-    if (!selectedReason) {
-      showToast({ message: t('feedback.sheet.errorNoReason'), kind: 'error' });
-      return;
-    }
     mutation.mutate(selectedReason);
   };
 
@@ -213,42 +204,6 @@ export function FeedbackSheetScreen({ navigation, route }: Props) {
           })}
         </View>
 
-        {/* Optional free-text note */}
-        {/* API_GAP[BE#69-feedback-note]: note is captured locally but not sent — no server field. */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'flex-start',
-            gap: 8,
-            marginBottom: 4,
-          }}
-        >
-          <SystemIcon name="link" size={16} color={T.ink3} strokeWidth={1.6} />
-          <TextInput
-            style={{
-              flex: 1,
-              ...type.callout,
-              color: T.ink,
-              minHeight: 36,
-            }}
-            placeholder={t('feedback.sheet.freeTextPlaceholder')}
-            placeholderTextColor={T.ink3}
-            maxLength={MAX_NOTE_CHARS}
-            multiline
-            value={note}
-            onChangeText={setNote}
-          />
-        </View>
-        <Text
-          style={{
-            ...type.caption,
-            color: T.ink3,
-            textAlign: 'right',
-            marginBottom: 2,
-          }}
-        >
-          {note.length}/{MAX_NOTE_CHARS}
-        </Text>
       </ScrollView>
 
       {/* Bottom action bar */}
@@ -256,58 +211,15 @@ export function FeedbackSheetScreen({ navigation, route }: Props) {
         style={{
           paddingHorizontal: 20,
           paddingTop: 12,
-          paddingBottom: 36,
+          paddingBottom: Math.max(insets.bottom, 20),
           backgroundColor: T.bg,
-          gap: 10,
         }}
       >
-        {/* Primary CTA — submit + swap (API_GAP: swap signal not implemented; same as submit-only) */}
-        <Pressable
+        <Button
+          label={t('feedback.sheet.submit')}
           onPress={submit}
-          disabled={mutation.isPending}
-          accessibilityRole="button"
-          style={{
-            height: 54,
-            borderRadius: radius.md,
-            backgroundColor: T.ink,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: mutation.isPending ? 0.7 : 1,
-          }}
-        >
-          <Text
-            style={{
-              ...type.callout,
-              fontWeight: '700',
-              color: colors.inverse,
-              letterSpacing: 0.2,
-            }}
-          >
-            {t('feedback.sheet.submitSwap')}
-          </Text>
-        </Pressable>
-
-        {/* Secondary CTA — submit only */}
-        <Pressable
-          onPress={submit}
-          disabled={mutation.isPending}
-          accessibilityRole="button"
-          style={{
-            height: 44,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: mutation.isPending ? 0.5 : 1,
-          }}
-        >
-          <Text
-            style={{
-              ...type.callout,
-              color: T.ink2,
-            }}
-          >
-            {t('feedback.sheet.submitOnly')}
-          </Text>
-        </Pressable>
+          loading={mutation.isPending}
+        />
       </View>
     </View>
   );

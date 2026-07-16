@@ -51,6 +51,7 @@ export type LocalePref = 'zh-CN' | 'en-US' | 'system';
 
 export interface UserSettings {
   departureTime: string | null;
+  timezone?: string | null;
   deviceToken?: string | null;
   pushEnabled?: boolean | null;
   location?: string | null;
@@ -59,6 +60,7 @@ export interface UserSettings {
 
 export interface ServerUserSettings {
   departure_time?: string | null;
+  timezone?: string | null;
   device_token?: string | null;
   push_enabled?: boolean | null;
   location?: string | null;
@@ -67,6 +69,7 @@ export interface ServerUserSettings {
 
 export interface UpdateUserSettingsBody {
   departureTime?: string | null;
+  timezone?: string | null;
   deviceToken?: string | null;
   pushEnabled?: boolean | null;
   location?: string | null;
@@ -155,7 +158,11 @@ export interface ServerWardrobeItem {
 }
 
 export interface ListWardrobeItemsQuery {
+  query?: string;
   category?: ItemCategory | 'all';
+  status?: ItemStatus | 'all';
+  season?: string | 'all';
+  color?: string | 'all';
   limit?: number;
   offset?: number;
 }
@@ -384,6 +391,8 @@ export interface TodayRecommendation {
   appliedContext?: AppliedContext | null; // BE#78
   resurfaceInsight?: TodayResurfaceInsight | null; // BE#80
   mode?: 'today' | 'tomorrow' | null; // BE#77
+  canRefresh?: boolean;
+  canContextOverride?: boolean;
 }
 
 export type OutfitDetail = OutfitSummary;
@@ -445,6 +454,8 @@ export interface ServerTodayRecommendation {
   applied_context?: ServerAppliedContext | null; // BE#78
   resurface_insight?: ServerResurfaceInsight | null; // BE#80
   mode?: 'today' | 'tomorrow' | null; // BE#77 — null on legacy / flag-off payloads
+  can_refresh?: boolean;
+  can_context_override?: boolean;
 }
 
 // BE #79 — first-outfit cold-start feasibility gate. The verdict derives from

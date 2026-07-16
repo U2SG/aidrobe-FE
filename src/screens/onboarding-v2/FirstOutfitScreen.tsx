@@ -4,13 +4,14 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { getFirstOutfitGate } from '@/api/recommendations';
 import { listWardrobeItems } from '@/api/wardrobe';
+import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { resolveOutfitPieces } from '@/components/outfit/resolvePieces';
 import { FirstOutfitActivationCard } from '@/components/product/FirstOutfitActivationCard';
 import { SlotGapEmptyState } from '@/components/product/SlotGapEmptyState';
 import { AIOrb } from '@/components/ui/AIOrb';
+import { Button } from '@/components/ui/Button';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
-import type { I18nKey } from '@/i18n';
 import { useTrack } from '@/hooks/useTrack';
 import type { CoreSlot, FirstOutfitUiState } from '@/screens/onboarding-v2/firstOutfit';
 import { buildRecommendationReasons } from '@/screens/today-v2/todayReasons';
@@ -57,12 +58,6 @@ function OnboardingProgressBar({ onBack }: { onBack?: () => void }) {
 }
 
 type Props = NativeStackScreenProps<WardrobeStackParamList, 'FirstOutfit'>;
-
-const PROCESSING_STAGES: I18nKey[] = [
-  'firstOutfit.stage.recognize',
-  'firstOutfit.stage.organize',
-  'firstOutfit.stage.compose',
-];
 
 export function FirstOutfitScreen({ navigation, route }: Props) {
   const { t } = useT();
@@ -123,24 +118,28 @@ export function FirstOutfitScreen({ navigation, route }: Props) {
   const itemById = new Map(items.map((it) => [it.id, it]));
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 56, paddingBottom: 48, gap: 20 }}
-      showsVerticalScrollIndicator={false}
-    >
+    <ScreenContainer padded={false}>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: colors.background }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 48, gap: 20 }}
+        showsVerticalScrollIndicator={false}
+      >
       {state === 'processing' ? (
         <View style={{ alignItems: 'center', gap: 24, paddingTop: 40 }}>
           <AIOrb variant="thinking" size={72} />
           <Text style={{ ...type.title2, color: colors.label, textAlign: 'center' }}>
             {t('firstOutfit.processing.title')}
           </Text>
-          <View style={{ gap: 12, alignSelf: 'stretch' }}>
-            {PROCESSING_STAGES.map((key) => (
-              <Text key={key} style={{ ...type.callout, color: colors.tertiaryLabel, textAlign: 'center' }}>
-                {t(key)}
-              </Text>
-            ))}
-          </View>
+          <Text style={{ ...type.callout, color: colors.tertiaryLabel, textAlign: 'center' }}>
+            {t('firstOutfit.processing.body')}
+          </Text>
+          {navigation.canGoBack() ? (
+            <Button
+              label={t('firstOutfit.processing.leave')}
+              onPress={() => navigation.goBack()}
+              variant="ghost"
+            />
+          ) : null}
         </View>
       ) : null}
 
@@ -210,6 +209,7 @@ export function FirstOutfitScreen({ navigation, route }: Props) {
           />
         </View>
       ) : null}
-    </ScrollView>
+      </ScrollView>
+    </ScreenContainer>
   );
 }

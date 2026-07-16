@@ -408,6 +408,7 @@ export const zhCN = {
   'today.v2.ringLabel': '出门',
   'today.v2.prepHint': '准备 {minutes} 分',
   'today.v2.tomorrowPreview': '明日预览 · 先放这儿',
+  'today.loading.long': '正在准备这套搭配。可以先去看看别处，回来后结果会保留。',
   'today.override.prompt': '今天有什么特别的吗？',
   'today.override.placeholder': '也可以直接打字说说',
   'today.override.submit': '按这个再看',
@@ -427,9 +428,8 @@ export const zhCN = {
 
   // --- First Outfit activation (brief §6) ----------------------------------
   'firstOutfit.processing.title': '正在为你搭第一套',
-  'firstOutfit.stage.recognize': '识别衣物',
-  'firstOutfit.stage.organize': '整理信息',
-  'firstOutfit.stage.compose': '试着搭一套',
+  'firstOutfit.processing.body': '这可能需要一点时间。可以先离开，回来后继续看结果。',
+  'firstOutfit.processing.leave': '稍后回来',
   'firstOutfit.gap.title': '还差一点点',
   'firstOutfit.gap.subtitle': '补齐这几样，就能搭出第一套。',
   'firstOutfit.slot.top': '上衣',
@@ -633,11 +633,8 @@ export const zhCN = {
   'feedback.submitted': '已记录你的反馈，谢谢！',
   // FeedbackSheetScreen v2 restyle (v2-visual)
   'feedback.sheet.title': '这套哪里不合适？',
-  'feedback.sheet.subtitle': '选一个最主要的原因，我会调整一下。',
-  'feedback.sheet.freeTextPlaceholder': '还有别的原因？（可选）',
-  'feedback.sheet.submitSwap': '提交并换一套',
-  'feedback.sheet.submitOnly': '只提交反馈',
-  'feedback.sheet.errorNoReason': '请先选一个原因',
+  'feedback.sheet.subtitle': '原因可选；这会帮助衣然理解这次反馈。',
+  'feedback.sheet.submit': '提交反馈',
 
   // --- Context override sheet (Today 07) -----------------------------------
   'today.override.entryLabel': '今天有什么特别的吗？',
