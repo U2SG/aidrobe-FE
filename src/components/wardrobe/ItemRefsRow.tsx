@@ -6,7 +6,7 @@ import { useT } from '@/hooks/useT';
 import { colors, radius, type } from '@/theme/design';
 import type { AskItemRefSnapshot } from '@/types/api';
 
-import { ItemRefCard, type ItemRefCardData } from './ItemRefCard';
+import { ItemRefCard, ITEM_REF_CARD_SIZE, type ItemRefCardData } from './ItemRefCard';
 
 // Cap on how many tiles render before collapsing into "还有 N 件".
 const VISIBLE_CAP = 8;
@@ -81,8 +81,8 @@ export function ItemRefsRow({ snapshots, ids = [] }: Props) {
         {overflow > 0 ? (
           <View
             style={{
-              width: 60,
-              height: 60,
+              width: ITEM_REF_CARD_SIZE,
+              height: ITEM_REF_CARD_SIZE,
               borderRadius: radius.sm,
               backgroundColor: colors.secondaryElevated,
               alignItems: 'center',

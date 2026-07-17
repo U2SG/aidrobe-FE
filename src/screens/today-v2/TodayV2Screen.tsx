@@ -2,7 +2,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { emitRecommendationEvent } from '@/api/events';
 import {
@@ -34,6 +34,7 @@ import { useToastStore } from '@/store/toast';
 import { colors, radius, type } from '@/theme/design';
 import type { WardrobeItem } from '@/types/api';
 import type { TodayStackParamList } from '@/types/navigation';
+import { httpStatus } from '@/utils/http';
 
 type Props = NativeStackScreenProps<TodayStackParamList, 'Today'>;
 
@@ -152,10 +153,19 @@ export function TodayV2Screen({ navigation }: Props) {
       if (targetDate) qc.setQueryData(['todayRecommendation', 'today'], data);
       showToast({ message: t('today.swapped'), kind: 'success' });
     },
-    onError: (err: { response?: { status?: number } }) => {
-      if (err?.response?.status === 429) {
-        showToast({ message: t('today.refreshExhausted'), kind: 'error' });
-      }
+    onError: (err) => {
+      // Never fail silently — a ~25s regeneration that ends in nothing reads
+      // as "the button doesn't work". Map the useful cases, generic otherwise.
+      const status = httpStatus(err);
+      const message =
+        status === 429
+          ? t('today.refreshExhausted')
+          : status === 503
+            ? t('today.swapUnavailable')
+            : status == null
+              ? t('today.swapNetwork')
+              : t('today.swapFailed');
+      showToast({ message, kind: 'error' });
     },
   });
 
@@ -332,14 +342,18 @@ export function TodayV2Screen({ navigation }: Props) {
               refreshMutation.mutate(undefined);
             }}
             onViewDetail={() => navigation.navigate('OutfitDetail', { outfitId: outfit.id })}
-            swapBusy={refreshMutation.isPending || serverTomorrowActive}
+            swapBusy={refreshMutation.isPending}
+            swapDisabled={serverTomorrowActive}
           />
 
           <ResurfaceInsightCard insight={resurfaceInsight} onPress={openResurfaceItem} />
 
-          {/* Compact entry row — opens the context override sheet */}
+          {/* Compact entry row — opens the context override sheet. While a
+              regeneration is in flight it becomes a progress row instead:
+              opening a sheet whose every option is disabled reads as broken. */}
           <Pressable
             accessibilityRole="button"
+            disabled={refreshMutation.isPending}
             onPress={() => setOverrideSheetOpen(true)}
             style={{
               flexDirection: 'row',
@@ -353,11 +367,22 @@ export function TodayV2Screen({ navigation }: Props) {
               backgroundColor: colors.elevated,
             }}
           >
-            <SystemIcon name="sparkle" size={16} color={colors.tertiaryLabel} strokeWidth={1.6} />
-            <Text style={{ flex: 1, ...type.callout, color: colors.tertiaryLabel }}>
-              {t('today.override.entryLabel')}
-            </Text>
-            <SystemIcon name="chevronRight" size={16} color={colors.quaternaryLabel} strokeWidth={1.6} />
+            {refreshMutation.isPending ? (
+              <>
+                <ActivityIndicator size="small" color={colors.tertiaryLabel} />
+                <Text style={{ flex: 1, ...type.callout, color: colors.tertiaryLabel }}>
+                  {t('today.override.pendingLabel')}
+                </Text>
+              </>
+            ) : (
+              <>
+                <SystemIcon name="sparkle" size={16} color={colors.tertiaryLabel} strokeWidth={1.6} />
+                <Text style={{ flex: 1, ...type.callout, color: colors.tertiaryLabel }}>
+                  {t('today.override.entryLabel')}
+                </Text>
+                <SystemIcon name="chevronRight" size={16} color={colors.quaternaryLabel} strokeWidth={1.6} />
+              </>
+            )}
           </Pressable>
 
           <ContextOverrideBar

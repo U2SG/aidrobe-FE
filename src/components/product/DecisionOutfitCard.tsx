@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { OutfitBoard } from '@/components/outfit/OutfitBoard';
 import type { GarmentPiece } from '@/components/outfit/garments';
@@ -30,7 +30,13 @@ type Props = {
   onViewDetail: () => void;
   /** Hidden in the single-outfit cold-start state (swap would always fail). */
   showSwap?: boolean;
+  /** Regeneration in flight — the swap link becomes a spinner + "正在换一套…"
+   *  so a ~25s wait never looks like a dead tap. Only re-submission is blocked;
+   *  every other action on the card stays live. */
   swapBusy?: boolean;
+  /** Swap not allowed right now (e.g. a real tomorrow payload) — greyed, no
+   *  progress framing. */
+  swapDisabled?: boolean;
   /** Outdoor temperature, passed to feedback for indoor-climate signal (§9.2). */
   temperatureC?: number | null;
 };
@@ -53,6 +59,7 @@ export function DecisionOutfitCard({
   onViewDetail,
   showSwap = true,
   swapBusy,
+  swapDisabled,
   temperatureC,
 }: Props) {
   const { t } = useT();
@@ -145,10 +152,29 @@ export function DecisionOutfitCard({
         {showSwap ? (
           <>
             <Text style={{ ...type.callout, color: colors.separator, marginHorizontal: 12 }}>|</Text>
-            <Pressable accessibilityRole="button" disabled={swapBusy} onPress={onSwap} hitSlop={6}>
-              <Text style={{ ...type.callout, color: swapBusy ? colors.quaternaryLabel : colors.tertiaryLabel }}>
-                {t('today.v2.swap')}
-              </Text>
+            <Pressable
+              accessibilityRole="button"
+              disabled={swapBusy || swapDisabled}
+              onPress={onSwap}
+              hitSlop={6}
+            >
+              {swapBusy ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <ActivityIndicator size="small" color={colors.tertiaryLabel} />
+                  <Text style={{ ...type.callout, color: colors.tertiaryLabel }}>
+                    {t('today.v2.swapping')}
+                  </Text>
+                </View>
+              ) : (
+                <Text
+                  style={{
+                    ...type.callout,
+                    color: swapDisabled ? colors.quaternaryLabel : colors.tertiaryLabel,
+                  }}
+                >
+                  {t('today.v2.swap')}
+                </Text>
+              )}
             </Pressable>
           </>
         ) : null}

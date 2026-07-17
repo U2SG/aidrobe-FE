@@ -138,7 +138,19 @@ function formatHistoryDate(value: string, locale: string) {
   return `${date.getMonth() + 1}/${date.getDate()} ${hours}:${minutes}`;
 }
 
-function TurnView({ turn, onRetry, retryBusy }: { turn: Turn; onRetry: () => void; retryBusy: boolean }) {
+function TurnView({
+  turn,
+  onRetry,
+  retryBusy,
+  isFollowUp,
+}: {
+  turn: Turn;
+  onRetry: () => void;
+  retryBusy: boolean;
+  // "已延续：…" is a multi-turn continuity cue — on the first turn the BE just
+  // echoes constraints parsed from the question itself, which reads as noise.
+  isFollowUp?: boolean;
+}) {
   const { t } = useT();
   return (
     <View style={{ width: '100%', gap: 10, flexShrink: 0, marginBottom: 16 }}>
@@ -176,15 +188,17 @@ function TurnView({ turn, onRetry, retryBusy }: { turn: Turn; onRetry: () => voi
         {turn.pending ? (
           // AI "thinking" presence — the small vivid orb shares the motion
           // language with the Ask empty state and the import processing wait.
+          // Explicit 40px: the smallest named preset (sm=72) reads huge inside
+          // an answer bubble on device (~3x screenshots showed ~216px).
           <View style={{ alignSelf: 'flex-start', marginTop: 2 }}>
-            <AIOrb variant="thinking" size="sm" />
+            <AIOrb variant="thinking" size={40} />
           </View>
         ) : (
           <>
             <Text style={{ ...type.body, color: turn.failed ? T.ink3 : T.ink2, lineHeight: 22 }}>
               {turn.answer}
             </Text>
-            {!turn.failed && turn.appliedConstraints?.length ? (
+            {!turn.failed && isFollowUp && turn.appliedConstraints?.length ? (
               <Text style={{ ...type.caption, color: T.ink3, marginTop: 6 }} numberOfLines={2}>
                 {t('ask.appliedConstraints', { list: turn.appliedConstraints.join(' · ') })}
               </Text>
@@ -721,12 +735,13 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
             </View>
           </View>
         ) : (
-          turns.map((turn) => (
+          turns.map((turn, idx) => (
             <TurnView
               key={turn.id}
               turn={turn}
               onRetry={() => retryTurn(turn)}
               retryBusy={askMutation.isPending}
+              isFollowUp={idx > 0}
             />
           ))
         )}

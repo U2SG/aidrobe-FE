@@ -27,10 +27,10 @@ export function BottomSheet({ visible, onClose, title, children }: Props) {
         <View
           style={{
             backgroundColor: colors.elevated,
-            borderTopLeftRadius: radius.xl,
-            borderTopRightRadius: radius.xl,
+            borderTopLeftRadius: radius.lg,
+            borderTopRightRadius: radius.lg,
             paddingHorizontal: 24,
-            paddingTop: 20,
+            paddingTop: 14,
             paddingBottom: 32,
             gap: 18,
             ...shadow.elevated,

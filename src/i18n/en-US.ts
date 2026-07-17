@@ -357,6 +357,9 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'today.candidates': 'Candidates',
   'today.swapped': 'Swapped in another look',
   'today.refreshExhausted': "You're out of refreshes for today",
+  'today.swapFailed': "That swap didn't go through — try again",
+  'today.swapUnavailable': 'Recommendations are briefly unavailable — try again soon',
+  'today.swapNetwork': 'Network hiccup — check your connection and retry',
   'today.swapAnother': 'Swap',
   'today.viewDetail': 'View detail',
   'today.shareThis': 'Share this look',
@@ -412,6 +415,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'today.v2.wear': 'Try this today',
   'today.v2.wearTomorrow': 'Set this for tomorrow',
   'today.v2.swap': 'Swap',
+  'today.v2.swapping': 'Finding another look…',
   'today.v2.dislike': 'Not for me',
   'today.v2.why': 'Why',
   'today.v2.viewDetail': 'View detail',
@@ -649,6 +653,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
 
   // --- Context override sheet (Today 07) -----------------------------------
   'today.override.entryLabel': 'Anything special today?',
+  'today.override.pendingLabel': 'Restyling your look…',
   'today.override.subtitle': 'In a hurry? Just pick one.',
   'today.override.orType': 'Or type it out',
   'today.override.refresh': 'Redo recommendation',

@@ -6,7 +6,9 @@ import { ImageThumb } from '@/components/ui/ImageThumb';
 import { useT } from '@/hooks/useT';
 import { colors, radius, type } from '@/theme/design';
 
-const SIZE = 60;
+// 96dp shows real garment detail (60dp read as "small icons" on device) while
+// still exposing ~3 cards per screen in the horizontal row.
+export const ITEM_REF_CARD_SIZE = 96;
 
 // Category → garment silhouette for the no-thumbnail fallback (mirrors
 // OutfitDetail's mapping) — a recognizable sketch beats a warning glyph.
@@ -46,7 +48,7 @@ interface Props {
 // thumbnail when present, otherwise a readable category/color fallback (never
 // an empty gray box). Used by ItemRefsRow but reusable anywhere a compact item
 // chip is needed.
-export function ItemRefCard({ item, size = SIZE }: Props) {
+export function ItemRefCard({ item, size = ITEM_REF_CARD_SIZE }: Props) {
   const { t, tEnum } = useT();
   const categoryLabel = item.category ? tEnum('category', item.category) : '';
   const colorLabel = item.colorMain ? tEnum('color', item.colorMain) : '';
@@ -61,6 +63,8 @@ export function ItemRefCard({ item, size = SIZE }: Props) {
         uri={item.thumbnailUrl}
         size={size}
         cornerRadius={radius.sm}
+        // Garment cutouts must stay whole — cover would crop sleeves/hems.
+        resizeMode="contain"
         icon={<GarmentSvg kind={categoryToGarment(item.category)} size={size * 0.62} />}
         fallbackLabel={categoryLabel || colorLabel || t('ask.itemFallback')}
         accessibilityLabel={fallbackLabel}

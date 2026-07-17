@@ -341,6 +341,9 @@ export const zhCN = {
   'today.candidates': '候选',
   'today.swapped': '已换一套',
   'today.refreshExhausted': '今天的刷新次数用完了',
+  'today.swapFailed': '这次没换成，再试一次',
+  'today.swapUnavailable': '推荐服务暂时不可用，稍后再试',
+  'today.swapNetwork': '网络不太顺，检查网络后再试',
   'today.swapAnother': '换一套',
   'today.viewDetail': '查看详情',
   'today.shareThis': '分享这套',
@@ -396,6 +399,7 @@ export const zhCN = {
   'today.v2.wear': '今天先试这套',
   'today.v2.wearTomorrow': '明天先按这套',
   'today.v2.swap': '换一套',
+  'today.v2.swapping': '正在换一套…',
   'today.v2.dislike': '不喜欢',
   'today.v2.why': '为什么',
   'today.v2.viewDetail': '查看详情',
@@ -641,6 +645,7 @@ export const zhCN = {
 
   // --- Context override sheet (Today 07) -----------------------------------
   'today.override.entryLabel': '今天有什么特别的吗？',
+  'today.override.pendingLabel': '正在为你重新推荐…',
   'today.override.subtitle': '赶时间可以直接选一个',
   'today.override.orType': '也可以打字',
   'today.override.refresh': '按这个重新推荐',
