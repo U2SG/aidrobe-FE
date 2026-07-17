@@ -39,6 +39,9 @@ export interface ImageThumbProps {
   accessibilityLabel?: string;
   // When provided, the failed state renders a tappable retry affordance.
   onRetry?: () => void;
+  // 'cover' (default) crops to fill; 'contain' keeps the full subject visible —
+  // use for garment cutouts where cropping loses the silhouette.
+  resizeMode?: 'cover' | 'contain';
 }
 
 export function ImageThumb({
@@ -50,6 +53,7 @@ export function ImageThumb({
   icon,
   accessibilityLabel,
   onRetry,
+  resizeMode = 'cover',
 }: ImageThumbProps) {
   const hasImage = Boolean(uri || source);
   const [state, setState] = useState<ImageThumbState>(initialImageThumbState(hasImage));
@@ -138,7 +142,7 @@ export function ImageThumb({
       <Image
         source={imageSource}
         style={{ width: '100%', height: '100%', opacity: state === 'loaded' ? 1 : 0 }}
-        resizeMode="cover"
+        resizeMode={resizeMode}
         onLoadStart={() => setState('loading')}
         onLoad={() => setState('loaded')}
         onError={() => setState('failed')}
