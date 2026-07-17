@@ -2,7 +2,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { emitRecommendationEvent } from '@/api/events';
 import {
@@ -302,13 +302,19 @@ export function TodayV2Screen({ navigation }: Props) {
       showsVerticalScrollIndicator={false}
     >
       {/* Header: mode-aware greeting + departure subtitle, with the countdown
-          ring on the right (morning/today only). Matches the handoff Today. */}
+          ring on the right (morning/today only). While a background refetch
+          runs over EXISTING data (focus refetch), a small orb takes the ring
+          slot — the old card stays put, no full-page flash. */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <View style={{ flex: 1, gap: 6 }}>
           <Text style={{ ...type.largeTitle, color: colors.label }}>{t(modeCopy.title)}</Text>
           <Text style={{ ...type.footnote, color: colors.tertiaryLabel }}>{headerSubtitle}</Text>
         </View>
-        {showRing && remaining != null ? <CountdownRing minutes={remaining} /> : null}
+        {todayQuery.isFetching && !todayQuery.isLoading ? (
+          <AIOrb variant="thinking" size={24} />
+        ) : showRing && remaining != null ? (
+          <CountdownRing minutes={remaining} />
+        ) : null}
       </View>
 
       {todayQuery.isLoading ? (
@@ -383,7 +389,7 @@ export function TodayV2Screen({ navigation }: Props) {
           >
             {refreshMutation.isPending ? (
               <>
-                <ActivityIndicator size="small" color={colors.tertiaryLabel} />
+                <AIOrb variant="thinking" size={24} />
                 <Text style={{ flex: 1, ...type.callout, color: colors.tertiaryLabel }}>
                   {t('today.override.pendingLabel')}
                 </Text>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
+import { AIOrb } from '@/components/ui/AIOrb';
 import { OutfitBoard } from '@/components/outfit/OutfitBoard';
 import type { GarmentPiece } from '@/components/outfit/garments';
 import { RecommendationFeedback } from '@/components/feedback/RecommendationFeedback';
@@ -159,8 +160,10 @@ export function DecisionOutfitCard({
               hitSlop={6}
             >
               {swapBusy ? (
+                // House AI-presence orb, not a system spinner — one motion
+                // language for every "AI is working" state (PR #105 review).
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <ActivityIndicator size="small" color={colors.tertiaryLabel} />
+                  <AIOrb variant="thinking" size={24} />
                   <Text style={{ ...type.callout, color: colors.tertiaryLabel }}>
                     {t('today.v2.swapping')}
                   </Text>
