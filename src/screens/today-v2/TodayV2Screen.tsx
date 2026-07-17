@@ -388,12 +388,12 @@ export function TodayV2Screen({ navigation }: Props) {
             }}
           >
             {refreshMutation.isPending ? (
-              <>
-                <AIOrb variant="thinking" size={24} />
-                <Text style={{ flex: 1, ...type.callout, color: colors.tertiaryLabel }}>
-                  {t('today.override.pendingLabel')}
-                </Text>
-              </>
+              // Text-only: the card's swap link already animates during the
+              // same regeneration — two 24dp orbs on one screen read as noise
+              // (#106 follow-up review). One primary animation, one status line.
+              <Text style={{ flex: 1, ...type.callout, color: colors.tertiaryLabel }}>
+                {t('today.override.pendingLabel')}
+              </Text>
             ) : (
               <>
                 <SystemIcon name="sparkle" size={16} color={colors.tertiaryLabel} strokeWidth={1.6} />
