@@ -15,12 +15,12 @@ import {
 import { getUserSettings } from '@/api/settings';
 import { getWardrobeItem, listWardrobeItems } from '@/api/wardrobe';
 import { ErrorState } from '@/components/feedback/ErrorState';
-import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { resolveOutfitPieces } from '@/components/outfit/resolvePieces';
 import { ContextOverrideBar, type ContextOverrideSuggestion } from '@/components/product/ContextOverrideBar';
 import { DecisionOutfitCard } from '@/components/product/DecisionOutfitCard';
 import { ResurfaceInsightCard, type ResurfaceInsight } from '@/components/product/ResurfaceInsightCard';
 import { SlotGapEmptyState } from '@/components/product/SlotGapEmptyState';
+import { AIOrb } from '@/components/ui/AIOrb';
 import { CountdownRing } from '@/components/ui/CountdownRing';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
@@ -193,12 +193,17 @@ export function TodayV2Screen({ navigation }: Props) {
     return missingCoreSlots(countByCategory(fetched));
   }, [wardrobeQuery.isSuccess, wardrobeQuery.data]);
   const departureTime = settingsQuery.data?.departureTime ?? null;
+  // While the first fetch is still in flight we don't know whether a
+  // recommendation exists — assume it does, so the header shows the normal
+  // time-of-day title instead of flashing the cold-start "再加几件就能搭一套"
+  // for the whole load (device screenshot 2026-07-17).
+  const assumedRecommendation = todayQuery.isLoading ? true : hasRecommendation;
   const mode = deriveTodayMode({
     now: new Date(),
     departureTime,
-    hasTodayRecommendation: hasRecommendation,
+    hasTodayRecommendation: assumedRecommendation,
     // In tomorrow mode the query result IS tomorrow's recommendation.
-    hasTomorrowRecommendation: wantTomorrow ? hasRecommendation : undefined,
+    hasTomorrowRecommendation: wantTomorrow ? assumedRecommendation : undefined,
   });
 
   const weather = todayQuery.data?.context?.weather ?? null;
@@ -307,7 +312,16 @@ export function TodayV2Screen({ navigation }: Props) {
       </View>
 
       {todayQuery.isLoading ? (
-        <LoadingBlock />
+        // The house AI-presence orb, not a bare spinner: cold-cache loads can
+        // take tens of seconds and the tiny ActivityIndicator read as a dead
+        // blank screen on device. Same motion language as the Ask thinking
+        // state; text-scale (per feedback), caption keeps the wait honest.
+        <View style={{ alignItems: 'center', paddingVertical: 56, gap: 14 }}>
+          <AIOrb variant="thinking" size={32} />
+          <Text style={{ ...type.callout, color: colors.tertiaryLabel }}>
+            {t('today.loading')}
+          </Text>
+        </View>
       ) : todayQuery.isError ? (
         <ErrorState onRetry={() => todayQuery.refetch()} />
       ) : hasRecommendation && outfit ? (

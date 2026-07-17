@@ -126,14 +126,21 @@ export function SiriBloomOrb({
   paused?: boolean;
 }) {
   const clock = useClock();
-  const center = size / 2;
-  const ringR = size * 0.32; // ring radius (leaves halo margin inside the canvas)
+  // The halos reach ringR + haloR·breathe + blur spread ≈ 0.64·size from the
+  // center — past the 0.5·size edge of a size-square canvas, so the glow got
+  // visibly cropped into a "boxed" orb (worst at small sizes). Draw on a
+  // bled canvas and pull it back with negative margins: the LAYOUT footprint
+  // stays exactly `size`, the glow just gets room to fall off naturally.
+  const bleed = Math.ceil(size * 0.25);
+  const canvas = size + bleed * 2;
+  const center = canvas / 2;
+  const ringR = size * 0.32; // ring radius — geometry stays keyed to `size`
   const dotR = size * 0.075; // ring-dot radius
   const bigR = size * 0.2; // fused center-dot radius before the split
   const vivid = variant === 'vivid';
 
   return (
-    <Canvas style={{ width: size, height: size }}>
+    <Canvas style={{ width: canvas, height: canvas, margin: -bleed }}>
       {Array.from({ length: DOT_COUNT }, (_, i) => (
         <BloomDot
           key={i}

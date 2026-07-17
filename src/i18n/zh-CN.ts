@@ -339,6 +339,7 @@ export const zhCN = {
   // --- Today ---------------------------------------------------------------
   'today.wearThis': '穿这套',
   'today.candidates': '候选',
+  'today.loading': '正在为你准备搭配…',
   'today.swapped': '已换一套',
   'today.refreshExhausted': '今天的刷新次数用完了',
   'today.swapFailed': '这次没换成，再试一次',
