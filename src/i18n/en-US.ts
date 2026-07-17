@@ -355,6 +355,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   // --- Today ---------------------------------------------------------------
   'today.wearThis': 'Wear this',
   'today.candidates': 'Candidates',
+  'today.loading': 'Styling your look…',
   'today.swapped': 'Swapped in another look',
   'today.refreshExhausted': "You're out of refreshes for today",
   'today.swapFailed': "That swap didn't go through — try again",

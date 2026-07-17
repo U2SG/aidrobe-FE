@@ -188,10 +188,11 @@ function TurnView({
         {turn.pending ? (
           // AI "thinking" presence — the small vivid orb shares the motion
           // language with the Ask empty state and the import processing wait.
-          // Explicit 40px: the smallest named preset (sm=72) reads huge inside
-          // an answer bubble on device (~3x screenshots showed ~216px).
+          // 24px ≈ the body-text line height: the orb should read like an
+          // inline typing indicator, about the size of a character, per
+          // on-device feedback (40px still dominated the bubble).
           <View style={{ alignSelf: 'flex-start', marginTop: 2 }}>
-            <AIOrb variant="thinking" size={40} />
+            <AIOrb variant="thinking" size={24} />
           </View>
         ) : (
           <>
