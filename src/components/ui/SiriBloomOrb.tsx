@@ -1,5 +1,8 @@
 import { Blur, Canvas, Circle, Group, useClock } from '@shopify/react-native-skia';
+import { View } from 'react-native';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
+
+import { BLUR_SIGMA_SCALE, BREATHE_MAX, HALO_SCALE, bloomGeometry } from './bloomGeometry';
 
 // SiriBloomOrb — the house "AI presence" bloom. A ring of solid dots that
 // (1) start fused as one big dot at the center, (2) split out to ring
@@ -75,7 +78,7 @@ function BloomDot({
     const bloom = Math.min(t / BLOOM_S, 1);
     const spread = 1 - Math.pow(1 - bloom, 3); // easeOutCubic: center → ring
     const rot = Math.max(0, t - BLOOM_S) * ROT_SPEED; // rotate only after split
-    const breathe = 1 + 0.16 * Math.sin(t * BREATHE_SPEED + index * 0.9);
+    const breathe = 1 + (BREATHE_MAX - 1) * Math.sin(t * BREATHE_SPEED + index * 0.9);
     const a = angle0 + rot;
     const rad = spread * ringR;
     return {
@@ -89,7 +92,7 @@ function BloomDot({
   const cx = useDerivedValue(() => geom.value.cx);
   const cy = useDerivedValue(() => geom.value.cy);
   const coreR = useDerivedValue(() => geom.value.r);
-  const haloR = useDerivedValue(() => geom.value.r * 2.3);
+  const haloR = useDerivedValue(() => geom.value.r * HALO_SCALE);
 
   const coreColor = useDerivedValue(() => {
     'worklet';
@@ -108,7 +111,7 @@ function BloomDot({
     <Group>
       {/* soft GPU glow */}
       <Circle cx={cx} cy={cy} r={haloR} color={haloColor}>
-        <Blur blur={dotR * 0.9} />
+        <Blur blur={dotR * BLUR_SIGMA_SCALE} />
       </Circle>
       {/* solid core */}
       <Circle cx={cx} cy={cy} r={coreR} color={coreColor} />
@@ -126,34 +129,41 @@ export function SiriBloomOrb({
   paused?: boolean;
 }) {
   const clock = useClock();
-  // The halos reach ringR + haloR·breathe + blur spread ≈ 0.64·size from the
-  // center — past the 0.5·size edge of a size-square canvas, so the glow got
-  // visibly cropped into a "boxed" orb (worst at small sizes). Draw on a
-  // bled canvas and pull it back with negative margins: the LAYOUT footprint
-  // stays exactly `size`, the glow just gets room to fall off naturally.
-  const bleed = Math.ceil(size * 0.25);
-  const canvas = size + bleed * 2;
-  const center = canvas / 2;
-  const ringR = size * 0.32; // ring radius — geometry stays keyed to `size`
-  const dotR = size * 0.075; // ring-dot radius
-  const bigR = size * 0.2; // fused center-dot radius before the split
+  // The halos reach ≈0.66·size from the center — past the 0.5·size edge of a
+  // size-square canvas, so the glow got visibly cropped into a "boxed" orb
+  // (worst at small sizes). The outer View owns the size×size LAYOUT slot and
+  // the Canvas bleeds past it via absolute positioning — NOT negative margins,
+  // which would put negative values into Yoga flow layout (PR #105 review).
+  // Geometry lives in bloomGeometry.ts so the no-clip invariant is regression-
+  // tested under Node (scripts/bloomGeometry.test.ts).
+  const { bleed, canvas, center, ringR, dotR, bigR } = bloomGeometry(size);
   const vivid = variant === 'vivid';
 
   return (
-    <Canvas style={{ width: canvas, height: canvas, margin: -bleed }}>
-      {Array.from({ length: DOT_COUNT }, (_, i) => (
-        <BloomDot
-          key={i}
-          clock={clock}
-          index={i}
-          center={center}
-          ringR={ringR}
-          dotR={dotR}
-          bigR={bigR}
-          vivid={vivid}
-          paused={paused}
-        />
-      ))}
-    </Canvas>
+    <View style={{ width: size, height: size }}>
+      <Canvas
+        style={{
+          position: 'absolute',
+          left: -bleed,
+          top: -bleed,
+          width: canvas,
+          height: canvas,
+        }}
+      >
+        {Array.from({ length: DOT_COUNT }, (_, i) => (
+          <BloomDot
+            key={i}
+            clock={clock}
+            index={i}
+            center={center}
+            ringR={ringR}
+            dotR={dotR}
+            bigR={bigR}
+            vivid={vivid}
+            paused={paused}
+          />
+        ))}
+      </Canvas>
+    </View>
   );
 }
