@@ -2382,7 +2382,7 @@ components:
       properties:
         input_type:
           type: string
-          pattern: ^(image|link|screenshot|image_batch|shared_content)$
+          pattern: ^(image|outfit_image|link|screenshot|image_batch|shared_content)$
           title: Input Type
         source_type:
           type: string

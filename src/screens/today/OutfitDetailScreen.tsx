@@ -14,7 +14,6 @@ import { getWardrobeItem } from '@/api/wardrobe';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { RecommendationFeedback } from '@/components/feedback/RecommendationFeedback';
-import { OutfitBoard } from '@/components/outfit/OutfitBoard';
 import { type GarmentPiece } from '@/components/outfit/garments';
 import { RecommendationReasonList } from '@/components/product/RecommendationReasonList';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -86,16 +85,6 @@ function categoryToGarment(cat?: ItemCategory | string | null): GarmentPiece['ki
   }
 }
 
-// Static layout positions for the flat-lay board — mirrors TodayScreen's
-// EXTRA_PIECE_LAYOUT pattern. Backend returns no positions; client-defined.
-const BOARD_LAYOUT: { x: number; y: number; scale: number; rotate?: string }[] = [
-  { x: 36,  y: 30,  scale: 1.2 },
-  { x: 165, y: 18,  scale: 1.3 },
-  { x: 90,  y: 175, scale: 1.1 },
-  { x: 195, y: 250, scale: 0.85 },
-  { x: 30,  y: 230, scale: 0.7 },
-];
-
 type DisplayItem = {
   id: string;
   slotItemId: string;
@@ -122,6 +111,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
   const track = useTrack();
   const qc = useQueryClient();
   const { t, tEnum } = useT();
+  const [bottomBarHeight, setBottomBarHeight] = useState(120);
   const showToast = useToastStore((state) => state.show);
   const [localReplacements, setLocalReplacements] = useState<Record<string, OutfitReplacementCandidate>>({});
   const [ignoredObstacleItemIds, setIgnoredObstacleItemIds] = useState<Set<string>>(() => new Set());
@@ -222,22 +212,6 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
       };
     });
   }, [fullItemById, itemBriefs, localReplacements]);
-
-  // Build GarmentPiece[] for OutfitBoard from displayItems.
-  const boardPieces = useMemo<GarmentPiece[]>(
-    () =>
-      displayItems.map((it, i) => {
-        const layout = BOARD_LAYOUT[i] ?? BOARD_LAYOUT[BOARD_LAYOUT.length - 1]!;
-        return {
-          ...layout,
-          itemId: it.id,
-          kind: categoryToGarment(it.category),
-          imageUrl: it.imageUrl ?? null,
-          name: it.name,
-        };
-      }),
-    [displayItems],
-  );
 
   const handleWear = async () => {
     if (!isLocal) {
@@ -424,7 +398,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: bottomBarHeight + 16 }}
         showsVerticalScrollIndicator={false}
       >
         {/* ── Obstacle banner ─────────────────────────────────────────────── */}
@@ -500,15 +474,6 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
             </View>
           </View>
         )}
-
-        {/* ── OutfitBoard flat-lay ─────────────────────────────────────────── */}
-        {/* No alignItems:'center' here: on device (Yoga) it shrinks the
-            width-less flex OutfitBoard to content width 0, so onLayout reports
-            0 and the pieces never mount — a ~400px blank wash panel. Web flex
-            stretches, which is why web preview never caught it. */}
-        <View style={{ marginTop: 16 }}>
-          <OutfitBoard pieces={boardPieces} />
-        </View>
 
         {/* ── Divider ─────────────────────────────────────────────────────── */}
         <View style={{ height: 1, backgroundColor: colors.separatorSoft, marginTop: 20 }} />
@@ -702,6 +667,10 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
 
       {/* ── Bottom bar ──────────────────────────────────────────────────────── */}
       <View
+        onLayout={(event) => {
+          const nextHeight = Math.ceil(event.nativeEvent.layout.height);
+          setBottomBarHeight((current) => (current === nextHeight ? current : nextHeight));
+        }}
         style={{
           position: 'absolute',
           bottom: 0,
