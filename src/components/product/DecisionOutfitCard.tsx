@@ -19,10 +19,12 @@ const BOTTOM_KINDS = new Set<GarmentPiece['kind']>(['trousers', 'jeans', 'skirt'
 const SHOE_KINDS = new Set<GarmentPiece['kind']>(['sneaker', 'loafer']);
 
 function silhouetteRank(piece: GarmentPiece): number {
-  if (piece.kind === 'blazer') return 0;
   if (TOP_KINDS.has(piece.kind) || piece.kind === 'dress') return 1;
   if (BOTTOM_KINDS.has(piece.kind)) return 2;
   if (SHOE_KINDS.has(piece.kind)) return 3;
+  // Outerwear renders LAST: OutfitBoard paints pieces in array order, so the
+  // blazer must come after the base top to sit on top of it ("+ 外套").
+  if (piece.kind === 'blazer') return 5;
   return 4;
 }
 
@@ -314,9 +316,23 @@ export function DecisionOutfitCard({
 
           <View
             pointerEvents="none"
-            style={{ position: 'absolute', top: 105, left: 12, right: 12, zIndex: 1 }}
+            style={{
+              position: 'absolute',
+              top: 105,
+              left: 12,
+              right: 12,
+              zIndex: 1,
+              alignItems: 'center',
+            }}
           >
-            <OutfitBoard pieces={displayedPieces} surface="transparent" />
+            {/* The card is a fixed 540 tall, so the board scale must not grow
+                with viewport width: cap the board at the 390-viewport width
+                (366 → factor ≈ 1.14, the visually verified state) so shoes at
+                y=306 stay inside the card on tablet/desktop web. width:'100%'
+                keeps Yoga from collapsing the centered child to 0. */}
+            <View style={{ width: '100%', maxWidth: 366 }}>
+              <OutfitBoard pieces={displayedPieces} surface="transparent" />
+            </View>
           </View>
         </View>
       ) : (
