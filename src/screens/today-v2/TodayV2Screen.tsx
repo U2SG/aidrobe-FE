@@ -256,15 +256,24 @@ export function TodayV2Screen({ navigation }: Props) {
   // disables swap because the refresh endpoint currently regenerates today only
   // (brief §4.4).
   const tomorrowOriented = isTomorrowOriented(mode);
+  // A legacy/flag-off backend can ignore target_date and return today's payload
+  // in an evening preview. Never visualize that live weather as tomorrow's.
+  const displayWeather = tomorrowOriented && !serverTomorrowActive ? null : weather;
 
   const scene = tEnum('scene', todayQuery.data?.context?.scene) || t('today.scene.commute');
   const remaining = remainingMinutes(departureTime);
+  const prepMinutes = outfit?.scores?.prepMinutes ?? null;
   // The departure countdown ring is a morning "getting ready" affordance only —
   // not after departure and not at night.
   const showRing = mode === 'morning_today' && remaining != null && remaining > 0;
   const headerSubtitle = showRing
     ? t('today.v2.departureCountdown', { minutes: remaining as number, scene })
     : t(modeCopy.subtitle);
+  const compactWeatherMeta = showRing
+    ? headerSubtitle
+    : [scene, prepMinutes ? t('today.v2.prepHint', { minutes: prepMinutes }) : null]
+        .filter(Boolean)
+        .join(' · ');
 
   // Context override sheet open/close state.
   const [overrideSheetOpen, setOverrideSheetOpen] = useState(false);
@@ -298,24 +307,61 @@ export function TodayV2Screen({ navigation }: Props) {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
-      contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 64, paddingBottom: 120, gap: 20 }}
+      contentContainerStyle={{
+        paddingHorizontal: 20,
+        paddingTop: displayWeather ? 32 : 64,
+        paddingBottom: 120,
+        gap: displayWeather ? 12 : 20,
+      }}
       showsVerticalScrollIndicator={false}
     >
       {/* Header: mode-aware greeting + departure subtitle, with the countdown
           ring on the right (morning/today only). While a background refetch
           runs over EXISTING data (focus refetch), a small orb takes the ring
           slot — the old card stays put, no full-page flash. */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <View style={{ flex: 1, gap: 6 }}>
-          <Text style={{ ...type.largeTitle, color: colors.label }}>{t(modeCopy.title)}</Text>
-          <Text style={{ ...type.footnote, color: colors.tertiaryLabel }}>{headerSubtitle}</Text>
+      {displayWeather ? (
+        <View
+          style={{
+            minHeight: 24,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+          }}
+        >
+          <Text
+            numberOfLines={1}
+            style={{ flex: 1, ...type.footnote, color: colors.tertiaryLabel }}
+          >
+            <Text style={{ color: colors.label, fontWeight: '600', letterSpacing: 0.6 }}>
+              {t('today.weather.eyebrow')}
+            </Text>
+            {compactWeatherMeta ? `  ·  ${compactWeatherMeta}` : ''}
+          </Text>
+          {todayQuery.isFetching && !todayQuery.isLoading ? (
+            <AIOrb variant="thinking" size={18} />
+          ) : null}
         </View>
-        {todayQuery.isFetching && !todayQuery.isLoading ? (
-          <AIOrb variant="thinking" size={24} />
-        ) : showRing && remaining != null ? (
-          <CountdownRing minutes={remaining} />
-        ) : null}
-      </View>
+      ) : (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
+          <View style={{ flex: 1, gap: 6 }}>
+            <Text style={{ ...type.largeTitle, color: colors.label }}>{t(modeCopy.title)}</Text>
+            <Text style={{ ...type.footnote, color: colors.tertiaryLabel }}>{headerSubtitle}</Text>
+          </View>
+          {todayQuery.isFetching && !todayQuery.isLoading ? (
+            <AIOrb variant="thinking" size={24} />
+          ) : showRing && remaining != null ? (
+            <CountdownRing minutes={remaining} />
+          ) : null}
+        </View>
+      )}
 
       {todayQuery.isLoading ? (
         // The house AI-presence orb, not a bare spinner: cold-cache loads can
@@ -335,6 +381,7 @@ export function TodayV2Screen({ navigation }: Props) {
           <DecisionOutfitCard
             outfit={outfit}
             pieces={resolveOutfitPieces(outfit, itemById)}
+            weather={displayWeather}
             // BE#77 — with a REAL tomorrow payload the reasons/weather/quote are
             // tomorrow's own (forecast context), so show them; the neutral
             // preview framing remains only for flag-off backends.
@@ -350,7 +397,7 @@ export function TodayV2Screen({ navigation }: Props) {
             isFavorited={favorited}
             onToggleFavorite={toggleFavorite}
             wearLabelKey={wearLabelKeyForMode(mode)}
-            temperatureC={weather?.temperatureC ?? null}
+            temperatureC={displayWeather?.temperatureC ?? null}
             onWear={() => {
               track('outfit_worn', { outfitId: outfit.id });
               navigation.navigate('OutfitDetail', { outfitId: outfit.id });

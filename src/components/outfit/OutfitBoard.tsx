@@ -11,10 +11,18 @@ const BOARD_WASH = '#EEF3F1';
 // The outfit board: a responsive canvas that lays out garment pieces over a
 // soft wash panel. Extracted verbatim from TodayScreen's inline `OutfitCanvas`
 // (FE#15) — same onLayout `factor` math, `piecesKey`, and staggered 70ms delays.
-export function OutfitBoard({ pieces }: { pieces: GarmentPiece[] }) {
-  const [width, setWidth] = useState(0);
+export function OutfitBoard({
+  pieces,
+  surface = 'wash',
+}: {
+  pieces: GarmentPiece[];
+  surface?: 'wash' | 'transparent';
+}) {
+  const [width, setWidth] = useState(CANVAS_W * 0.82);
   const factor = Math.min(1.18, Math.max(0.82, width / CANVAS_W));
-  const piecesKey = pieces.map((piece) => `${piece.itemId ?? piece.kind}:${piece.imageUrl ?? ''}`).join('-');
+  const piecesKey = pieces
+    .map((piece) => `${piece.itemId ?? piece.kind}:${piece.imageUrl ?? ''}`)
+    .join('-');
 
   return (
     <View
@@ -25,18 +33,20 @@ export function OutfitBoard({ pieces }: { pieces: GarmentPiece[] }) {
         position: 'relative',
       }}
     >
-      <View
-        style={{
-          position: 'absolute',
-          left: 20,
-          right: 14,
-          top: 26,
-          bottom: 28,
-          borderRadius: 42,
-          backgroundColor: BOARD_WASH,
-          opacity: 0.72,
-        }}
-      />
+      {surface === 'wash' ? (
+        <View
+          style={{
+            position: 'absolute',
+            left: 20,
+            right: 14,
+            top: 26,
+            bottom: 28,
+            borderRadius: 42,
+            backgroundColor: BOARD_WASH,
+            opacity: 0.72,
+          }}
+        />
+      ) : null}
       {width > 0
         ? pieces.map((piece, index) => (
             <OutfitPiece
@@ -45,6 +55,7 @@ export function OutfitBoard({ pieces }: { pieces: GarmentPiece[] }) {
               delay={index * 70}
               factor={factor}
               piecesKey={piecesKey}
+              weatherBlend={surface === 'transparent'}
             />
           ))
         : null}
