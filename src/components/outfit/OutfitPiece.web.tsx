@@ -14,8 +14,9 @@ function weatherMaskFor(kind: GarmentPiece['kind']) {
 const weatherCutoutCache = new Map<string, Promise<string | null>>();
 const MAX_CACHED_CUTOUTS = 24;
 
-function prepareWeatherCutout(uri: string) {
-  const cached = weatherCutoutCache.get(uri);
+function prepareWeatherCutout(uri: string, maxDimension: number) {
+  const cacheKey = `${uri}@${maxDimension}`;
+  const cached = weatherCutoutCache.get(cacheKey);
   if (cached) return cached;
 
   const prepared = new Promise<string | null>((resolve) => {
@@ -23,7 +24,7 @@ function prepareWeatherCutout(uri: string) {
     source.crossOrigin = 'anonymous';
     source.onload = () => {
       try {
-        const { width, height } = scaledMatteSize(source.naturalWidth, source.naturalHeight);
+        const { width, height } = scaledMatteSize(source.naturalWidth, source.naturalHeight, maxDimension);
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
@@ -47,10 +48,10 @@ function prepareWeatherCutout(uri: string) {
     source.src = uri;
   });
   const reusable = prepared.then((result) => {
-    if (!result) weatherCutoutCache.delete(uri);
+    if (!result) weatherCutoutCache.delete(cacheKey);
     return result;
   });
-  weatherCutoutCache.set(uri, reusable);
+  weatherCutoutCache.set(cacheKey, reusable);
   if (weatherCutoutCache.size > MAX_CACHED_CUTOUTS) {
     const oldest = weatherCutoutCache.keys().next().value;
     if (oldest) weatherCutoutCache.delete(oldest);
@@ -58,20 +59,20 @@ function prepareWeatherCutout(uri: string) {
   return reusable;
 }
 
-function useWeatherCutout(uri: string | null | undefined, enabled: boolean) {
+function useWeatherCutout(uri: string | null | undefined, enabled: boolean, maxDimension: number) {
   const [cutoutUri, setCutoutUri] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     setCutoutUri(null);
     if (!enabled || !uri) return () => undefined;
-    void prepareWeatherCutout(uri).then((result) => {
+    void prepareWeatherCutout(uri, maxDimension).then((result) => {
       if (active) setCutoutUri(result);
     });
     return () => {
       active = false;
     };
-  }, [enabled, uri]);
+  }, [enabled, uri, maxDimension]);
 
   return cutoutUri;
 }
@@ -91,9 +92,15 @@ export function OutfitPiece({
 }) {
   const anim = useRef(new Animated.Value(0)).current;
   const image = piece.imageUrl ? { uri: piece.imageUrl } : GARMENT_IMAGES[piece.kind];
-  const cutoutUri = useWeatherCutout(piece.imageUrl, weatherBlend);
+  // piece.scale folded into the box size (position inset-compensated) instead
+  // of a transform: scaling the rasterized 132*factor box up is what blurred
+  // the weather silhouette (#110). Matte at display resolution, capped.
+  const baseSize = (image ? 132 : 112) * factor;
+  const size = baseSize * piece.scale;
+  const inset = (baseSize * (1 - piece.scale)) / 2;
+  const mattePx = Math.min(768, Math.ceil(size * (window.devicePixelRatio || 1)));
+  const cutoutUri = useWeatherCutout(piece.imageUrl, weatherBlend, mattePx);
   const weatherMask = weatherMaskFor(piece.kind);
-  const size = 132 * factor;
 
   useEffect(() => {
     anim.setValue(0);
@@ -104,13 +111,12 @@ export function OutfitPiece({
     <Animated.View
       style={{
         position: 'absolute',
-        left: piece.x * factor,
-        top: piece.y * factor,
+        left: piece.x * factor + inset,
+        top: piece.y * factor + inset,
         opacity: anim,
         transform: [
           { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) },
           { rotate: piece.rotate ?? '0deg' },
-          { scale: piece.scale },
         ],
       }}
     >
@@ -124,7 +130,7 @@ export function OutfitPiece({
             width: size,
             height: size,
             objectFit: 'contain',
-            borderRadius: 30 * factor,
+            borderRadius: 30 * factor * piece.scale,
             WebkitMaskImage: cutoutUri ? undefined : weatherMask,
             maskImage: cutoutUri ? undefined : weatherMask,
             WebkitMaskRepeat: 'no-repeat',
@@ -135,10 +141,10 @@ export function OutfitPiece({
         <RNImage
           source={image}
           resizeMode="contain"
-          style={{ width: size, height: size, borderRadius: 30 * factor }}
+          style={{ width: size, height: size, borderRadius: 30 * factor * piece.scale }}
         />
       ) : (
-        <GarmentSvg kind={piece.kind} size={112 * factor} />
+        <GarmentSvg kind={piece.kind} size={size} />
       )}
     </Animated.View>
   );
