@@ -73,6 +73,7 @@ export async function getAskHistory(query: AskHistoryQuery = {}): Promise<AskHis
   const data = await apiGet<ServerAskHistoryItem[]>('/v1/ask/history', params);
   return data.map((item) => ({
     askSessionId: item.ask_session_id,
+    conversationId: item.conversation_id ?? null,
     question: item.question,
     answer: item.answer ?? null,
     itemRefs: item.item_refs ?? [],

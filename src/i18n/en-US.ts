@@ -276,6 +276,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'ask.history.empty': 'No Ask history yet',
   'ask.history.error': "Couldn't load Ask history. Please retry.",
   'ask.history.answerFallback': 'No answer was saved for this Ask.',
+  'ask.history.continue': 'Continue this conversation',
   'ask.error.unavailable': 'Q&A is still being set up, please try later.',
   'ask.error.generic': 'Something went wrong, please try again later.',
   'ask.v2.subtitle': 'Special occasions, travel, shopping — just say it.',

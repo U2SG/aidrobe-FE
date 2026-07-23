@@ -974,6 +974,9 @@ export interface ServerAskResponse {
 
 export interface AskHistoryEntry {
   askSessionId: string;
+  // Conversation the turn belongs to; null for legacy rows — those stay
+  // view-only (no resume).
+  conversationId: string | null;
   question: string;
   answer: string | null;
   itemRefs: string[];
@@ -983,6 +986,7 @@ export interface AskHistoryEntry {
 
 export interface ServerAskHistoryItem {
   ask_session_id: string;
+  conversation_id?: string | null;
   question: string;
   answer?: string | null;
   item_refs?: string[];

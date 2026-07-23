@@ -265,6 +265,7 @@ export const zhCN = {
   'ask.history.empty': '还没有历史问答',
   'ask.history.error': '历史问答加载失败，请重试',
   'ask.history.answerFallback': '这次问答还没有保存答案',
+  'ask.history.continue': '继续这个对话',
   'ask.error.unavailable': '问答功能正在接入中，稍后再试。',
   'ask.error.generic': '出错了，请稍后再试。',
   'ask.v2.subtitle': '特殊场合、旅行、购物，直接说一句就行。',
