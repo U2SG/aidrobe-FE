@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Image, type ImageSourcePropType } from 'react-native';
+import { Animated, Image, PixelRatio, type ImageSourcePropType } from 'react-native';
 import {
   AlphaType,
   Canvas,
@@ -19,9 +19,13 @@ import { GarmentSvg } from '@/components/ui/GarmentSvg';
 import { GARMENT_IMAGES, type GarmentPiece } from './garments';
 import { removeBorderConnectedMatte, scaledMatteSize } from './outfitMatte';
 
-// A single animated garment tile on the outfit board. Extracted verbatim from
-// TodayScreen's inline `AnimatedPiece` (FE#15) — same fade/rise/rotate/scale
-// transform and the same 132*factor sizing, so the rendered output is unchanged.
+// A single animated garment tile on the outfit board. Same fade/rise/rotate
+// motion as TodayScreen's inline `AnimatedPiece` (FE#15), but piece.scale is
+// folded into the rendered box size instead of a GPU transform — a transform
+// upscales the already-rasterized texture (132*factor px), which is what made
+// the weather silhouette (scales up to 1.65) blurry (#110). The box position
+// is inset-compensated so the visual center matches the old scale-about-center
+// transform for every consumer.
 export function OutfitPiece({
   piece,
   delay,
@@ -39,7 +43,9 @@ export function OutfitPiece({
   const image = piece.imageUrl ? { uri: piece.imageUrl } : GARMENT_IMAGES[piece.kind];
   const skiaSource: Parameters<typeof useImage>[0] =
     piece.imageUrl ?? (image ? Image.resolveAssetSource(image)?.uri : null);
-  const size = 132 * factor;
+  const baseSize = (image ? 132 : 112) * factor;
+  const size = baseSize * piece.scale;
+  const inset = (baseSize * (1 - piece.scale)) / 2;
 
   useEffect(() => {
     anim.setValue(0);
@@ -50,13 +56,12 @@ export function OutfitPiece({
     <Animated.View
       style={{
         position: 'absolute',
-        left: piece.x * factor,
-        top: piece.y * factor,
+        left: piece.x * factor + inset,
+        top: piece.y * factor + inset,
         opacity: anim,
         transform: [
           { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) },
           { rotate: piece.rotate ?? '0deg' },
-          { scale: piece.scale },
         ],
       }}
     >
@@ -70,12 +75,12 @@ export function OutfitPiece({
             style={{
               width: size,
               height: size,
-              borderRadius: 30 * factor,
+              borderRadius: 30 * factor * piece.scale,
             }}
           />
         )
       ) : (
-        <GarmentSvg kind={piece.kind} size={112 * factor} />
+        <GarmentSvg kind={piece.kind} size={size} />
       )}
     </Animated.View>
   );
@@ -94,16 +99,21 @@ function WeatherMaskedGarment({
   const image = useImage(source, () => setFailed(true));
   const [cutout, setCutout] = useState<SkImage | null>(null);
 
+  // Matte at the resolution this piece actually displays (physical pixels),
+  // capped to bound the synchronous flood-fill cost. The old fixed 320px cap
+  // was the other half of the blur (#110).
+  const mattePx = Math.min(768, Math.ceil(size * PixelRatio.get()));
+
   useEffect(() => {
     setCutout(null);
     if (!image) return undefined;
 
     // Pixel readback is synchronous, so do it after commit rather than during
     // React render. This also guarantees cleanup for replaced images.
-    const prepared = createNativeWeatherCutout(image);
+    const prepared = createNativeWeatherCutout(image, mattePx);
     setCutout(prepared);
     return () => prepared?.dispose();
-  }, [image]);
+  }, [image, mattePx]);
 
   if (!image) {
     return failed ? (
@@ -141,8 +151,8 @@ function WeatherMaskedGarment({
   );
 }
 
-function createNativeWeatherCutout(image: SkImage) {
-  const { width, height } = scaledMatteSize(image.width(), image.height());
+function createNativeWeatherCutout(image: SkImage, maxDimension: number) {
+  const { width, height } = scaledMatteSize(image.width(), image.height(), maxDimension);
   const surface = Skia.Surface.MakeOffscreen(width, height);
   if (!surface) return null;
 
