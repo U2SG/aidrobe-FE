@@ -51,6 +51,9 @@ export async function askAidrobe(body: AskBody): Promise<AskResult> {
       : null,
     recommendationId: data.recommendation_id ?? null,
     sourceSurface: data.source_surface ?? 'ask',
+    tripIntent: data.trip_intent?.is_trip
+      ? { isTrip: true, durationDays: data.trip_intent.duration_days ?? null }
+      : null,
   };
 }
 

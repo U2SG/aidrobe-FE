@@ -289,6 +289,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'ask.v2.s3': "I'm going on a trip next week, help me pack",
   'ask.v2.pickItem': 'Styling one piece? Pick it in your wardrobe',
   'ask.appliedConstraints': 'Carried over: {list}',
+  'ask.tripHandoff': 'Create a packing list for this trip',
 
   // --- Shopping sense-check ------------------------------------------------
   'sense_check.skip.duplicate':
