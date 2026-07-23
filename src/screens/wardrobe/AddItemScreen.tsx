@@ -24,7 +24,7 @@ import { useTrack } from '@/hooks/useTrack';
 import { useImportDraftStore } from '@/store/importDraft';
 import { useToastStore } from '@/store/toast';
 import { colors, shadow } from '@/theme/design';
-import type { ImportSourceType } from '@/types/api';
+import type { ImportInputType, ImportSourceType } from '@/types/api';
 import type { WardrobeStackParamList } from '@/types/navigation';
 import { compressImage, MAX_UPLOAD_BYTES } from '@/utils/image';
 
@@ -109,6 +109,7 @@ export function AddItemScreen({ navigation }: Props) {
     uri: string,
     sourceType: 'camera' | 'album',
     labelPrefix = '',
+    inputType: Extract<ImportInputType, 'image' | 'outfit_image'> = 'image',
   ) => {
     setUploadProgress(0);
     setProcessingLabel(`${labelPrefix}${t('add.tidyPhoto')}`);
@@ -137,14 +138,18 @@ export function AddItemScreen({ navigation }: Props) {
 
     setProcessingLabel(`${labelPrefix}${t('add.makingCard')}`);
     console.log('[import] task:start');
-    const task = await createImportTask({ inputType: 'image', sourceType, imageUrl: presign.fileUrl, locale });
+    const task = await createImportTask({ inputType, sourceType, imageUrl: presign.fileUrl, locale });
     console.log('[import] task:done', { taskId: task.id });
     return { task, localUri: compressed.uri };
   };
 
-  const handlePicked = async (uri: string, sourceType: 'camera' | 'album') => {
+  const handlePicked = async (
+    uri: string,
+    sourceType: 'camera' | 'album',
+    inputType: Extract<ImportInputType, 'image' | 'outfit_image'> = 'image',
+  ) => {
     try {
-      const { task, localUri } = await runImportPipeline(uri, sourceType);
+      const { task, localUri } = await runImportPipeline(uri, sourceType, '', inputType);
       setDraft({ taskId: task.id, localImageUri: localUri, recognized: task.recognized });
       track('import_task_created', { taskId: task.id, sourceType });
       navigation.replace('ImportConfirm', { taskId: task.id });
@@ -228,6 +233,23 @@ export function AddItemScreen({ navigation }: Props) {
     }
   };
 
+  const pickOutfitPhoto = async () => {
+    if (busy) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      showToast({ message: t('add.albumPermission'), kind: 'error' });
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      quality: 1,
+      mediaTypes: ['images'],
+      allowsMultipleSelection: false,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+    const asset = result.assets[0];
+    if (asset) void handlePicked(asset.uri, 'album', 'outfit_image');
+  };
+
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
@@ -293,10 +315,8 @@ export function AddItemScreen({ navigation }: Props) {
           void pickFromLibrary();
         }}
         onOutfit={() => {
-          // No dedicated outfit-extraction handler yet; reuses album picker.
-          // TODO: wire to outfit-extract flow once backend supports it.
           setSourceSheetVisible(false);
-          void pickFromLibrary();
+          void pickOutfitPhoto();
         }}
         onLink={() => {
           setSourceSheetVisible(false);

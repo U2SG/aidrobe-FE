@@ -845,6 +845,7 @@ export type ImportFailureReason =
 
 export type ImportInputType =
   | 'image'
+  | 'outfit_image'
   | 'link'
   | 'screenshot'
   | 'image_batch'
