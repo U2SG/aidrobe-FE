@@ -276,6 +276,7 @@ function AskHistorySheet({
   error,
   onClose,
   onRetry,
+  onContinue,
 }: {
   visible: boolean;
   entries: AskHistoryEntry[];
@@ -283,6 +284,9 @@ function AskHistorySheet({
   error: boolean;
   onClose: () => void;
   onRetry: () => void;
+  // Resume the selected entry's conversation in the main thread. Only offered
+  // when the entry carries a conversationId (legacy rows stay view-only).
+  onContinue: (entry: AskHistoryEntry) => void;
 }) {
   const { t } = useT();
   const { height } = useWindowDimensions();
@@ -320,6 +324,13 @@ function AskHistorySheet({
           >
             <TurnView turn={selectedTurn} onRetry={() => undefined} retryBusy={false} />
           </ScrollView>
+          {selected?.conversationId ? (
+            <Button
+              label={t('ask.history.continue')}
+              variant="primary"
+              onPress={() => onContinue(selected)}
+            />
+          ) : null}
         </View>
       ) : loading ? (
         <View style={{ minHeight: 160, alignItems: 'center', justifyContent: 'center', gap: 10 }}>
@@ -487,6 +498,17 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
       );
     },
   });
+
+  // Resume a past conversation from history: replace the thread with the
+  // selected turn and rebind conversationId so the next send continues it on
+  // the backend. Epoch bump discards any in-flight answer for the old thread.
+  const continueFromHistory = (entry: AskHistoryEntry) => {
+    if (!entry.conversationId) return;
+    conversationEpoch.current += 1;
+    setConversationId(entry.conversationId);
+    setTurns([historyToTurn(entry, t('ask.history.answerFallback'))]);
+    setHistoryVisible(false);
+  };
 
   const submitQuestion = (question: string) => {
     const q = question.trim();
@@ -855,6 +877,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         error={historyQuery.isError && !historyQuery.isFetching}
         onClose={() => setHistoryVisible(false)}
         onRetry={() => void historyQuery.refetch()}
+        onContinue={continueFromHistory}
       />
 
       <ContextualEntrySheet
