@@ -41,14 +41,16 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-export function CreatePackingListScreen({ navigation }: Props) {
+export function CreatePackingListScreen({ navigation, route }: Props) {
   const qc = useQueryClient();
   const track = useTrack();
   const showToast = useToastStore((s) => s.show);
   const t = useT();
 
   const [destination, setDestination] = useState('');
-  const [days, setDays] = useState(3);
+  // Prefilled by the Ask trip-intent handoff (BE#115) when the trip length was
+  // stated in the conversation.
+  const [days, setDays] = useState(route.params?.durationDays ?? 3);
   const [scenes, setScenes] = useState<string[]>(['commute']);
   const [weatherHint, setWeatherHint] = useState('');
 

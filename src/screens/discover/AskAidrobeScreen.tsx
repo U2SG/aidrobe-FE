@@ -30,7 +30,7 @@ import { enableMvpV2Ui } from '@/lib/featureFlags';
 import type { I18nKey } from '@/i18n';
 // useToastStore removed — contextual-entry toasts replaced with real navigation
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
-import type { AskHistoryEntry, AskItemRefSnapshot, AskScope } from '@/types/api';
+import type { AskHistoryEntry, AskItemRefSnapshot, AskScope, AskTripIntent } from '@/types/api';
 import type { AskStackParamList } from '@/types/navigation';
 import { httpStatus } from '@/utils/http';
 
@@ -50,6 +50,9 @@ type Turn = {
   // Constraints the multi-turn conversation carried into this answer (BE
   // deltas.applied_constraints) — shown so continuity is visible, not silent.
   appliedConstraints?: string[];
+  // BE#115 — multi-day-trip signal from the structured answer; renders the
+  // packing-list handoff row on this turn's answer card.
+  tripIntent?: AskTripIntent | null;
 };
 
 const FALLBACK_COMPOSER_HEIGHT = 112;
@@ -143,6 +146,7 @@ function TurnView({
   onRetry,
   retryBusy,
   isFollowUp,
+  onPackingHandoff,
 }: {
   turn: Turn;
   onRetry: () => void;
@@ -150,6 +154,8 @@ function TurnView({
   // "已延续：…" is a multi-turn continuity cue — on the first turn the BE just
   // echoes constraints parsed from the question itself, which reads as noise.
   isFollowUp?: boolean;
+  // BE#115 handoff to CreatePackingList; absent (e.g. history sheet) hides the row.
+  onPackingHandoff?: () => void;
 }) {
   const { t } = useT();
   return (
@@ -211,6 +217,33 @@ function TurnView({
             ) : (
               <ItemRefsRow snapshots={turn.itemRefSnapshots} ids={turn.itemRefs} />
             )}
+            {!turn.failed && turn.tripIntent?.isTrip && onPackingHandoff ? (
+              <Pressable
+                onPress={onPackingHandoff}
+                accessibilityRole="button"
+                accessibilityLabel={t('ask.tripHandoff')}
+                android_ripple={{ color: colors.fill }}
+                style={({ pressed }) => ({ opacity: pressed ? 0.65 : 1 })}
+              >
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginTop: 10,
+                    paddingTop: 10,
+                    minHeight: 44,
+                    borderTopWidth: 1,
+                    borderTopColor: colors.separatorSoft,
+                  }}
+                >
+                  <SystemIcon name="suitcase" size={17} color={T.accent} strokeWidth={1.8} />
+                  <Text style={{ ...type.body, color: T.ink, flex: 1, marginLeft: 10 }} numberOfLines={1}>
+                    {t('ask.tripHandoff')}
+                  </Text>
+                  <SystemIcon name="chevronRight" size={16} color={T.ink3} strokeWidth={1.7} />
+                </View>
+              </Pressable>
+            ) : null}
           </>
         )}
       </View>
@@ -474,6 +507,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
                 itemRefSnapshots: result.itemRefSnapshots,
                 pending: false,
                 appliedConstraints: result.deltas?.appliedConstraints ?? [],
+                tripIntent: result.tripIntent,
               }
             : x,
         ),
@@ -765,6 +799,14 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
               onRetry={() => retryTurn(turn)}
               retryBusy={askMutation.isPending}
               isFollowUp={idx > 0}
+              onPackingHandoff={
+                turn.tripIntent?.isTrip
+                  ? () =>
+                      navigation.navigate('CreatePackingList', {
+                        durationDays: turn.tripIntent?.durationDays ?? undefined,
+                      })
+                  : undefined
+              }
             />
           ))
         )}

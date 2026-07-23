@@ -278,6 +278,7 @@ export const zhCN = {
   'ask.v2.s3': '下周出去玩，帮我准备衣服',
   'ask.v2.pickItem': '想搭某件衣服？去衣橱选它',
   'ask.appliedConstraints': '已延续：{list}',
+  'ask.tripHandoff': '为这趟行程生成打包清单',
 
   // --- Shopping sense-check ------------------------------------------------
   'sense_check.skip.duplicate': '衣橱里已有 {count} 件相近的{color}{category}，容易重复。',

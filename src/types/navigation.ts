@@ -90,7 +90,8 @@ export type AskStackParamList = {
   SenseCheck: undefined;
   PackingList: undefined;
   PackingListDetail: { id: string };
-  CreatePackingList: undefined;
+  // `durationDays` prefills the trip length (Ask trip-intent handoff, BE#115).
+  CreatePackingList: { durationDays?: number } | undefined;
   Insights: undefined;
   WardrobeReport: { period?: string } | undefined;
 };
@@ -102,7 +103,7 @@ export type DiscoverStackParamList = {
   WardrobeReport: { period?: string } | undefined;
   PackingList: undefined;
   PackingListDetail: { id: string };
-  CreatePackingList: undefined;
+  CreatePackingList: { durationDays?: number } | undefined;
   SenseCheck: undefined;
   StyleInspirations: undefined;
   AddInspiration: undefined;

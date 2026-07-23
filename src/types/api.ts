@@ -941,6 +941,11 @@ export interface AskDeltas {
   appliedConstraints: string[];
 }
 
+export interface AskTripIntent {
+  isTrip: boolean;
+  durationDays: number | null;
+}
+
 export interface AskResult {
   askSessionId: string;
   conversationId: string | null;
@@ -952,11 +957,19 @@ export interface AskResult {
   deltas: AskDeltas | null;
   recommendationId: string | null;
   sourceSurface: string;
+  // Present only when the structured answer flagged a multi-day trip question
+  // (BE#115) — drives the packing-list handoff card.
+  tripIntent: AskTripIntent | null;
 }
 
 export interface ServerAskDeltas {
   reasoning?: string | null;
   applied_constraints?: string[];
+}
+
+export interface ServerAskTripIntent {
+  is_trip: boolean;
+  duration_days?: number | null;
 }
 
 export interface ServerAskResponse {
@@ -970,6 +983,7 @@ export interface ServerAskResponse {
   deltas?: ServerAskDeltas | null;
   recommendation_id?: string | null;
   source_surface?: string;
+  trip_intent?: ServerAskTripIntent | null;
 }
 
 export interface AskHistoryEntry {
