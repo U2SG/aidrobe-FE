@@ -19,11 +19,13 @@ const BOTTOM_KINDS = new Set<GarmentPiece['kind']>(['trousers', 'jeans', 'skirt'
 const SHOE_KINDS = new Set<GarmentPiece['kind']>(['sneaker', 'loafer']);
 
 function silhouetteRank(piece: GarmentPiece): number {
-  if (TOP_KINDS.has(piece.kind) || piece.kind === 'dress') return 1;
-  if (BOTTOM_KINDS.has(piece.kind)) return 2;
+  // Paint order: bottom (1) → top/dress (2) → shoes (3) → other (4) → blazer (5).
+  // OutfitBoard paints in array order (ascending rank = underneath), so bottoms
+  // paint first and the shirt hem correctly overlaps the waistband, not the
+  // other way around. Blazer stays LAST so the jacket sits on top of everything.
+  if (BOTTOM_KINDS.has(piece.kind)) return 1;
+  if (TOP_KINDS.has(piece.kind) || piece.kind === 'dress') return 2;
   if (SHOE_KINDS.has(piece.kind)) return 3;
-  // Outerwear renders LAST: OutfitBoard paints pieces in array order, so the
-  // blazer must come after the base top to sit on top of it ("+ 外套").
   if (piece.kind === 'blazer') return 5;
   return 4;
 }
@@ -57,7 +59,7 @@ function buildWeatherSilhouette(
         return { ...piece, x: 94, y: 82, scale: 1.65, rotate: '0deg' };
       }
       if (BOTTOM_KINDS.has(piece.kind)) {
-        return { ...piece, x: 94, y: 176, scale: 1.34, rotate: '0deg' };
+        return { ...piece, x: 94, y: 184, scale: 1.34, rotate: '0deg' };
       }
       if (SHOE_KINDS.has(piece.kind)) {
         return { ...piece, x: 94, y: 306, scale: 0.76, rotate: '0deg' };
