@@ -42,6 +42,7 @@ function buildWeatherSilhouette(
   pieces: GarmentPiece[],
   includeOuterwear: boolean,
 ): GarmentPiece[] {
+  const hasOuterwear = pieces.some((piece) => piece.kind === 'blazer');
   return pieces
     .map((piece, sourceIndex) => ({ piece, sourceIndex }))
     .sort(
@@ -53,7 +54,17 @@ function buildWeatherSilhouette(
         return { ...piece, x: 94, y: 64, scale: 1.45, rotate: '0deg', hidden: !includeOuterwear };
       }
       if (TOP_KINDS.has(piece.kind)) {
-        return { ...piece, x: 94, y: 68, scale: 1.08, rotate: '0deg' };
+        // The jacket covers the base top in real layering — keep the top
+        // mounted but faded out while outerwear shows, so it can't peek past
+        // the jacket outline or through matte gaps (user report 2026-07-24).
+        return {
+          ...piece,
+          x: 94,
+          y: 68,
+          scale: 1.08,
+          rotate: '0deg',
+          hidden: hasOuterwear && includeOuterwear,
+        };
       }
       if (piece.kind === 'dress') {
         return { ...piece, x: 94, y: 82, scale: 1.65, rotate: '0deg' };

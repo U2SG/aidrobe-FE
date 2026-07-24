@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { Animated, Image, PixelRatio, type ImageSourcePropType } from 'react-native';
 import {
   AlphaType,
@@ -17,7 +17,7 @@ import {
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
 
 import { GARMENT_IMAGES, type GarmentPiece } from './garments';
-import { removeBorderConnectedMatte, scaledMatteSize } from './outfitMatte';
+import { matteLooksDestructive, removeBorderConnectedMatte, scaledMatteSize } from './outfitMatte';
 
 // A single animated garment tile on the outfit board. Same fade/rise/rotate
 // motion as TodayScreen's inline `AnimatedPiece` (FE#15), but piece.scale is
@@ -193,6 +193,11 @@ function createNativeWeatherCutout(image: SkImage, maxDimension: number) {
 
     const pixels = new Uint8Array(sourcePixels);
     removeBorderConnectedMatte(pixels, width, height);
+    if (matteLooksDestructive(pixels, width, height)) {
+      // The fill ate into the garment (white/light fabric) — fall back to the
+      // soft-mask render of the original rather than showing ragged holes.
+      return null;
+    }
     const data = Skia.Data.fromBytes(pixels);
     const cutout = Skia.Image.MakeImage(info, data, width * 4);
     data.dispose();

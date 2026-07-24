@@ -22,6 +22,37 @@ function median(values: number[]) {
   return sorted.length % 2 === 0 ? (sorted[middle - 1]! + sorted[middle]!) / 2 : sorted[middle]!;
 }
 
+// Fraction of the central 30%-box that a matte pass may clear before we treat
+// the result as destructive. Product shots keep the garment body centered, so
+// a healthy matte leaves this core opaque (necklines/openings sit higher);
+// white/light garments can get eaten by the border flood fill (ragged holes),
+// which this catches. Tuned to favor triggering: the fallback (soft-masked
+// original) degrades gracefully, holes do not.
+const _MAX_CENTER_CLEARED_FRACTION = 0.08;
+
+/**
+ * True when a matte pass chewed into the garment itself: the flood fill is
+ * meant to clear background only, but on white/light garments it can eat
+ * fabric connected to the border tolerance. Callers should discard the cutout
+ * and fall back to the soft-mask render of the original photo.
+ */
+export function matteLooksDestructive(pixels: MutableRgba, width: number, height: number): boolean {
+  if (width <= 0 || height <= 0) return false;
+  const x0 = Math.floor(width * 0.35);
+  const x1 = Math.ceil(width * 0.65);
+  const y0 = Math.floor(height * 0.35);
+  const y1 = Math.ceil(height * 0.65);
+  let cleared = 0;
+  let total = 0;
+  for (let y = y0; y < y1; y += 1) {
+    for (let x = x0; x < x1; x += 1) {
+      total += 1;
+      if (pixels[(y * width + x) * 4 + 3]! === 0) cleared += 1;
+    }
+  }
+  return total > 0 && cleared / total > _MAX_CENTER_CLEARED_FRACTION;
+}
+
 /**
  * Clears only near-white, low-chroma pixels connected to an opaque image edge.
  * Interior cream/white garment regions are never seeded, so they remain intact.
