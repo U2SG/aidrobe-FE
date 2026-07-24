@@ -52,13 +52,24 @@ export function OutfitPiece({
     Animated.timing(anim, { toValue: 1, duration: 520, delay, useNativeDriver: false }).start();
   }, [anim, delay, piecesKey]);
 
+  // Overlay visibility (outerwear toggle): fade instead of unmounting so the
+  // rest of the board never re-mounts (no entry replay, no matte recompute).
+  const visibility = useRef(new Animated.Value(piece.hidden ? 0 : 1)).current;
+  useEffect(() => {
+    Animated.timing(visibility, {
+      toValue: piece.hidden ? 0 : 1,
+      duration: 180,
+      useNativeDriver: false,
+    }).start();
+  }, [visibility, piece.hidden]);
+
   return (
     <Animated.View
       style={{
         position: 'absolute',
         left: piece.x * factor + inset,
         top: piece.y * factor + inset,
-        opacity: anim,
+        opacity: Animated.multiply(anim, visibility),
         transform: [
           { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) },
           { rotate: piece.rotate ?? '0deg' },

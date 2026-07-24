@@ -28,16 +28,19 @@ function silhouetteRank(piece: GarmentPiece): number {
   return 4;
 }
 
-/** Today-weather-only layout. The shared flat-lay stays untouched for other flows. */
+/** Today-weather-only layout. The shared flat-lay stays untouched for other flows.
+
+The outerwear is a permanent OVERLAY piece: every garment (blazer included)
+renders on every toggle state, and the switch only flips the blazer's `hidden`
+flag — an opacity fade inside OutfitPiece. Filtering it out instead would
+change the pieces array and remount the whole board (replayed entry animation
+plus, on native, a synchronous Skia matte readback per garment). The base top
+keeps one geometry; under the jacket the size difference is covered anyway. */
 function buildWeatherSilhouette(
   pieces: GarmentPiece[],
   includeOuterwear: boolean,
 ): GarmentPiece[] {
-  const visiblePieces = includeOuterwear
-    ? pieces
-    : pieces.filter((piece) => piece.kind !== 'blazer');
-
-  return visiblePieces
+  return pieces
     .map((piece, sourceIndex) => ({ piece, sourceIndex }))
     .sort(
       (a, b) =>
@@ -45,16 +48,10 @@ function buildWeatherSilhouette(
     )
     .map(({ piece }) => {
       if (piece.kind === 'blazer') {
-        return { ...piece, x: 94, y: 64, scale: 1.45, rotate: '0deg' };
+        return { ...piece, x: 94, y: 64, scale: 1.45, rotate: '0deg', hidden: !includeOuterwear };
       }
       if (TOP_KINDS.has(piece.kind)) {
-        return {
-          ...piece,
-          x: 94,
-          y: 68,
-          scale: includeOuterwear ? 0.92 : 1.08,
-          rotate: '0deg',
-        };
+        return { ...piece, x: 94, y: 68, scale: 1.08, rotate: '0deg' };
       }
       if (piece.kind === 'dress') {
         return { ...piece, x: 94, y: 82, scale: 1.65, rotate: '0deg' };

@@ -33,6 +33,9 @@ export type GarmentPiece = {
   itemId?: string;
   imageUrl?: string | null;
   name?: string | null;
+  // Overlay pieces (weather-card outerwear toggle) stay mounted and fade via
+  // opacity instead of being filtered out — filtering remounts the board.
+  hidden?: boolean;
 };
 
 export const GARMENT_IMAGES: Partial<Record<GarmentKind, ImageSourcePropType>> = {
