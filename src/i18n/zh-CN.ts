@@ -514,6 +514,10 @@ export const zhCN = {
   'profile.deactivate.body': '永久删除你的账号和全部数据，期间无法恢复。确认要继续吗？',
   'profile.deactivate.confirm': '确认注销',
   'profile.deactivate.done': '账号已注销。',
+  'profile.section.tools': '实用工具',
+  'profile.row.packingList': '打包清单',
+  'profile.row.senseCheck': '购物把关',
+  'profile.row.wardrobeReport': '衣橱报告',
 
   // --- Privacy / data statement (copy: privacy-data-copy-v0.1 §A) ----------
   'privacy.statement.title': '你的衣橱，只属于你',

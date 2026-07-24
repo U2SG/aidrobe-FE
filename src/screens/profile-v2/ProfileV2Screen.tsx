@@ -422,6 +422,28 @@ export function ProfileV2Screen({ navigation }: Props) {
         </Section>
       )}
 
+      {/* Section: 实用工具 — persistent entry point for packing list / sense-check /
+          wardrobe report. All three are now mounted in SettingsNavigator so they
+          are reachable from here without going through the Ask tab. */}
+      <Section title={t('profile.section.tools')}>
+        <Row
+          labelKey="profile.row.packingList"
+          leadingIcon={<SystemIcon name="suitcase" size={18} color={colors.tertiaryLabel} />}
+          onPress={() => navigation.navigate('PackingList')}
+        />
+        <Row
+          labelKey="profile.row.senseCheck"
+          leadingIcon={<SystemIcon name="bag" size={18} color={colors.tertiaryLabel} />}
+          onPress={() => navigation.navigate('SenseCheck')}
+        />
+        <Row
+          labelKey="profile.row.wardrobeReport"
+          leadingIcon={<SystemIcon name="chart" size={18} color={colors.tertiaryLabel} />}
+          onPress={() => navigation.navigate('WardrobeReport')}
+          last
+        />
+      </Section>
+
       {/* Section: 隐私与数据 */}
       <Section title={t('profile.section.privacy')}>
         <Row
