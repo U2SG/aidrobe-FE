@@ -31,9 +31,9 @@ const T = {
   shadowSm: shadow.soft,
 };
 
-// Onboarding flow: Welcome → Permission → DepartureTime (3 screens total).
-const TOTAL_STEPS = 3;
-const CURRENT_STEP = 3;
+// Onboarding flow: Welcome(1) → Permission(2) → AddWardrobe → ImportConfirm → FirstOutfit → StyleMemory → DepartureTime(6).
+const TOTAL_STEPS = 6;
+const CURRENT_STEP = 6;
 
 // Preset departure times shown as quick-select chips.
 const PRESETS = ['08:00', '08:30', '09:00'] as const;

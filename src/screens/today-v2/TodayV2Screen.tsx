@@ -151,6 +151,10 @@ export function TodayV2Screen({ navigation }: Props) {
       // 'today' key so a later daytime view isn't stale.
       qc.setQueryData(['todayRecommendation', targetDate ?? 'today'], data);
       if (targetDate) qc.setQueryData(['todayRecommendation', 'today'], data);
+      // F1 — surface applied context as a quiet caption near the outfit card.
+      const overrideLabel =
+        data.appliedContext?.overrideText ?? data.appliedContext?.constraints?.[0] ?? null;
+      setAppliedOverrideCaption(overrideLabel);
       showToast({ message: t('today.swapped'), kind: 'success' });
     },
     onError: (err) => {
@@ -192,6 +196,11 @@ export function TodayV2Screen({ navigation }: Props) {
     if (total > fetched.length) return null;
     return missingCoreSlots(countByCategory(fetched));
   }, [wardrobeQuery.isSuccess, wardrobeQuery.data]);
+
+  // F7 — wardrobe larger than one page but no recommendation yet; honest copy.
+  const paginationSuppressed =
+    wardrobeQuery.isSuccess &&
+    wardrobeQuery.data.total > wardrobeQuery.data.items.length;
   const departureTime = settingsQuery.data?.departureTime ?? null;
   // While the first fetch is still in flight we don't know whether a
   // recommendation exists — assume it does, so the header shows the normal
@@ -277,6 +286,9 @@ export function TodayV2Screen({ navigation }: Props) {
 
   // Context override sheet open/close state.
   const [overrideSheetOpen, setOverrideSheetOpen] = useState(false);
+
+  // F1 — the override label applied on the last refresh (null when none).
+  const [appliedOverrideCaption, setAppliedOverrideCaption] = useState<string | null>(null);
 
   // Favorite (heart) — optimistic local state backed by the outfit API.
   const [favorited, setFavorited] = useState(false);
@@ -415,6 +427,32 @@ export function TodayV2Screen({ navigation }: Props) {
 
           <ResurfaceInsightCard insight={resurfaceInsight} onPress={openResurfaceItem} />
 
+          {/* F1 — quiet applied-context caption shown after an override refresh. */}
+          {appliedOverrideCaption ? (
+            <Text
+              style={{
+                ...type.footnote,
+                color: colors.tertiaryLabel,
+                textAlign: 'center',
+              }}
+            >
+              {t('today.appliedContext', { override: appliedOverrideCaption })}
+            </Text>
+          ) : null}
+
+          {/* F6 — swap-disabled explanation when a real tomorrow payload is shown. */}
+          {serverTomorrowActive ? (
+            <Text
+              style={{
+                ...type.footnote,
+                color: colors.tertiaryLabel,
+                textAlign: 'center',
+              }}
+            >
+              {t('today.swapDisabledTomorrow')}
+            </Text>
+          ) : null}
+
           {/* Compact entry row — opens the context override sheet. While a
               regeneration is in flight it becomes a progress row instead:
               opening a sheet whose every option is disabled reads as broken. */}
@@ -469,6 +507,27 @@ export function TodayV2Screen({ navigation }: Props) {
             navigation.getParent()?.navigate('WardrobeTab', { screen: 'AddItem' } as never)
           }
         />
+      ) : paginationSuppressed ? (
+        // F7 — large wardrobe: items exist past page boundary, can't infer gaps.
+        <View
+          style={{
+            borderRadius: radius.xl,
+            backgroundColor: colors.secondaryElevated,
+            borderWidth: 1,
+            borderColor: colors.separatorSoft,
+            padding: 24,
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
+          <SystemIcon name="sparkle" size={22} color={colors.accent} strokeWidth={1.8} />
+          <Text style={{ ...type.headline, color: colors.label, textAlign: 'center' }}>
+            {t('today.cantBuild')}
+          </Text>
+          <Text style={{ ...type.callout, color: colors.tertiaryLabel, textAlign: 'center' }}>
+            {t('today.largeWardrobeHint')}
+          </Text>
+        </View>
       ) : (
         // Wardrobe adequate (or query loading/failed) — keep honest generic copy.
         <View

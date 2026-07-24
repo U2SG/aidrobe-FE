@@ -129,7 +129,8 @@ export const zhCN = {
   'item.lastWorn': '最近：{date}',
   'item.purchasedOn': '购于 {date}',
   'item.askOutfit': '用这件搭一套',
-  'item.markWornToday': '标记今天穿了',
+  'item.markWornToday': '今天穿了',
+  'item.markWornToday.success': '已记录今天穿了',
   'item.backToWardrobe': '返回衣橱',
   'item.moreActions': '更多操作',
   'item.delete.title': '删除衣物',
@@ -329,6 +330,7 @@ export const zhCN = {
   'packing.plan.missingItem': '缺 {category}',
   'packing.plan.reuse': '复用 {count} 天',
   'packing.plan.empty': '衣橱还不够搭出每日穿搭，先补齐上面的缺口再生成。',
+  'packing.plan.essentialsTitle': '打包要点',
   'packing.create.weatherLabel': '天气（可选，如：冷、有雨）',
   'packing.create.weatherPlaceholder': '冷 / 有雨 / 炎热',
 
@@ -343,7 +345,7 @@ export const zhCN = {
   'today.candidates': '候选',
   'today.loading': '正在为你准备搭配…',
   'today.swapped': '已换一套',
-  'today.refreshExhausted': '今天的刷新次数用完了',
+  'today.refreshExhausted': '今日换一套次数已用完，明天再来',
   'today.swapFailed': '这次没换成，再试一次',
   'today.swapUnavailable': '推荐服务暂时不可用，稍后再试',
   'today.swapNetwork': '网络不太顺，检查网络后再试',
@@ -357,6 +359,9 @@ export const zhCN = {
   'today.notEnoughData.hint': '先补几件上衣、下装和鞋，推荐会更准。',
   'today.unlockMore': '补几件单品就能解锁更多搭配',
   'today.cantBuild': '这套暂时搭不出来',
+  'today.appliedContext': '已按「{override}」调整',
+  'today.swapDisabledTomorrow': '明日预览暂不支持换一套',
+  'today.largeWardrobeHint': '衣橱较大，已从中挑选搭配；前往衣橱可查看全部单品。',
   'today.candidateNone': '暂无',
   'today.candidateUnlock': '补单品解锁',
   'today.candidateMeta': '{minutes} 分钟 · {signal}',
@@ -547,7 +552,7 @@ export const zhCN = {
   'permission.footnote': '你可以随时在「我的」里更改权限。',
 
   // --- Departure time onboarding screen ------------------------------------
-  'departure.stepLabel': '03',
+  'departure.stepLabel': '06',
   'departure.title': '设置你的出门时间',
   'departure.subtitle': '告诉我们你通常几点出门，帮助我们更好地为你推荐穿搭。',
   'departure.saving': '正在保存出门时间…',
@@ -601,6 +606,7 @@ export const zhCN = {
   // --- OOTD poster (AI, selfie-based) --------------------------------------
   'ootd.fromOutfit': '来自这套搭配「{title}」',
   'ootd.selfieBased': '海报基于你的自拍生成，背景由 AI 重绘，所选搭配仅作参考、不直接出现在图中。',
+  'ootd.consentText': '我已知悉海报由第三方 AI 模型生成，效果图仅供参考，可能与实物存在差异。',
 
   // --- Wardrobe health (FE #46) --------------------------------------------
   // Server returns stable codes + numeric metrics only; all copy lives here.

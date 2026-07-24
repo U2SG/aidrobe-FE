@@ -31,8 +31,8 @@ const T = {
   shadowSm: shadow.soft,
 };
 
-// Onboarding has 3 screens: Welcome → Permission → DepartureTime.
-const TOTAL_STEPS = 3;
+// Onboarding flow: Welcome(1) → Permission(2) → AddWardrobe → ImportConfirm → FirstOutfit → StyleMemory → DepartureTime(6).
+const TOTAL_STEPS = 6;
 const CURRENT_STEP = 1;
 
 // Hero flat-lay using real wardrobe cutout assets (no loafer PNG in assets;
