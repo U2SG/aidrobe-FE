@@ -442,6 +442,18 @@ export function ItemDetailScreen({ navigation, route }: Props) {
     },
   });
 
+  const markWornMutation = useMutation({
+    mutationFn: () => markItemWorn(itemId),
+    onSuccess: () => {
+      showToast({ message: t('item.markWornToday.success'), kind: 'success' });
+      setMenuOpen(false);
+      void invalidateAfterWardrobeItemChange(qc);
+    },
+    onError: () => {
+      showToast({ message: t('today.swapFailed'), kind: 'error' });
+    },
+  });
+
   if (!showcaseItem && query.isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: T.bg, alignItems: 'center', justifyContent: 'center' }}>
@@ -556,18 +568,6 @@ export function ItemDetailScreen({ navigation, route }: Props) {
 
   // API_GAP[untracked]: per-item re-identification endpoint is not available.
   const reidentifyDisabled = true;
-
-  const markWornMutation = useMutation({
-    mutationFn: () => markItemWorn(itemId),
-    onSuccess: () => {
-      showToast({ message: t('item.markWornToday.success'), kind: 'success' });
-      setMenuOpen(false);
-      void invalidateAfterWardrobeItemChange(qc);
-    },
-    onError: () => {
-      showToast({ message: t('today.swapFailed'), kind: 'error' });
-    },
-  });
 
   const changeLabel = t('item.change');
 
