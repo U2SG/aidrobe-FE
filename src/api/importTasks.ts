@@ -66,7 +66,7 @@ function toImportTask(task: ServerImportTask): ImportTask {
           }
         : undefined,
     candidateItems,
-    errorReason: task.status === 'failed' ? 'recognition_failed' : undefined,
+    errorReason: task.status === 'failed' ? (task.error_code ?? 'recognition_failed') : undefined,
     errorMessage: task.error_message ?? null,
   };
 }
@@ -95,6 +95,7 @@ export function confirmImportTask(id: string, body: ConfirmImportTaskBody) {
     location: body.location,
     size_label: body.sizeLabel,
     fit_status: body.fitStatus,
+    fit_intent: body.fitIntent,
   });
 }
 
