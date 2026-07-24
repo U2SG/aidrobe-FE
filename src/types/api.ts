@@ -991,6 +991,9 @@ export interface AskHistoryEntry {
   // Conversation the turn belongs to; null for legacy rows — those stay
   // view-only (no resume).
   conversationId: string | null;
+  // Persisted trip signal (BE#120) — re-offers the packing handoff on
+  // historical trip answers; null for non-trip turns and legacy rows.
+  tripIntent: AskTripIntent | null;
   question: string;
   answer: string | null;
   itemRefs: string[];
@@ -1001,6 +1004,7 @@ export interface AskHistoryEntry {
 export interface ServerAskHistoryItem {
   ask_session_id: string;
   conversation_id?: string | null;
+  trip_intent?: ServerAskTripIntent | null;
   question: string;
   answer?: string | null;
   item_refs?: string[];

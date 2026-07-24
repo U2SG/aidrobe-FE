@@ -279,6 +279,9 @@ export const zhCN = {
   'ask.v2.pickItem': '想搭某件衣服？去衣橱选它',
   'ask.appliedConstraints': '已延续：{list}',
   'ask.tripHandoff': '为这趟行程生成打包清单',
+  'ask.feedback.helpful': '有帮助',
+  'ask.feedback.inaccurate': '不太准',
+  'ask.feedback.thanks': '已收到反馈',
 
   // --- Shopping sense-check ------------------------------------------------
   'sense_check.skip.duplicate': '衣橱里已有 {count} 件相近的{color}{category}，容易重复。',
