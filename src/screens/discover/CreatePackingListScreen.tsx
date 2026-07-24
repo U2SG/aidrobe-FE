@@ -1,7 +1,8 @@
+import DateTimePicker from '@react-native-community/datetimepicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { createElement, useState } from 'react';
+import { Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { createPackingList } from '@/api/packingList';
 import { PrimaryButton } from '@/components/forms/PrimaryButton';
@@ -41,6 +42,16 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+function toISODate(value: Date): string {
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${value.getFullYear()}-${month}-${day}`;
+}
+
+function formatDepartureDate(value: Date): string {
+  return `${value.getMonth() + 1}月${value.getDate()}日`;
+}
+
 export function CreatePackingListScreen({ navigation, route }: Props) {
   const qc = useQueryClient();
   const track = useTrack();
@@ -53,6 +64,10 @@ export function CreatePackingListScreen({ navigation, route }: Props) {
   const [days, setDays] = useState(route.params?.durationDays ?? 3);
   const [scenes, setScenes] = useState<string[]>(['commute']);
   const [weatherHint, setWeatherHint] = useState('');
+  // Optional. With a destination it unlocks real per-day forecasts on the
+  // backend (BE#118) — without it the plan falls back to the weather hint.
+  const [departureDate, setDepartureDate] = useState<Date | null>(null);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
 
   const toggleScene = (v: string) =>
     setScenes((cur) => (cur.includes(v) ? cur.filter((s) => s !== v) : [...cur, v]));
@@ -64,12 +79,16 @@ export function CreatePackingListScreen({ navigation, route }: Props) {
         days,
         scenes,
         weatherHint: weatherHint.trim() || undefined,
+        departureDate: departureDate ? toISODate(departureDate) : undefined,
       }),
-    onSuccess: () => {
+    onSuccess: (created) => {
       qc.invalidateQueries({ queryKey: ['packingLists'] });
       track('packing_list_created', { days, scenes: scenes.length });
       showToast({ message: '清单已生成', kind: 'success' });
-      navigation.goBack();
+      // Land on the list itself — goBack() bounced Ask-handoff users straight
+      // back to Ask with no idea where the list went (#116). replace keeps the
+      // back gesture returning to the originating screen.
+      navigation.replace('PackingListDetail', { id: created.id });
     },
   });
 
@@ -125,6 +144,69 @@ export function CreatePackingListScreen({ navigation, route }: Props) {
               ...shadow.soft,
             }}
           />
+        </Field>
+
+        <Field label="出发日期（可选，配合目的地获取真实天气）">
+          {Platform.OS === 'web' ? (
+            createElement('input', {
+              type: 'date',
+              min: toISODate(new Date()),
+              value: departureDate ? toISODate(departureDate) : '',
+              onChange: (event: { target: { value: string } }) => {
+                const raw = event.target.value;
+                setDepartureDate(raw ? new Date(`${raw}T00:00:00`) : null);
+              },
+              style: {
+                backgroundColor: T.card,
+                borderRadius: radius.md,
+                border: 'none',
+                padding: '13px 14px',
+                fontSize: 16,
+                color: T.ink,
+                fontFamily: 'inherit',
+              },
+            })
+          ) : (
+            <>
+              <Pressable
+                onPress={() => setDatePickerVisible(true)}
+                accessibilityRole="button"
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  backgroundColor: T.card,
+                  borderRadius: radius.md,
+                  paddingHorizontal: 14,
+                  paddingVertical: 13,
+                  minHeight: 48,
+                  ...shadow.soft,
+                }}
+              >
+                <Text style={{ ...type.body, color: departureDate ? T.ink : colors.quaternaryLabel }}>
+                  {departureDate ? formatDepartureDate(departureDate) : '选择日期'}
+                </Text>
+                {departureDate ? (
+                  <Pressable onPress={() => setDepartureDate(null)} hitSlop={10} accessibilityLabel="清除日期">
+                    <SystemIcon name="x" size={15} color={T.ink3} />
+                  </Pressable>
+                ) : (
+                  <SystemIcon name="chevronRight" size={15} color={T.ink3} />
+                )}
+              </Pressable>
+              {datePickerVisible ? (
+                <DateTimePicker
+                  value={departureDate ?? new Date()}
+                  mode="date"
+                  minimumDate={new Date()}
+                  onChange={(event, selected) => {
+                    setDatePickerVisible(false);
+                    if (event.type === 'set' && selected) setDepartureDate(selected);
+                  }}
+                />
+              ) : null}
+            </>
+          )}
         </Field>
 
         <Field label={t.t('packing.create.weatherLabel')}>

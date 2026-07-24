@@ -17,6 +17,9 @@ importers:
       '@react-native-async-storage/async-storage':
         specifier: 2.2.0
         version: 2.2.0(react-native@0.85.3(@babel/core@7.29.0)(@react-native-community/cli@13.6.9)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.17)(react@19.2.3))
+      '@react-native-community/datetimepicker':
+        specifier: 9.1.0
+        version: 9.1.0(expo@56.0.11)(react-native@0.85.3(@babel/core@7.29.0)(@react-native-community/cli@13.6.9)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)
       '@react-navigation/bottom-tabs':
         specifier: ^7.18.0
         version: 7.18.0(@react-navigation/native@7.3.1(react-native@0.85.3(@babel/core@7.29.0)(@react-native-community/cli@13.6.9)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native-safe-area-context@5.7.0(react-native@0.85.3(@babel/core@7.29.0)(@react-native-community/cli@13.6.9)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native-screens@4.25.2(react-native@0.85.3(@babel/core@7.29.0)(@react-native-community/cli@13.6.9)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native-community/cli@13.6.9)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)
@@ -834,6 +837,19 @@ packages:
     resolution: {integrity: sha512-hFJL4cgLPxncJJd/epQ4dHnMg5Jy/7Q56jFvA3MHViuKpzzfTCJCB+pGY54maZbtym53UJON9WTGpM3S81UfjQ==}
     engines: {node: '>=18'}
     hasBin: true
+
+  '@react-native-community/datetimepicker@9.1.0':
+    resolution: {integrity: sha512-eadbnk+I2vxvW30iTAsm/qlCnMMAadkifIMYNEB2lzhxN/SvlKc7S2V4k5DyrwjdCbqdcMk3t9K6fnUMcAV34w==}
+    peerDependencies:
+      expo: '>=52.0.0'
+      react: '*'
+      react-native: '*'
+      react-native-windows: '*'
+    peerDependenciesMeta:
+      expo:
+        optional: true
+      react-native-windows:
+        optional: true
 
   '@react-native/assets-registry@0.85.3':
     resolution: {integrity: sha512-u9ZiYP23vA2IFtdFQFmetzSmk6SM0xgKIoiOsr1hXNHjHaLhOm+/Ph1ud57wX6+Dbwdzx8coJgnzSKL3W21PCg==}
@@ -5273,6 +5289,14 @@ snapshots:
       - utf-8-validate
     optional: true
 
+  '@react-native-community/datetimepicker@9.1.0(expo@56.0.11)(react-native@0.85.3(@babel/core@7.29.0)(@react-native-community/cli@13.6.9)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)':
+    dependencies:
+      invariant: 2.2.4
+      react: 19.2.3
+      react-native: 0.85.3(@babel/core@7.29.0)(@react-native-community/cli@13.6.9)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.17)(react@19.2.3)
+    optionalDependencies:
+      expo: 56.0.11(@babel/core@7.29.0)(@expo/dom-webview@56.0.5)(@expo/metro-runtime@56.0.15)(react-dom@19.2.3(react@19.2.3))(react-native-web@0.21.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.85.3(@babel/core@7.29.0)(@react-native-community/cli@13.6.9)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native-community/cli@13.6.9)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)(typescript@6.0.3)
+
   '@react-native/assets-registry@0.85.3': {}
 
   '@react-native/babel-plugin-codegen@0.85.3(@babel/core@7.29.0)':
@@ -5398,7 +5422,9 @@ snapshots:
       metro-runtime: 0.84.4
     transitivePeerDependencies:
       - '@babel/core'
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   '@react-native/normalize-colors@0.74.87': {}
 
