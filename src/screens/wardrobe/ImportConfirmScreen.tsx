@@ -90,12 +90,19 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
     refetchInterval: (queryInfo) => {
       const task = queryInfo.state.data;
       if (!task || queryInfo.state.status === 'error') return false;
-      return task.status === 'waiting_confirm' || task.status === 'failed' ? false : 1500;
+      if (task.status === 'waiting_confirm' || task.status === 'failed') {
+        pollStartRef.current = null;
+        return false;
+      }
+      if (pollStartRef.current == null) pollStartRef.current = Date.now();
+      if (Date.now() - pollStartRef.current > 120_000) return false;
+      return 1500;
     },
   });
 
   const [form, setForm] = useState<ConfirmImportTaskBody>({ name: '', category: 'top', color: '' });
-  const [selectedFit, setSelectedFit] = useState('regular');
+  const [selectedFit, setSelectedFit] = useState<FitIntent>('regular');
+  const [pollTimedOut, setPollTimedOut] = useState(false);
   const [saving, setSaving] = useState(false);
   // Late-night low-friction: compute once on mount so the form doesn't
   // reshuffle if the clock ticks past a threshold during editing.
@@ -110,10 +117,25 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
   // so two taps in the same frame can both fire confirmImportTask -> duplicate
   // item. The ref blocks the second call immediately, before React re-renders.
   const savingRef = useRef(false);
+  // Tracks when polling started so we can cap it at 120 s (mirrors ItemDetailScreen).
+  const pollStartRef = useRef<number | null>(null);
 
   useEffect(() => { track('import_confirm_viewed', { taskId }); }, [taskId, track]);
 
   const data = query.data;
+  const taskStatus = data?.status;
+
+  // Schedule a fallback timer when the task is still processing, so the user
+  // is never trapped on ProcessingOverlay indefinitely. Fires 120 s after
+  // polling started (or immediately if the budget has already elapsed).
+  useEffect(() => {
+    if (taskStatus === 'waiting_confirm' || taskStatus === 'failed' || taskStatus === undefined) return;
+    const elapsed = pollStartRef.current != null ? Date.now() - pollStartRef.current : 0;
+    const remaining = Math.max(0, 120_000 - elapsed);
+    const id = setTimeout(() => setPollTimedOut(true), remaining);
+    return () => clearTimeout(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskStatus]);
 
   useEffect(() => {
     if (!data) return;
@@ -165,8 +187,57 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
     );
   }
 
+  if (pollTimedOut && (!data || data.status !== 'waiting_confirm')) {
+    return (
+      <View style={{ flex: 1, backgroundColor: T.bg, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('common.back')}
+          onPress={exitFlow}
+          hitSlop={8}
+          style={{ position: 'absolute', top: 52, left: 20, padding: 4 }}
+        >
+          <SystemIcon name="chevronLeft" size={22} color={T.ink2} />
+        </Pressable>
+        <SystemIcon name="exclamation" size={28} color={colors.label} />
+        <Text style={{ ...typeScale.headline, color: T.ink, textAlign: 'center' }}>
+          {t('import.recognizingTimeout')}
+        </Text>
+        <Text style={{ ...typeScale.callout, color: T.ink3, textAlign: 'center' }}>
+          {t('import.recognizingTimeoutHint')}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => {
+            setPollTimedOut(false);
+            pollStartRef.current = null;
+            void query.refetch();
+          }}
+          style={{ minHeight: 44, borderRadius: T.rMd, backgroundColor: T.ink, paddingHorizontal: 24, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Text style={{ ...typeScale.headline, color: colors.inverse }}>
+            {t('common.retry')}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   if (!data || data.status !== 'waiting_confirm') {
-    return <ProcessingOverlay title={t('import.recognizing')} />;
+    return (
+      <View style={{ flex: 1 }}>
+        <ProcessingOverlay title={t('import.recognizing')} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('common.back')}
+          onPress={exitFlow}
+          hitSlop={8}
+          style={{ position: 'absolute', top: 52, left: 20, padding: 4 }}
+        >
+          <SystemIcon name="chevronLeft" size={22} color={T.ink2} />
+        </Pressable>
+      </View>
+    );
   }
 
   // BE#24/#25 — one photo can yield multiple candidates. Single (<=1) keeps the
@@ -190,7 +261,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
     setSaving(true);
     setSaveFailed(false);
     try {
-      await confirmImportTask(taskId, form);
+      await confirmImportTask(taskId, { ...form, fitIntent: selectedFit });
       track('item_saved', { taskId });
       // confirm import → wardrobeItems, todayRecommendation (see state/invalidation).
       invalidateAfterConfirmImport(qc);

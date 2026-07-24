@@ -1,5 +1,7 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 
+import type { ImportFailureReason } from './api';
+
 // ---------------------------------------------------------------------------
 // Onboarding stack
 // ---------------------------------------------------------------------------
@@ -14,12 +16,7 @@ export type OnboardingStackParamList = {
   AddWardrobe: undefined;
   ImportConfirm: { taskId: string; queue?: string[]; queueIndex?: number; onboarding?: boolean };
   ImportFailure: {
-    reason:
-      | 'upload_failed'
-      | 'unsupported_format'
-      | 'too_large'
-      | 'recognition_failed'
-      | 'network_error';
+    reason: ImportFailureReason;
     onboarding?: boolean;
   };
   FirstOutfit: { onboarding?: boolean } | undefined;
@@ -54,12 +51,7 @@ export type WardrobeStackParamList = {
   // so its "next" branches continue onboarding instead of the wardrobe flow.
   ImportConfirm: { taskId: string; queue?: string[]; queueIndex?: number; onboarding?: boolean };
   ImportFailure: {
-    reason:
-      | 'upload_failed'
-      | 'unsupported_format'
-      | 'too_large'
-      | 'recognition_failed'
-      | 'network_error';
+    reason: ImportFailureReason;
     onboarding?: boolean;
   };
   // V2: after the last import confirm, land on the First Outfit activation

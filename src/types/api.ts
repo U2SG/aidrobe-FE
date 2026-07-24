@@ -841,7 +841,11 @@ export type ImportFailureReason =
   | 'unsupported_format'
   | 'too_large'
   | 'recognition_failed'
-  | 'network_error';
+  | 'network_error'
+  | 'vision_failed'
+  | 'ocr_failed'
+  | 'import_failed'
+  | (string & NonNullable<unknown>);
 
 export type ImportInputType =
   | 'image'
@@ -878,6 +882,7 @@ export interface ConfirmImportTaskBody {
   location?: string | null;
   sizeLabel?: string | null;
   fitStatus?: FitStatus | null;
+  fitIntent?: FitIntent | null;
 }
 
 export interface AuthTokenResponse {
