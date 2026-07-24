@@ -27,7 +27,27 @@ const SOURCE_LABEL: Record<MemoryItem['source'], I18nKey> = {
   inferred: 'privacy.memory.source.inferred',
 };
 
-function MemoryRow({
+const CONFIDENCE_LABEL: Record<MemoryItem['confidence'], I18nKey> = {
+  low: 'privacy.memory.confidence.low',
+  medium: 'privacy.memory.confidence.medium',
+  high: 'privacy.memory.confidence.high',
+};
+
+// preference_type → display label key. Falls back to humanizing the raw token.
+const MEMORY_TYPE_LABEL: Partial<Record<string, I18nKey>> = {
+  style: 'privacy.memory.type.style',
+  color: 'privacy.memory.type.color',
+  fit: 'privacy.memory.type.fit',
+  occasion: 'privacy.memory.type.occasion',
+  brand: 'privacy.memory.type.brand',
+  material: 'privacy.memory.type.material',
+  formality: 'privacy.memory.type.formality',
+  climate: 'privacy.memory.type.climate',
+  footwear: 'privacy.memory.type.footwear',
+  negative_preference: 'privacy.memory.type.negative_preference',
+};
+
+function MemoryChip({
   item,
   busy,
   onMarkWrong,
@@ -39,32 +59,90 @@ function MemoryRow({
   onDelete: () => void;
 }) {
   const { t } = useT();
+
+  const typeKey = MEMORY_TYPE_LABEL[item.type];
+  const typeLabel = typeKey ? t(typeKey) : item.type.replace(/_/g, ' ');
+  const chipText = `${item.label} · ${typeLabel}`;
+
+  const handlePress = () => {
+    const sourceText = t(SOURCE_LABEL[item.source]);
+    const confidenceText = t(CONFIDENCE_LABEL[item.confidence]);
+    Alert.alert(
+      item.label,
+      `${typeLabel}  ·  ${sourceText}  ·  ${confidenceText}`,
+      [
+        {
+          text: t('privacy.memory.markWrong'),
+          onPress: onMarkWrong,
+        },
+        {
+          text: t('privacy.memory.delete'),
+          style: 'destructive',
+          onPress: onDelete,
+        },
+        { text: t('common.cancel'), style: 'cancel' },
+      ],
+    );
+  };
+
   return (
-    <View
+    <Pressable
+      accessibilityRole="button"
+      disabled={busy}
+      onPress={handlePress}
+      hitSlop={{ top: 4, right: 4, bottom: 4, left: 4 }}
       style={{
-        borderRadius: radius.lg,
+        minHeight: 36,
+        paddingVertical: 7,
+        paddingHorizontal: 12,
+        borderRadius: radius.pill,
         backgroundColor: colors.secondaryElevated,
         borderWidth: 1,
         borderColor: colors.separatorSoft,
-        padding: 16,
-        gap: 10,
+        justifyContent: 'center',
       }}
     >
-      <Text style={{ ...type.body, color: colors.label }}>{item.label}</Text>
-      <Text style={{ ...type.caption, color: colors.quaternaryLabel }}>
-        {t(SOURCE_LABEL[item.source])}
+      <Text
+        style={{
+          ...type.footnote,
+          color: busy ? colors.quaternaryLabel : colors.label,
+        }}
+        numberOfLines={1}
+      >
+        {chipText}
       </Text>
-      <View style={{ flexDirection: 'row', gap: 18 }}>
-        <Pressable accessibilityRole="button" disabled={busy} onPress={onMarkWrong} hitSlop={8}>
-          <Text style={{ ...type.footnote, color: busy ? colors.quaternaryLabel : colors.accent }}>
-            {t('privacy.memory.markWrong')}
-          </Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" disabled={busy} onPress={onDelete} hitSlop={8}>
-          <Text style={{ ...type.footnote, color: busy ? colors.quaternaryLabel : colors.danger }}>
-            {t('privacy.memory.delete')}
-          </Text>
-        </Pressable>
+    </Pressable>
+  );
+}
+
+function MemorySection({
+  titleKey,
+  items,
+  busy,
+  onMarkWrong,
+  onDelete,
+}: {
+  titleKey: I18nKey;
+  items: MemoryItem[];
+  busy: boolean;
+  onMarkWrong: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const { t } = useT();
+  if (items.length === 0) return null;
+  return (
+    <View style={{ gap: 10 }}>
+      <Text style={{ ...type.callout, color: colors.secondaryLabel }}>{t(titleKey)}</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {items.map((item) => (
+          <MemoryChip
+            key={item.id}
+            item={item}
+            busy={busy}
+            onMarkWrong={() => onMarkWrong(item.id)}
+            onDelete={() => onDelete(item.id)}
+          />
+        ))}
       </View>
     </View>
   );
@@ -122,6 +200,9 @@ export function MemoryManagementScreen() {
     memoryQuery.isError &&
     (memoryQuery.error as { response?: { status?: number } })?.response?.status === 403;
 
+  const positiveItems = items.filter((i) => i.polarity === 'positive');
+  const negativeItems = items.filter((i) => i.polarity === 'negative');
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -159,15 +240,20 @@ export function MemoryManagementScreen() {
         </View>
       ) : (
         <>
-          {items.map((item) => (
-            <MemoryRow
-              key={item.id}
-              item={item}
-              busy={busy}
-              onMarkWrong={() => markWrongMutation.mutate(item.id)}
-              onDelete={() => deleteMutation.mutate(item.id)}
-            />
-          ))}
+          <MemorySection
+            titleKey="privacy.memory.section.positive"
+            items={positiveItems}
+            busy={busy}
+            onMarkWrong={(id) => markWrongMutation.mutate(id)}
+            onDelete={(id) => deleteMutation.mutate(id)}
+          />
+          <MemorySection
+            titleKey="privacy.memory.section.negative"
+            items={negativeItems}
+            busy={busy}
+            onMarkWrong={(id) => markWrongMutation.mutate(id)}
+            onDelete={(id) => deleteMutation.mutate(id)}
+          />
           <Pressable
             accessibilityRole="button"
             disabled={busy}
