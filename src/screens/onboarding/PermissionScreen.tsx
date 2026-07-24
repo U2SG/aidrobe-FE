@@ -39,14 +39,19 @@ export function PermissionScreen({ navigation }: Props) {
   return (
     <ScreenContainer>
       <View style={{ flex: 1, paddingHorizontal: 28, paddingTop: 60, paddingBottom: 36 }}>
-        {/* 3-segment onboarding progress — step 2 of 3 */}
-        <View style={{ flexDirection: 'row', gap: 6 }}>
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <View
-              key={i}
-              style={{ flex: 1, height: 3, borderRadius: 2, backgroundColor: i < 1 ? colors.label : colors.separator }}
-            />
-          ))}
+        {/* 6-segment onboarding progress — step 2 of 6 */}
+        <View style={{ gap: 8 }}>
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <View
+                key={i}
+                style={{ flex: 1, height: 2, backgroundColor: i < 2 ? colors.label : colors.separator }}
+              />
+            ))}
+          </View>
+          <Text style={{ ...type.caption, color: colors.tertiaryLabel, letterSpacing: 0.4 }}>
+            {t('permission.stepLabel')}
+          </Text>
         </View>
 
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 }}>

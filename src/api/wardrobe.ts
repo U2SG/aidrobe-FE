@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPatch } from './client';
+import { apiDelete, apiGet, apiPatch, apiPost } from './client';
 import type {
   CutoutStatus,
   ItemWearHistory,
@@ -120,4 +120,12 @@ export async function updateWardrobeItemFit(id: string, body: UpdateFitBody) {
 
 export function deleteWardrobeItem(id: string) {
   return apiDelete<{ deleted: boolean }>(`/v1/wardrobe-items/${id}`);
+}
+
+// V4 — record a wear event for a single item (today's date).
+// POST /v1/wardrobe-items/{item_id}/wears returns the updated WardrobeItem.
+export async function markItemWorn(id: string): Promise<WardrobeItem> {
+  return toWardrobeItem(
+    await apiPost<ServerWardrobeItem>(`/v1/wardrobe-items/${id}/wears`, {}),
+  );
 }

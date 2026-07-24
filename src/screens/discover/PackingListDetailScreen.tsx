@@ -13,7 +13,7 @@ import { Tag } from '@/components/ui/Tag';
 import { useT, type UseT } from '@/hooks/useT';
 import { useWardrobeItemNames } from '@/hooks/useWardrobeItemNames';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
-import type { PackingEntry, PackingPlan } from '@/types/api';
+import type { PackingEntry, PackingPlan, PackingPlanPackingItem } from '@/types/api';
 import type { DiscoverStackParamList } from '@/types/navigation';
 
 import { planItemIds, reuseCountByItem, sortDailyOutfits } from './packingPlan';
@@ -43,6 +43,7 @@ export function PackingListDetailScreen({ navigation, route }: Props) {
   const nameById = useWardrobeItemNames([
     ...(list?.items ?? []).map((it) => it.itemId),
     ...(list?.plan ? planItemIds(list.plan.dailyOutfits) : []),
+    ...(list?.plan?.packingItems ?? []).map((p) => p.itemId),
   ]);
 
   // Group entries (with their original index) by day.
@@ -173,6 +174,22 @@ export function PackingListDetailScreen({ navigation, route }: Props) {
 // on the wire, so it is intentionally NOT displayed (API_GAP: those would need
 // localizing or key-ifying on the backend). When daily outfits are empty the
 // wardrobe couldn't dress the trip — we say so honestly rather than fake outfits.
+function PackingEssentialRow({
+  item,
+  nameById,
+}: {
+  item: PackingPlanPackingItem;
+  nameById: Map<string, string>;
+}) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <Text style={{ ...type.body, color: T.ink2, flex: 1 }} numberOfLines={1}>
+        {nameById.get(item.itemId) ?? '衣橱单品'}
+      </Text>
+    </View>
+  );
+}
+
 function PackingPlanView({
   plan,
   nameById,
@@ -208,6 +225,17 @@ function PackingPlanView({
               </Text>
             </View>
           ))}
+        </View>
+      ) : null}
+
+      {plan.packingItems.length > 0 ? (
+        <View style={{ gap: 8 }}>
+          <Text style={{ ...type.headline, color: T.ink }}>{t.t('packing.plan.essentialsTitle')}</Text>
+          <View style={{ backgroundColor: T.card, borderRadius: radius.lg, padding: 14, gap: 8, ...shadow.soft }}>
+            {plan.packingItems.map((item) => (
+              <PackingEssentialRow key={item.itemId} item={item} nameById={nameById} />
+            ))}
+          </View>
         </View>
       ) : null}
 

@@ -8,6 +8,7 @@ import {
   deleteWardrobeItem,
   getItemWearHistory,
   getWardrobeItem,
+  markItemWorn,
   updateWardrobeItem,
   updateWardrobeItemFit,
 } from '@/api/wardrobe';
@@ -34,6 +35,7 @@ import {
 } from '@/i18n/domainLabels';
 import { enableMvpV2Ui } from '@/lib/featureFlags';
 import { invalidateAfterWardrobeItemChange } from '@/state/invalidation';
+import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, type } from '@/theme/design';
 import type {
   FitIntent,
@@ -352,6 +354,7 @@ export function ItemDetailScreen({ navigation, route }: Props) {
     [itemId],
   );
   const qc = useQueryClient();
+  const showToast = useToastStore((s) => s.show);
   const pollStartRef = useRef<number | null>(null);
 
   const query = useQuery({
@@ -436,6 +439,18 @@ export function ItemDetailScreen({ navigation, route }: Props) {
     onSuccess: () => {
       invalidateAfterWardrobeItemChange(qc);
       navigation.goBack();
+    },
+  });
+
+  const markWornMutation = useMutation({
+    mutationFn: () => markItemWorn(itemId),
+    onSuccess: () => {
+      showToast({ message: t('item.markWornToday.success'), kind: 'success' });
+      setMenuOpen(false);
+      void invalidateAfterWardrobeItemChange(qc);
+    },
+    onError: () => {
+      showToast({ message: t('today.swapFailed'), kind: 'error' });
     },
   });
 
@@ -551,8 +566,6 @@ export function ItemDetailScreen({ navigation, route }: Props) {
     requestAnimationFrame(() => locationInputRef.current?.focus());
   };
 
-  // API_GAP[untracked]: per-item "mark worn today" endpoint is not available.
-  const _markWornDisabled = true;
   // API_GAP[untracked]: per-item re-identification endpoint is not available.
   const reidentifyDisabled = true;
 
@@ -847,6 +860,13 @@ export function ItemDetailScreen({ navigation, route }: Props) {
       <BottomSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t('item.moreActions')}>
         {/* 2×2 action grid — card cells, icon above label */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+          <MenuAction
+            cardWidth={(width - 48 - 10) / 2}
+            label={t('item.markWornToday')}
+            icon="check"
+            disabled={markWornMutation.isPending}
+            onPress={() => markWornMutation.mutate()}
+          />
           <MenuAction
             cardWidth={(width - 48 - 10) / 2}
             label={t('item.action.reidentify')}

@@ -40,7 +40,6 @@ const TEMPLATES: { value: OotdPosterTemplate; label: string }[] = [
   { value: 'street', label: '街拍' },
 ];
 
-const CONSENT_TEXT = '我已知悉海报由第三方 AI 模型生成，效果图仅供参考，可能与实物存在差异。';
 
 export function OotdPosterScreen({ navigation, route }: Props) {
   const { t } = useT();
@@ -301,7 +300,7 @@ export function OotdPosterScreen({ navigation, route }: Props) {
               >
                 {consent ? <SystemIcon name="check" size={14} color={colors.inverse} /> : null}
               </View>
-              <Text style={{ ...type.footnote, color: T.ink2, flex: 1, lineHeight: 18 }}>{CONSENT_TEXT}</Text>
+              <Text style={{ ...type.footnote, color: T.ink2, flex: 1, lineHeight: 18 }}>{t('ootd.consentText')}</Text>
             </Pressable>
           </ScrollView>
 
@@ -321,7 +320,7 @@ export function OotdPosterScreen({ navigation, route }: Props) {
           <ActivityIndicator color={T.accent} size="large" />
           <Text style={{ ...type.headline, color: T.ink }}>正在生成你的海报…</Text>
           <Text style={{ ...type.footnote, color: T.ink3, textAlign: 'center', lineHeight: 18 }}>
-            {CONSENT_TEXT}
+            {t('ootd.consentText')}
           </Text>
         </View>
       ) : null}
@@ -349,7 +348,7 @@ export function OotdPosterScreen({ navigation, route }: Props) {
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 12 }}>
           <Text style={{ ...type.headline, color: T.ink }}>海报生成失败</Text>
           <Text style={{ ...type.footnote, color: T.ink3, textAlign: 'center' }}>
-            稍后再试，或换一张自拍。
+            {assetQuery.data?.errorMessage ?? '稍后再试，或换一张自拍。'}
           </Text>
           <View style={{ marginTop: 12, width: '100%', maxWidth: 240 }}>
             <PrimaryButton
