@@ -301,6 +301,9 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'ask.v2.pickItem': 'Styling one piece? Pick it in your wardrobe',
   'ask.appliedConstraints': 'Carried over: {list}',
   'ask.tripHandoff': 'Create a packing list for this trip',
+  'ask.feedback.helpful': 'Helpful',
+  'ask.feedback.inaccurate': 'Off the mark',
+  'ask.feedback.thanks': 'Feedback received',
 
   // --- Shopping sense-check ------------------------------------------------
   'sense_check.skip.duplicate':

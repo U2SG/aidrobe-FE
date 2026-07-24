@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { askAidrobe, getAskHistory } from '@/api/ask';
+import { askAidrobe, getAskHistory, sendAskFeedback } from '@/api/ask';
 import { InlineRetry } from '@/components/feedback/InlineRetry';
 import { HeaderIconButton, ScreenHeader } from '@/components/layout/ScreenHeader';
 import { AIOrb } from '@/components/ui/AIOrb';
@@ -53,6 +53,9 @@ type Turn = {
   // BE#115 — multi-day-trip signal from the structured answer; renders the
   // packing-list handoff row on this turn's answer card.
   tripIntent?: AskTripIntent | null;
+  // FE#119 — feedback the user gave on this answer (optimistic; reverted on
+  // request failure). Only real (non-local) session ids can be rated.
+  feedback?: 'like' | 'dislike';
 };
 
 const FALLBACK_COMPOSER_HEIGHT = 112;
@@ -126,6 +129,7 @@ function historyToTurn(entry: AskHistoryEntry, answerFallback: string): Turn {
     itemRefs: entry.itemRefs,
     itemRefSnapshots: entry.itemRefSnapshots,
     pending: false,
+    tripIntent: entry.tripIntent,
   };
 }
 
@@ -147,6 +151,7 @@ function TurnView({
   retryBusy,
   isFollowUp,
   onPackingHandoff,
+  onFeedback,
 }: {
   turn: Turn;
   onRetry: () => void;
@@ -156,6 +161,9 @@ function TurnView({
   isFollowUp?: boolean;
   // BE#115 handoff to CreatePackingList; absent (e.g. history sheet) hides the row.
   onPackingHandoff?: () => void;
+  // FE#119 — rate this answer (like/dislike). Absent (pending/local/history
+  // without id) hides the row.
+  onFeedback?: (kind: 'like' | 'dislike') => void;
 }) {
   const { t } = useT();
   return (
@@ -244,6 +252,37 @@ function TurnView({
                 </View>
               </Pressable>
             ) : null}
+            {!turn.failed && onFeedback ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
+                {turn.feedback ? (
+                  <Text style={{ ...type.caption, color: T.ink3 }}>{t('ask.feedback.thanks')}</Text>
+                ) : (
+                  <>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => onFeedback('like')}
+                      hitSlop={10}
+                    >
+                      <Text style={{ ...type.caption, color: T.ink3 }}>
+                        {t('ask.feedback.helpful')}
+                      </Text>
+                    </Pressable>
+                    <Text style={{ ...type.caption, color: colors.separator, marginHorizontal: 10 }}>
+                      |
+                    </Text>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => onFeedback('dislike')}
+                      hitSlop={10}
+                    >
+                      <Text style={{ ...type.caption, color: T.ink3 }}>
+                        {t('ask.feedback.inaccurate')}
+                      </Text>
+                    </Pressable>
+                  </>
+                )}
+              </View>
+            ) : null}
           </>
         )}
       </View>
@@ -310,6 +349,7 @@ function AskHistorySheet({
   onClose,
   onRetry,
   onContinue,
+  onPackingHandoff,
 }: {
   visible: boolean;
   entries: AskHistoryEntry[];
@@ -320,6 +360,9 @@ function AskHistorySheet({
   // Resume the selected entry's conversation in the main thread. Only offered
   // when the entry carries a conversationId (legacy rows stay view-only).
   onContinue: (entry: AskHistoryEntry) => void;
+  // FE#119 — packing handoff from a historical trip answer (BE persists
+  // trip_intent on the session, #120).
+  onPackingHandoff: (entry: AskHistoryEntry) => void;
 }) {
   const { t } = useT();
   const { height } = useWindowDimensions();
@@ -355,7 +398,14 @@ function AskHistorySheet({
             contentContainerStyle={{ paddingBottom: 4 }}
             showsVerticalScrollIndicator={false}
           >
-            <TurnView turn={selectedTurn} onRetry={() => undefined} retryBusy={false} />
+            <TurnView
+              turn={selectedTurn}
+              onRetry={() => undefined}
+              retryBusy={false}
+              onPackingHandoff={
+                selected?.tripIntent?.isTrip ? () => onPackingHandoff(selected) : undefined
+              }
+            />
           </ScrollView>
           {selected?.conversationId ? (
             <Button
@@ -542,6 +592,23 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     setConversationId(entry.conversationId);
     setTurns([historyToTurn(entry, t('ask.history.answerFallback'))]);
     setHistoryVisible(false);
+  };
+
+  // FE#119 — packing handoff from a historical trip answer.
+  const packingFromHistory = (entry: AskHistoryEntry) => {
+    setHistoryVisible(false);
+    navigation.navigate('CreatePackingList', {
+      durationDays: entry.tripIntent?.durationDays ?? undefined,
+    });
+  };
+
+  // FE#119 — optimistic like/dislike on an answered turn; revert on failure so
+  // the buttons reappear (retriable) instead of failing silently.
+  const rateTurn = (turn: Turn) => (kind: 'like' | 'dislike') => {
+    setTurns((prev) => prev.map((x) => (x.id === turn.id ? { ...x, feedback: kind } : x)));
+    sendAskFeedback(turn.id, kind).catch(() => {
+      setTurns((prev) => prev.map((x) => (x.id === turn.id ? { ...x, feedback: undefined } : x)));
+    });
   };
 
   const submitQuestion = (question: string) => {
@@ -807,6 +874,11 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
                       })
                   : undefined
               }
+              onFeedback={
+                !turn.pending && !turn.failed && !turn.id.startsWith('local-')
+                  ? rateTurn(turn)
+                  : undefined
+              }
             />
           ))
         )}
@@ -920,6 +992,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         onClose={() => setHistoryVisible(false)}
         onRetry={() => void historyQuery.refetch()}
         onContinue={continueFromHistory}
+        onPackingHandoff={packingFromHistory}
       />
 
       <ContextualEntrySheet

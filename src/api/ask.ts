@@ -82,5 +82,17 @@ export async function getAskHistory(query: AskHistoryQuery = {}): Promise<AskHis
     itemRefs: item.item_refs ?? [],
     itemRefSnapshots: mapSnapshots(item.item_ref_snapshots),
     createdAt: item.created_at,
+    tripIntent: item.trip_intent?.is_trip
+      ? { isTrip: true, durationDays: item.trip_intent.duration_days ?? null }
+      : null,
   }));
+}
+
+// FE#119 — rate an answered Ask turn. Values mirror the recommendation
+// feedback vocabulary the BE maps onto recommendation events.
+export function sendAskFeedback(askSessionId: string, kind: 'like' | 'dislike') {
+  return apiPost<{ success: boolean }>(`/v1/ask/${askSessionId}/feedback`, {
+    feedback_type: kind,
+    reason_tags: [],
+  });
 }
