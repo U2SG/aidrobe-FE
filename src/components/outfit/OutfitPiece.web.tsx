@@ -4,7 +4,7 @@ import { Animated, Image as RNImage } from 'react-native';
 import { GarmentSvg } from '@/components/ui/GarmentSvg';
 
 import { GARMENT_IMAGES, type GarmentPiece } from './garments';
-import { removeBorderConnectedMatte, scaledMatteSize } from './outfitMatte';
+import { matteLooksDestructive, removeBorderConnectedMatte, scaledMatteSize } from './outfitMatte';
 
 function weatherMaskFor(kind: GarmentPiece['kind']) {
   const ellipse = kind === 'sneaker' ? '74% 56%' : kind === 'trousers' ? '56% 70%' : '60% 62%';
@@ -37,6 +37,12 @@ function prepareWeatherCutout(uri: string, maxDimension: number) {
         context.drawImage(source, 0, 0, width, height);
         const frame = context.getImageData(0, 0, width, height);
         removeBorderConnectedMatte(frame.data, width, height);
+        if (matteLooksDestructive(frame.data, width, height)) {
+          // The fill ate into the garment (white/light fabric) — fall back to
+          // the soft-mask render rather than showing ragged holes.
+          resolve(null);
+          return;
+        }
 
         context.putImageData(frame, 0, 0);
         resolve(canvas.toDataURL('image/png'));
