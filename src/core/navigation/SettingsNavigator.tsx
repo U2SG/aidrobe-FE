@@ -6,6 +6,11 @@ import { DataTrustScreen } from '@/screens/profile-v2/DataTrustScreen';
 import { MemoryManagementScreen } from '@/screens/profile-v2/MemoryManagementScreen';
 import { StyleInspirationsScreen } from '@/screens/discover/StyleInspirationsScreen';
 import { AddInspirationScreen } from '@/screens/discover/AddInspirationScreen';
+import { PackingListScreen } from '@/screens/discover/PackingListScreen';
+import { PackingListDetailScreen } from '@/screens/discover/PackingListDetailScreen';
+import { CreatePackingListScreen } from '@/screens/discover/CreatePackingListScreen';
+import { SenseCheckScreen } from '@/screens/discover/SenseCheckScreen';
+import { WardrobeReportScreen } from '@/screens/discover/WardrobeReportScreen';
 import { useT } from '@/hooks/useT';
 import { enableMvpV2Ui } from '@/lib/featureFlags';
 import { colors } from '@/theme/design';
@@ -56,6 +61,25 @@ export function SettingsNavigator() {
           <Stack.Screen
             name="AddInspiration"
             component={AddInspirationScreen as never}
+            options={{ headerShown: false }}
+          />
+          {/* Tools section: persistent entry from Profile → same screens that
+              mount in AskNavigator. Cast as never per the cross-stack convention. */}
+          <Stack.Screen name="PackingList" component={PackingListScreen as never} options={{ headerShown: false }} />
+          <Stack.Screen
+            name="PackingListDetail"
+            component={PackingListDetailScreen as never}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="CreatePackingList"
+            component={CreatePackingListScreen as never}
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+          <Stack.Screen name="SenseCheck" component={SenseCheckScreen as never} options={{ headerShown: false }} />
+          <Stack.Screen
+            name="WardrobeReport"
+            component={WardrobeReportScreen as never}
             options={{ headerShown: false }}
           />
         </>

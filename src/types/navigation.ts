@@ -71,6 +71,14 @@ export type SettingsStackParamList = {
   // push target, so both mount here.
   StyleInspirations: undefined;
   AddInspiration: undefined;
+  // Tools section: packing list / sense-check / wardrobe report reachable from
+  // Profile as a persistent entry point (user-reported entry gap 2026-07-24).
+  // Param shapes mirror AskStackParamList so the same screens mount in both stacks.
+  PackingList: undefined;
+  PackingListDetail: { id: string };
+  CreatePackingList: { durationDays?: number } | undefined;
+  SenseCheck: undefined;
+  WardrobeReport: { period?: string } | undefined;
 };
 
 // Ask promoted to a primary tab in V2 (redesign brief v0.9 §3.1). Params mirror

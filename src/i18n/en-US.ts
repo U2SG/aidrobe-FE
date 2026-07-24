@@ -531,6 +531,10 @@ export const enUS: Record<keyof typeof zhCN, string> = {
     'This permanently deletes your account and all data, with no recovery. Are you sure?',
   'profile.deactivate.confirm': 'Delete account',
   'profile.deactivate.done': 'Your account has been deleted.',
+  'profile.section.tools': 'Tools',
+  'profile.row.packingList': 'Packing list',
+  'profile.row.senseCheck': 'Shopping check',
+  'profile.row.wardrobeReport': 'Wardrobe report',
 
   // --- Privacy / data statement (copy: privacy-data-copy-v0.1 §A) ----------
   'privacy.statement.title': 'Your wardrobe is yours alone',
