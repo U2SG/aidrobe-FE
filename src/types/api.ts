@@ -848,7 +848,8 @@ export type ImportInputType =
   | 'link'
   | 'screenshot'
   | 'image_batch'
-  | 'shared_content';
+  | 'shared_content'
+  | 'order_screenshot';
 
 export type ImportSourceType =
   | 'camera'
