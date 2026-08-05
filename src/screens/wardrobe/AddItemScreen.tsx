@@ -241,10 +241,16 @@ export function AddItemScreen({ navigation }: Props) {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       showToast({ message: t('add.albumPermission'), kind: 'error' });
+      setSourceSheetVisible(true);
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 1, mediaTypes: ['images'] });
-    if (result.canceled || !result.assets[0]) return;
+    if (result.canceled || !result.assets[0]) {
+      // The source sheet is the only entry point for this import type, so
+      // restore it when the picker is dismissed without a selection.
+      setSourceSheetVisible(true);
+      return;
+    }
     void handlePicked(result.assets[0].uri, 'album', 'order_screenshot');
   };
 
