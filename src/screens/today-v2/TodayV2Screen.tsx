@@ -23,6 +23,7 @@ import { ResurfaceInsightCard, type ResurfaceInsight } from '@/components/produc
 import { SlotGapEmptyState } from '@/components/product/SlotGapEmptyState';
 import { CountdownRing } from '@/components/ui/CountdownRing';
 import { SystemIcon } from '@/components/ui/SystemIcon';
+import { useRecommendationImpression } from '@/hooks/useRecommendationImpression';
 import { useT } from '@/hooks/useT';
 import type { I18nKey } from '@/i18n';
 import { useTrack } from '@/hooks/useTrack';
@@ -142,15 +143,43 @@ export function TodayV2Screen({ navigation }: Props) {
     // BE#78 — an optional context override rides along as a session-scoped
     // constraint on this one regeneration; plain swaps pass undefined.
     mutationFn: (override?: ContextOverride) => refreshTodayRecommendation('commute', override),
-    onSuccess: (data) => {
+    onSuccess: (data, override) => {
       // Refresh regenerates TODAY only. Swap/override are permitted only while
       // the view is NOT a real tomorrow payload, so whatever key is active is
       // showing today's data (possibly under the flag-off evening preview key)
       // — write the ACTIVE key so the visible card updates, and the plain
       // 'today' key so a later daytime view isn't stale.
+      const priorRecommendationId = todayQuery.data?.recommendationId ?? null;
+      const priorRevision = todayQuery.data?.revision ?? null;
+      const priorOutfitId = outfit?.id ?? null;
       qc.setQueryData(['todayRecommendation', targetDate ?? 'today'], data);
       if (targetDate) qc.setQueryData(['todayRecommendation', 'today'], data);
       showToast({ message: t('today.swapped'), kind: 'success' });
+
+      // FE#130 — a PLAIN swap (no override) attributed to the new revision.
+      // A context override never emits this: the BE already emits
+      // context_override_submitted server-side, and the new revision gets its
+      // own impression via useRecommendationImpression naturally — emitting
+      // outfit_swapped too would double-attribute the same change. Also skip
+      // when the backend returned no usable identity (fallback response) or
+      // the same already-active revision (a no-op refresh).
+      const newOutfitId = data.outfits[0]?.id ?? null;
+      const identityUnchanged =
+        data.recommendationId != null &&
+        data.recommendationId === priorRecommendationId &&
+        data.revision === priorRevision;
+      const isPlainSwap = override === undefined;
+      const hasNewIdentity = Boolean(data.recommendationId) && data.revision != null && Boolean(newOutfitId);
+      if (isPlainSwap && hasNewIdentity && !identityUnchanged && data.recommendationId && newOutfitId) {
+        emitRecommendationEvent({
+          eventType: 'outfit_swapped',
+          signalStrength: 'medium',
+          sourceSurface: 'today',
+          recommendationId: data.recommendationId,
+          outfitId: newOutfitId,
+          metadata: { priorOutfitId, newOutfitId, revision: data.revision },
+        });
+      }
     },
     onError: (err: { response?: { status?: number } }) => {
       if (err?.response?.status === 429) {
@@ -241,6 +270,21 @@ export function TodayV2Screen({ navigation }: Props) {
   // disables swap because the refresh endpoint currently regenerates today only
   // (brief §4.4).
   const tomorrowOriented = isTomorrowOriented(mode);
+
+  // FE#130 — one weak outfit_impression per recommendation_id + revision +
+  // outfit_id, for a REAL outfit card only (hasRecommendation gates out
+  // insufficient/empty board states even if `outfit` incidentally exists).
+  // No-ops on legacy/flag-off payloads (recommendationId/revision null).
+  useRecommendationImpression({
+    recommendationId: todayQuery.data?.recommendationId ?? null,
+    revision: todayQuery.data?.revision ?? null,
+    outfitId: hasRecommendation ? (outfit?.id ?? null) : null,
+    sourceSurface: 'today',
+    metadata: {
+      mode: tomorrowOriented ? 'tomorrow' : 'today',
+      generationSource: todayQuery.data?.generationSource ?? null,
+    },
+  });
 
   const scene = tEnum('scene', todayQuery.data?.context?.scene) || t('today.scene.commute');
   const remaining = remainingMinutes(departureTime);

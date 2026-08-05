@@ -1293,7 +1293,7 @@
           "wardrobe"
         ],
         "summary": "Mark Item Worn",
-        "description": "Record that the user wore this item (no outfit context), for\n`worn_date` (defaults to today, UTC — client sends its local date for\ntimezone correctness, same as the outfit wear path).\n\nUpdates last_worn_at and wear_count on the item so insights / detail\nscreens reflect the real-world wear immediately. Also emits a\nRecommendationEvent for future preference learning.",
+        "description": "Record that the user wore this item (no outfit context), for\n`worn_date` (defaults to the user's local date).\n\nUpdates last_worn_at and wear_count on the item so insights / detail\nscreens reflect the real-world wear immediately. Also emits a\nRecommendationEvent for future preference learning.",
         "operationId": "mark_item_worn_v1_wardrobe_items__item_id__wears_post",
         "parameters": [
           {
@@ -5207,6 +5207,84 @@
         }
       }
     },
+    "/v1/admin/backfill-item-names": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Backfill Item Names",
+        "description": "One-shot repair for legacy wardrobe items imported before naming\nlocalization (BE#30): AI-named rows without `localized_names` render their\nraw (usually English) title on every surface. Each call batches `limit`\nitems into one LLM request producing zh-CN/en-US name pairs; user-renamed\nitems are never touched. Call repeatedly until `remaining` is 0.",
+        "operationId": "backfill_item_names_v1_admin_backfill_item_names_post",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-User-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackfillItemNamesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/user/cost-summary": {
       "get": {
         "tags": [
@@ -6426,6 +6504,28 @@
             "format": "uuid",
             "title": "Ask Session Id"
           },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "trip_intent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AskTripIntent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "question": {
             "type": "string",
             "title": "Question"
@@ -6648,6 +6748,16 @@
             "type": "string",
             "title": "Source Surface",
             "default": "ask"
+          },
+          "trip_intent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AskTripIntent"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -6658,6 +6768,31 @@
           "tokens_used"
         ],
         "title": "AskResponse"
+      },
+      "AskTripIntent": {
+        "properties": {
+          "is_trip": {
+            "type": "boolean",
+            "title": "Is Trip"
+          },
+          "duration_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Days"
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_trip"
+        ],
+        "title": "AskTripIntent",
+        "description": "BE#115 — present only when the structured answer detected a multi-day\ntrip question; the FE uses it to offer the packing-list handoff."
       },
       "AuthTokenResponse": {
         "properties": {
@@ -6692,6 +6827,29 @@
           "expires_in"
         ],
         "title": "AuthTokenResponse"
+      },
+      "BackfillItemNamesResponse": {
+        "properties": {
+          "scanned": {
+            "type": "integer",
+            "title": "Scanned"
+          },
+          "updated": {
+            "type": "integer",
+            "title": "Updated"
+          },
+          "remaining": {
+            "type": "integer",
+            "title": "Remaining"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scanned",
+          "updated",
+          "remaining"
+        ],
+        "title": "BackfillItemNamesResponse"
       },
       "BatchAddInspirationRequest": {
         "properties": {
@@ -7086,6 +7244,16 @@
             ],
             "title": "Fit Status"
           },
+          "fit_intent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FitIntent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "purchase_price": {
             "anyOf": [
               {
@@ -7196,6 +7364,16 @@
               }
             ],
             "title": "Fit Status"
+          },
+          "fit_intent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FitIntent"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -7398,7 +7576,7 @@
         "properties": {
           "input_type": {
             "type": "string",
-            "pattern": "^(image|link|screenshot|image_batch|shared_content|receipt_screenshot|order_screenshot|shopping_email)$",
+            "pattern": "^(image|outfit_image|link|screenshot|image_batch|shared_content|receipt_screenshot|order_screenshot|shopping_email)$",
             "title": "Input Type"
           },
           "source_type": {
@@ -7825,6 +8003,63 @@
       },
       "FirstOutfitGateResponse": {
         "properties": {
+          "recommendation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommendation Id"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "generation_source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecommendationGenerationSource"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Id"
+          },
           "state": {
             "type": "string",
             "enum": [
@@ -9662,6 +9897,19 @@
         ],
         "title": "RecommendationEventResponse"
       },
+      "RecommendationGenerationSource": {
+        "type": "string",
+        "enum": [
+          "nightly",
+          "departure",
+          "read_time",
+          "refresh",
+          "context_override",
+          "tomorrow_preview",
+          "midday_checkpoint"
+        ],
+        "title": "RecommendationGenerationSource"
+      },
       "RecommendationItemResponse": {
         "properties": {
           "item_id": {
@@ -11474,6 +11722,13 @@
               }
             ],
             "title": "Fetched At"
+          },
+          "constraints": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Constraints"
           }
         },
         "type": "object",
@@ -11482,6 +11737,63 @@
       },
       "TodayRecommendationResponse": {
         "properties": {
+          "recommendation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommendation Id"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "generation_source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecommendationGenerationSource"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Id"
+          },
           "recommendation_date": {
             "type": "string",
             "format": "date",
@@ -11766,6 +12078,18 @@
             ],
             "title": "Departure Time"
           },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
           "push_enabled": {
             "anyOf": [
               {
@@ -12029,6 +12353,17 @@
               }
             ],
             "title": "Departure Time"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
           },
           "push_enabled": {
             "anyOf": [
