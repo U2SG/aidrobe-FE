@@ -5,7 +5,7 @@ import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
 import { colors, radius, type } from '@/theme/design';
 
-type IconName = 'camera' | 'photo' | 'sparkle' | 'link';
+type IconName = 'camera' | 'photo' | 'sparkle' | 'link' | 'bag';
 
 interface Props {
   visible: boolean;
@@ -14,9 +14,18 @@ interface Props {
   onAlbum: () => void;
   onOutfit: () => void;
   onLink: () => void;
+  onShoppingScreenshot: () => void;
 }
 
-export function AddSourceSheet({ visible, onClose, onCamera, onAlbum, onOutfit, onLink }: Props) {
+export function AddSourceSheet({
+  visible,
+  onClose,
+  onCamera,
+  onAlbum,
+  onOutfit,
+  onLink,
+  onShoppingScreenshot,
+}: Props) {
   const { t } = useT();
 
   const options: Array<{
@@ -48,6 +57,12 @@ export function AddSourceSheet({ visible, onClose, onCamera, onAlbum, onOutfit, 
       label: t('addSource.link.label'),
       hint: t('addSource.link.hint'),
       onPress: onLink,
+    },
+    {
+      icon: 'bag',
+      label: t('addSource.shoppingScreenshot.label'),
+      hint: t('addSource.shoppingScreenshot.hint'),
+      onPress: onShoppingScreenshot,
     },
   ];
 

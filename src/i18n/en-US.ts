@@ -664,6 +664,8 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'addSource.outfit.hint': 'Identify multiple items from one photo',
   'addSource.link.label': 'Paste product link',
   'addSource.link.hint': "Add items you're considering",
+  'addSource.shoppingScreenshot.label': 'Import order screenshot',
+  'addSource.shoppingScreenshot.hint': 'Auto-detect from Taobao/JD order screenshots',
   'addSource.cancel': 'Cancel',
 
   // --- Contextual entry sheet (Ask 14) -------------------------------------
