@@ -39,6 +39,11 @@ export function RecommendationFeedback({ outfitId, temperatureC }: Props) {
   const [submittedChip, setSubmittedChip] = useState<FeedbackChip | null>(null);
 
   const mutation = useMutation({
+    // FE#130 — this IS the explicit dislike/love signal; it owns
+    // outfit_disliked/love. Do not also emit a passive outfit_disliked event
+    // from `emitRecommendationEvent` here — that would double-count the same
+    // preference through two ingestion paths. Only the temperature-mismatch
+    // signal below rides along as a passive event.
     mutationFn: (chip: FeedbackChip) => sendOutfitFeedback(outfitId, reasonChipToFeedback(chip)),
     onSuccess: (_data, chip) => {
       setSubmittedChip(chip);

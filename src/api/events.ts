@@ -2,8 +2,17 @@ import { apiPost } from './client';
 
 // BE#81 — general passive-learning event ingestion. Append-only on the server;
 // weak signals never overwrite explicit preferences, so emitting generously is
-// safe. NOTE: context_override_submitted is emitted SERVER-side by the refresh
-// endpoint (BE#78) — do not double-send it from here.
+// safe.
+//
+// Signal-ownership map (FE#130) — keep these two ingestion paths from
+// drifting apart:
+//   - context_override_submitted is emitted SERVER-side by the refresh
+//     endpoint (BE#78) — do not double-send it from here.
+//   - outfit_disliked / love are owned by explicit feedback
+//     (`sendOutfitFeedback` -> POST /outfits/{id}/feedback, see
+//     RecommendationFeedback.tsx) — never emit a duplicate passive event for
+//     an explicit dislike/love; explicit feedback is the single source of
+//     truth for that signal.
 export type RecommendationEventType =
   | 'outfit_impression'
   | 'outfit_swapped'
