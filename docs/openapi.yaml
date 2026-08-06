@@ -3041,6 +3041,60 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /v1/admin/backfill-item-names:
+    post:
+      tags:
+      - admin
+      summary: Backfill Item Names
+      description: 'One-shot repair for legacy wardrobe items imported before naming
+
+        localization (BE#30): AI-named rows without `localized_names` render their
+
+        raw (usually English) title on every surface. Each call batches `limit`
+
+        items into one LLM request producing zh-CN/en-US name pairs; user-renamed
+
+        items are never touched. Call repeatedly until `remaining` is 0.'
+      operationId: backfill_item_names_v1_admin_backfill_item_names_post
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 50
+          title: Limit
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      - name: X-User-Id
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-User-Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackfillItemNamesResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /v1/user/cost-summary:
     get:
       tags:
@@ -3799,6 +3853,10 @@ components:
             format: uuid
           - type: 'null'
           title: Conversation Id
+        trip_intent:
+          anyOf:
+          - $ref: '#/components/schemas/AskTripIntent'
+          - type: 'null'
         question:
           type: string
           title: Question
@@ -3999,6 +4057,23 @@ components:
       - token_type
       - expires_in
       title: AuthTokenResponse
+    BackfillItemNamesResponse:
+      properties:
+        scanned:
+          type: integer
+          title: Scanned
+        updated:
+          type: integer
+          title: Updated
+        remaining:
+          type: integer
+          title: Remaining
+      type: object
+      required:
+      - scanned
+      - updated
+      - remaining
+      title: BackfillItemNamesResponse
     BatchAddInspirationRequest:
       properties:
         urls:
@@ -4224,6 +4299,10 @@ components:
           - type: string
           - type: 'null'
           title: Fit Status
+        fit_intent:
+          anyOf:
+          - $ref: '#/components/schemas/FitIntent'
+          - type: 'null'
         purchase_price:
           anyOf:
           - type: number
@@ -4292,6 +4371,10 @@ components:
           - type: string
           - type: 'null'
           title: Fit Status
+        fit_intent:
+          anyOf:
+          - $ref: '#/components/schemas/FitIntent'
+          - type: 'null'
       type: object
       required:
       - temp_item_id
@@ -4710,6 +4793,33 @@ components:
       title: FeedbackTagsResponse
     FirstOutfitGateResponse:
       properties:
+        recommendation_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Recommendation Id
+        revision:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Revision
+        generated_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Generated At
+        generation_source:
+          anyOf:
+          - $ref: '#/components/schemas/RecommendationGenerationSource'
+          - type: 'null'
+        trace_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Trace Id
         state:
           type: string
           enum:
@@ -5958,6 +6068,17 @@ components:
       required:
       - event_id
       title: RecommendationEventResponse
+    RecommendationGenerationSource:
+      type: string
+      enum:
+      - nightly
+      - departure
+      - read_time
+      - refresh
+      - context_override
+      - tomorrow_preview
+      - midday_checkpoint
+      title: RecommendationGenerationSource
     RecommendationItemResponse:
       properties:
         item_id:
@@ -7144,6 +7265,22 @@ components:
           - type: integer
           - type: 'null'
           title: Revision
+        generated_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Generated At
+        generation_source:
+          anyOf:
+          - $ref: '#/components/schemas/RecommendationGenerationSource'
+          - type: 'null'
+        trace_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Trace Id
         recommendation_date:
           type: string
           format: date
