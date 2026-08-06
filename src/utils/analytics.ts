@@ -5,6 +5,13 @@
  * 接入 PostHog / 自研事件接口时，只需替换 dispatch 实现。
  */
 
+import { buildV3EventProps, validateV3Event } from '@/utils/v3AnalyticsEvents';
+import type {
+  V3EventContext,
+  V3EventPayloads,
+  V3FeOwnedEvent,
+} from '@/utils/v3AnalyticsEvents';
+
 export const ANALYTICS_EVENTS = {
   landing_viewed: 'landing_viewed',
   onboarding_started: 'onboarding_started',
@@ -52,6 +59,25 @@ export const ANALYTICS_EVENTS = {
   temperature_mismatch_reported: 'temperature_mismatch_reported',
   // Optional departure micro-question: how much outdoor exposure the commute has.
   commute_exposure_selected: 'commute_exposure_selected',
+
+  // --- V3 (V3-002) ------------------------------------------------------
+  // Frozen cross-repo contract: docs/v3-analytics-events.{json,md}, mirrored
+  // byte-identically in aidrobe-BE. Emit only via `trackV3` below — the plain
+  // `track` path has no field semantics and no privacy check. Names listed
+  // literally here (not spread in) so this registry stays the one place to
+  // read every event the app can emit; `V3_EVENT_SPECS` fails to compile if a
+  // name is missing.
+  v3_decision_started: 'v3_decision_started',
+  v3_decision_completed: 'v3_decision_completed',
+  v3_decision_viewed: 'v3_decision_viewed',
+  v3_decision_action: 'v3_decision_action',
+  v3_avatar_prompt_shown: 'v3_avatar_prompt_shown',
+  v3_avatar_consent: 'v3_avatar_consent',
+  v3_avatar_deleted: 'v3_avatar_deleted',
+  v3_preview_requested: 'v3_preview_requested',
+  v3_preview_outcome: 'v3_preview_outcome',
+  v3_preview_viewed: 'v3_preview_viewed',
+  v3_preview_feedback: 'v3_preview_feedback',
 } as const;
 
 export type AnalyticsEvent = keyof typeof ANALYTICS_EVENTS;
@@ -71,4 +97,34 @@ export function setAnalyticsDispatcher(next: Dispatcher) {
 
 export function track(event: AnalyticsEvent, props?: Record<string, unknown>) {
   dispatcher(event, props);
+}
+
+/**
+ * Emit one V3 event (V3-002). Same dispatcher as `track`, but the payload is
+ * typed per event and validated against the frozen contract first, so a field
+ * that is not in the contract — or a forbidden one like a photo URL — cannot
+ * reach the sink.
+ *
+ * Only FE-owned events are accepted; `v3_decision_completed`,
+ * `v3_avatar_consent` and `v3_avatar_deleted` are emitted by the backend and a
+ * second emit here would double-count every rate on the dashboard.
+ *
+ * A contract violation throws in development (silent analytics bugs are found
+ * months later, on the dashboard) and is dropped with a warning in production
+ * (analytics must never crash a user flow).
+ */
+export function trackV3<E extends V3FeOwnedEvent>(
+  event: E,
+  payload: V3EventPayloads[E],
+  context: V3EventContext,
+): void {
+  const props = payload as Record<string, unknown>;
+  const problem = validateV3Event(event, props, context.flowId);
+  if (problem) {
+    if (typeof __DEV__ !== 'undefined' && __DEV__) throw new Error(`[trackV3] ${problem}`);
+    // eslint-disable-next-line no-console
+    console.warn('[trackV3] dropped invalid event', problem);
+    return;
+  }
+  dispatcher(event, buildV3EventProps(props, context, new Date().toISOString()));
 }
