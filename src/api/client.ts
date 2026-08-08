@@ -3,6 +3,7 @@ import type { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } fro
 import Constants from 'expo-constants';
 
 import { isErrorToastSilenced } from '@/api/errorToast';
+import { currentV3FlowId, V3_FLOW_ID_HEADER } from '@/api/v3Flow';
 import { queryClient } from '@/core/providers/queryClient';
 import { useAuthStore } from '@/store/auth';
 import { useOnboardingStore } from '@/store/onboarding';
@@ -33,6 +34,15 @@ export const apiClient: AxiosInstance = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
+  // V3-008: while a "should I buy this" flow is active, every request carries
+  // its flow id so BE-emitted analytics join the FE events of the same flow
+  // (V3-002 event contract; the BE CorrelationIdMiddleware already accepts and
+  // propagates this header, so no API shape changes).
+  const flowId = currentV3FlowId();
+  if (flowId && !config.headers.has(V3_FLOW_ID_HEADER)) {
+    config.headers.set(V3_FLOW_ID_HEADER, flowId);
+  }
+
   const accessToken = useAuthStore.getState().accessToken;
   if (accessToken) {
     config.headers.set('Authorization', `Bearer ${accessToken}`);
