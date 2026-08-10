@@ -5,7 +5,11 @@
 //
 // Screens arrive with V3-009/V3-010; nothing imports this yet. Callers whose
 // surface hides itself on error should pass `{ silentErrorToast: true }` and
-// map failures through `toDecisionErrorState`.
+// map failures through `toDecisionErrorState` — every wrapper forwards a
+// per-request `config` so that flag actually reaches the interceptor
+// (codex review, FE#137).
+
+import type { AxiosRequestConfig } from 'axios';
 
 import { apiGet, apiPost } from './client';
 import {
@@ -30,12 +34,20 @@ export interface CreateCandidateInput {
 
 export async function createPurchaseCandidate(
   input: CreateCandidateInput,
+  config?: AxiosRequestConfig,
 ): Promise<PurchaseCandidate> {
-  const data = await apiPost<ServerPurchaseCandidate>('/v1/purchase-candidates', {
-    source_type: input.sourceType,
-    source_url: input.sourceUrl ?? null,
-    source_asset_id: input.sourceAssetId ?? null,
-  });
+  // NOTE for error mapping: this endpoint's 404 means "invalid source asset
+  // key", so map its failures with `toDecisionErrorState(error, 'create')`.
+  const data = await apiPost<ServerPurchaseCandidate>(
+    '/v1/purchase-candidates',
+    {
+      source_type: input.sourceType,
+      source_url: input.sourceUrl ?? null,
+      source_asset_id: input.sourceAssetId ?? null,
+    },
+    undefined,
+    config,
+  );
   return toPurchaseCandidate(data);
 }
 
@@ -43,25 +55,42 @@ export async function createPurchaseCandidate(
 // terminal status, so polling is optional-and-usually-unnecessary. If a caller
 // does poll, it must stop on `isTerminal` — which is true for every status
 // except `submitted`, unknown ones included, so version skew cannot spin it.
-export async function getPurchaseCandidate(candidateId: string): Promise<PurchaseCandidate> {
-  const data = await apiGet<ServerPurchaseCandidate>(`/v1/purchase-candidates/${candidateId}`);
+export async function getPurchaseCandidate(
+  candidateId: string,
+  config?: AxiosRequestConfig,
+): Promise<PurchaseCandidate> {
+  const data = await apiGet<ServerPurchaseCandidate>(
+    `/v1/purchase-candidates/${candidateId}`,
+    undefined,
+    config,
+  );
   return toPurchaseCandidate(data);
 }
 
 export async function decidePurchaseCandidate(
   candidateId: string,
   concern: DecisionConcern = 'none',
+  config?: AxiosRequestConfig,
 ): Promise<WardrobeDecision> {
   // Idempotent per candidate: a repeated call replays the first decision and
   // ignores a new concern (contract §5.3) — do not offer "re-evaluate" UI.
   const data = await apiPost<ServerWardrobeDecision>(
     `/v1/purchase-candidates/${candidateId}/decision`,
     { concern },
+    undefined,
+    config,
   );
   return toWardrobeDecision(data);
 }
 
-export async function getWardrobeDecision(decisionId: string): Promise<WardrobeDecision> {
-  const data = await apiGet<ServerWardrobeDecision>(`/v1/wardrobe-decisions/${decisionId}`);
+export async function getWardrobeDecision(
+  decisionId: string,
+  config?: AxiosRequestConfig,
+): Promise<WardrobeDecision> {
+  const data = await apiGet<ServerWardrobeDecision>(
+    `/v1/wardrobe-decisions/${decisionId}`,
+    undefined,
+    config,
+  );
   return toWardrobeDecision(data);
 }

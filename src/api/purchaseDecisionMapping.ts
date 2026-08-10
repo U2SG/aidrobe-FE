@@ -319,12 +319,25 @@ export interface HttpErrorLike {
   } | null;
 }
 
-export function toDecisionErrorState(error: HttpErrorLike | null | undefined): DecisionErrorState {
+/** Which §5.1 endpoint produced the error. Only `create` changes mapping:
+ * its documented 404 is "submitted object key outside the caller's prefix"
+ * (docs/openapi.yaml, POST /v1/purchase-candidates) — an INPUT error whose
+ * recovery is re-selecting the source, not the leave-and-refresh flow that
+ * `not_found` prescribes for missing resources (codex review, FE#137). */
+export type DecisionEndpointContext = 'create' | 'read' | 'decide';
+
+export function toDecisionErrorState(
+  error: HttpErrorLike | null | undefined,
+  context: DecisionEndpointContext = 'read',
+): DecisionErrorState {
   const status = error?.response?.status ?? null;
   const message = strOrNull(error?.response?.data?.message);
   if (status === null) return { kind: 'network', retryable: true };
   if (status === 503) return { kind: 'feature_unavailable', retryable: false };
-  if (status === 404) return { kind: 'not_found', retryable: false };
+  if (status === 404) {
+    if (context === 'create') return { kind: 'invalid_source', retryable: false, message };
+    return { kind: 'not_found', retryable: false };
+  }
   if (status === 400) return { kind: 'invalid_source', retryable: false, message };
   if (status === 422) return { kind: 'invalid_request', retryable: false, message };
   if (status === 401) return { kind: 'session_expired', retryable: false };

@@ -104,7 +104,11 @@ check(
 
 // --- Acceptance 2: optional evidence / visual metadata are nullable ---------
 
-check('candidate_id is nullable', isNullable(decision.properties.candidate_id));
+// Every P0 decision is candidate-scoped, so the id is required — declaring it
+// nullable taught generated clients to accept a missing id and would have
+// masked a BE serialization bug (codex review, FE#136).
+check('candidate_id is required', decision.required.includes('candidate_id'));
+check('candidate_id is NOT nullable', !isNullable(decision.properties.candidate_id));
 check(
   'similar_items[].image_url is nullable (visual metadata)',
   isNullable(schemas.ComparisonItemModel.properties.image_url),

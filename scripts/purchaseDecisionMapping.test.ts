@@ -137,6 +137,17 @@ const err = (status: number | null, message?: string) =>
 check('503 → feature_unavailable', toDecisionErrorState(err(503)).kind === 'feature_unavailable');
 check('503 not retryable', toDecisionErrorState(err(503)).retryable === false);
 check('404 → not_found', toDecisionErrorState(err(404)).kind === 'not_found');
+// Endpoint context (codex review, FE#137): the create POST's documented 404 is
+// an invalid source-asset key — an input error the user can fix by picking the
+// source again — while read/decide 404s stay leave-the-flow not_found.
+const createBad = toDecisionErrorState(err(404, 'unknown object key'), 'create');
+check('create 404 → invalid_source', createBad.kind === 'invalid_source');
+check(
+  'create 404 carries the server message',
+  createBad.kind === 'invalid_source' && createBad.message === 'unknown object key',
+);
+check('read 404 stays not_found', toDecisionErrorState(err(404), 'read').kind === 'not_found');
+check('decide 404 stays not_found', toDecisionErrorState(err(404), 'decide').kind === 'not_found');
 const bad = toDecisionErrorState(err(400, 'unsafe url'));
 check('400 → invalid_source', bad.kind === 'invalid_source');
 check('400 carries the server message', bad.kind === 'invalid_source' && bad.message === 'unsafe url');
