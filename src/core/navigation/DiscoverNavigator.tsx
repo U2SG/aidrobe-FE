@@ -8,6 +8,7 @@ import { PackingListScreen } from '@/screens/discover/PackingListScreen';
 import { AddInspirationScreen } from '@/screens/discover/AddInspirationScreen';
 import { AskAidrobeScreen } from '@/screens/discover/AskAidrobeScreen';
 import { SenseCheckScreen } from '@/screens/discover/SenseCheckScreen';
+import { ShouldIBuyScreen } from '@/screens/discover/ShouldIBuyScreen';
 import { StyleInspirationsScreen } from '@/screens/discover/StyleInspirationsScreen';
 import { WardrobeReportScreen } from '@/screens/discover/WardrobeReportScreen';
 import { colors } from '@/theme/design';
@@ -44,6 +45,9 @@ export function DiscoverNavigator() {
         options={{ presentation: 'modal', headerShown: false }}
       />
       <Stack.Screen name="SenseCheck" component={SenseCheckScreen} options={{ headerShown: false }} />
+      {/* V3-009 — no new tab and no new navigator: one more screen on the
+          existing Discover stack, entered from the existing tool card. */}
+      <Stack.Screen name="ShouldIBuy" component={ShouldIBuyScreen} options={{ headerShown: false }} />
       <Stack.Screen
         name="StyleInspirations"
         component={StyleInspirationsScreen}
