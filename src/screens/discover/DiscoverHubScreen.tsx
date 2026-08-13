@@ -5,6 +5,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
+import { enableV3PurchaseDecision } from '@/lib/featureFlags';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { DiscoverStackParamList } from '@/types/navigation';
 
@@ -141,11 +142,16 @@ export function DiscoverHubScreen({ navigation }: Props) {
               subtitle="按天数 · 场景生成"
               onPress={() => navigation.navigate('PackingList')}
             />
+            {/* V3-009 — the same natural entrance (§5.2), repointed at the V3
+                decision card while the flag is on. No second card: two
+                identically named tools would be exactly the 卡片汤 §9.1
+                forbids, and V3 adds no main mental model (§3.3). Flag off (its
+                default) keeps the V2 SenseCheck path unchanged. */}
             <ToolCard
               icon="bag"
               title="该不该买"
               subtitle="对照现有衣橱"
-              onPress={() => navigation.navigate('SenseCheck')}
+              onPress={() => navigation.navigate(enableV3PurchaseDecision ? 'ShouldIBuy' : 'SenseCheck')}
             />
           </View>
           <View style={{ flexDirection: 'row', gap: 12 }}>

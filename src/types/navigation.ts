@@ -105,6 +105,11 @@ export type DiscoverStackParamList = {
   PackingListDetail: { id: string };
   CreatePackingList: { durationDays?: number } | undefined;
   SenseCheck: undefined;
+  // V3-009 — the Should-I-Buy decision card. Reached from the same Discover
+  // tool entrance as `SenseCheck`, which it replaces while
+  // `enableV3PurchaseDecision` is on; `SenseCheck` stays registered so the V2
+  // path is intact when the flag is off (its default).
+  ShouldIBuy: undefined;
   StyleInspirations: undefined;
   AddInspiration: undefined;
   // `focusedItemId` scopes the Ask to one wardrobe item (scope=item). `scope`

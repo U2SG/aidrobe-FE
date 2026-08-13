@@ -1,0 +1,567 @@
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useMutation } from '@tanstack/react-query';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+
+import type {
+  DecisionErrorState,
+  HttpErrorLike,
+  PurchaseCandidate,
+  WardrobeDecision,
+} from '@/api/purchaseDecisionMapping';
+import { toDecisionErrorState } from '@/api/purchaseDecisionMapping';
+import { createPurchaseCandidate, decidePurchaseCandidate } from '@/api/purchaseDecisions';
+import { beginV3Flow, endV3Flow } from '@/api/v3Flow';
+import { ScreenHeader } from '@/components/layout/ScreenHeader';
+import { ImageThumb } from '@/components/ui/ImageThumb';
+import { SystemIcon } from '@/components/ui/SystemIcon';
+import { useT, type UseT } from '@/hooks/useT';
+import { useV3EventContext } from '@/hooks/useV3EventContext';
+import { colors, radius, shadow, spacing, type } from '@/theme/design';
+import type { V3EventPayloads } from '@/utils/v3AnalyticsEvents';
+import { trackV3 } from '@/utils/analytics';
+import type { V3FeOwnedEvent } from '@/utils/v3AnalyticsEvents';
+import type { DiscoverStackParamList } from '@/types/navigation';
+import { pickAndUploadImage, uploadErrorMessage } from '@/utils/imageUpload';
+import { useToastStore } from '@/store/toast';
+import {
+  ACTION_LABEL_KEYS,
+  buildDecisionCard,
+  candidateSummary,
+  errorView,
+  RELATION_LABEL_KEYS,
+  sourceTypeForInput,
+  uncertaintyCaveatKey,
+  viewedEventDecision,
+  type DecisionTone,
+  type RenderedAction,
+} from './shouldIBuyDecision';
+
+type Props = NativeStackScreenProps<DiscoverStackParamList, 'ShouldIBuy'>;
+
+// V3-009 — the Should-I-Buy decision card (V3_SPEC §5.4 / §9.2).
+//
+// The whole point of this screen is that it is COMPLETE with no avatar and no
+// visual provider: §5.4's conditional preview layer is absent from the tree, so
+// there is nothing to degrade, nothing to fail and no empty slot. Layers 1, 2,
+// 3, 5 and 6 carry the full decision value on their own (§5.5 "Avatar None:
+// give the complete purchase judgment first, do not leave the feature
+// crippled"). V3-014/V3-019 add the preview layer above this one later.
+//
+// No decision logic lives here either: `decision_text`, `reasons[].text`,
+// `summary_text` and `boundary_note` are server-rendered per-locale copy frozen
+// into the snapshot (contract §5.3). Everything this file reads goes through
+// `purchaseDecisionMapping` so the version-skew rules apply (V3-008 risk 1).
+
+const T = {
+  bg: colors.groupedBackground,
+  card: colors.elevated,
+  cardSoft: colors.secondaryElevated,
+  ink: colors.label,
+  ink2: colors.secondaryLabel,
+  ink3: colors.tertiaryLabel,
+  accent: colors.accent,
+  divider: colors.separator,
+};
+
+/** Calm tone per §9.1: a warm surface tint plus ink, no gauge, no score, no
+ * traffic-light saturation. `null` (unknown decision) keeps neutral chrome. */
+const TONE_STYLE: Record<DecisionTone, { fg: string; bg: string }> = {
+  positive: { fg: colors.success, bg: colors.successBg },
+  caution: { fg: colors.cautionAmber, bg: colors.warningBg },
+  negative: { fg: colors.danger, bg: colors.dangerBg },
+  neutral: { fg: colors.secondaryLabel, bg: colors.fill },
+};
+
+const THUMB = 64;
+
+/** The candidate is kept beside the decision so §9.2's product header can show
+ * the parsed attributes — the decision response carries none of them. */
+interface DecisionResult {
+  candidate: PurchaseCandidate;
+  decision: WardrobeDecision;
+}
+
+function toneStyle(tone: DecisionTone | null) {
+  return tone ? TONE_STYLE[tone] : { fg: T.ink, bg: T.cardSoft };
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <View style={{ gap: 8 }}>
+      <Text style={{ ...type.caption, color: T.ink3 }}>{title}</Text>
+      {children}
+    </View>
+  );
+}
+
+/** §5.4 layer 1 + the uncertainty caveat. This block holds the page's only
+ * emphasis (feature acceptance 2) — every other layer is body/footnote sized. */
+function Judgment({ decision, t }: { decision: WardrobeDecision; t: UseT }) {
+  const card = buildDecisionCard(decision);
+  const { fg, bg } = toneStyle(card.emphasis.tone);
+  const caveatKey = uncertaintyCaveatKey(decision.uncertainty);
+  return (
+    <View style={{ gap: 8 }}>
+      <View style={{ backgroundColor: bg, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12 }}>
+        <Text style={{ ...type.title2, color: fg, lineHeight: 30 }}>{card.emphasis.text}</Text>
+      </View>
+      {caveatKey ? (
+        <Text style={{ ...type.caption, color: T.ink3, lineHeight: 16 }}>{t.t(caveatKey)}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+/** §5.4 layer 3. The comparison is where the existing-item alternative becomes
+ * visible (feature acceptance 3): `covers` items are the owned things that
+ * already do this job. Acting on one is V3-010; seeing them is this feature. */
+function ClosetComparison({
+  comparison,
+  t,
+}: {
+  comparison: NonNullable<ReturnType<typeof buildDecisionCard>['comparison']>;
+  t: UseT;
+}) {
+  return (
+    <Section title={t.t('should_i_buy.section.comparison')}>
+      {comparison.summaryText ? (
+        <Text style={{ ...type.body, color: T.ink2, lineHeight: 22 }}>{comparison.summaryText}</Text>
+      ) : null}
+      {comparison.items.length > 0 ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+          {comparison.items.map((item) => {
+            // A skewed unknown relation renders no tag rather than a guess.
+            const relationLabel = item.relation ? t.t(RELATION_LABEL_KEYS[item.relation]) : '';
+            const label = relationLabel || t.t('should_i_buy.candidate.fallbackName');
+            return (
+              <View key={item.itemId} style={{ width: THUMB }}>
+                {/* No `fallbackLabel`: the relation already reads underneath,
+                    and printing it inside the placeholder too would say the
+                    same word twice in one 64px column. */}
+                <ImageThumb
+                  uri={item.imageUrl}
+                  size={THUMB}
+                  cornerRadius={radius.sm}
+                  accessibilityLabel={label}
+                />
+                {relationLabel ? (
+                  <Text style={{ ...type.caption, color: T.ink3, marginTop: 6 }} numberOfLines={1}>
+                    {relationLabel}
+                  </Text>
+                ) : null}
+              </View>
+            );
+          })}
+        </ScrollView>
+      ) : null}
+    </Section>
+  );
+}
+
+/** §5.4 layer 6. `style_with_existing` is filtered out upstream because its
+ * destination is V3-010 — every button here leads somewhere real. */
+function NextActions({
+  actions,
+  chosen,
+  onChoose,
+  t,
+}: {
+  actions: RenderedAction[];
+  chosen: RenderedAction | null;
+  onChoose: (action: RenderedAction) => void;
+  t: UseT;
+}) {
+  if (actions.length === 0) return null;
+  return (
+    <View style={{ gap: 10, borderTopWidth: 1, borderTopColor: T.divider, paddingTop: 14 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+        {actions.map((action) => {
+          const isChosen = chosen === action;
+          const isPrimary = action === 'add_to_candidates';
+          return (
+            <Pressable
+              key={action}
+              onPress={() => onChoose(action)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isChosen }}
+              accessibilityLabel={t.t(ACTION_LABEL_KEYS[action])}
+              style={{
+                minHeight: 44,
+                flexGrow: 1,
+                flexBasis: 140,
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingHorizontal: 14,
+                borderRadius: radius.md,
+                borderWidth: isPrimary ? 0 : 1,
+                borderColor: T.divider,
+                backgroundColor: isPrimary ? colors.label : 'transparent',
+                opacity: chosen && !isChosen ? 0.45 : 1,
+              }}
+            >
+              <Text
+                style={{
+                  ...type.callout,
+                  fontWeight: '600',
+                  color: isPrimary ? colors.inverse : T.ink2,
+                }}
+              >
+                {isChosen && action === 'add_to_candidates'
+                  ? t.t('should_i_buy.action.added')
+                  : t.t(ACTION_LABEL_KEYS[action])}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {chosen === 'recheck_color' ? (
+        <Text style={{ ...type.caption, color: T.ink3 }}>{t.t('should_i_buy.action.recheckColorHint')}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+/** Every known error state renders a message and either an explicit retry or a
+ * way back — never a dead end and never a silent failure (V3-008 acceptance 3
+ * consumed here; §3.6). */
+function ErrorCard({
+  state,
+  onRetry,
+  t,
+}: {
+  state: DecisionErrorState;
+  onRetry: () => void;
+  t: UseT;
+}) {
+  const view = errorView(state);
+  return (
+    <View style={{ backgroundColor: T.card, borderRadius: radius.lg, padding: 16, gap: 10, ...shadow.soft }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <SystemIcon name="exclamation" size={16} color={colors.cautionAmber} strokeWidth={1.9} />
+        <Text style={{ ...type.body, color: T.ink2, flex: 1, lineHeight: 21 }}>{t.t(view.messageKey)}</Text>
+      </View>
+      {view.detail ? (
+        <Text style={{ ...type.caption, color: T.ink3, lineHeight: 16 }}>{view.detail}</Text>
+      ) : null}
+      {view.retryable ? (
+        <Pressable
+          onPress={onRetry}
+          accessibilityRole="button"
+          accessibilityLabel={t.t('common.retry')}
+          style={{
+            minHeight: 44,
+            alignSelf: 'flex-start',
+            minWidth: 120,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 16,
+            borderRadius: radius.md,
+            borderWidth: 1,
+            borderColor: T.divider,
+          }}
+        >
+          <Text style={{ ...type.footnote, fontWeight: '600', color: T.ink2 }}>{t.t('common.retry')}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+export function ShouldIBuyScreen({ navigation }: Props) {
+  const t = useT();
+  const eventContext = useV3EventContext();
+  const showToast = useToastStore((s) => s.show);
+
+  const [url, setUrl] = useState('');
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [objectKey, setObjectKey] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [result, setResult] = useState<DecisionResult | null>(null);
+  const [errorState, setErrorState] = useState<DecisionErrorState | null>(null);
+  const [chosenAction, setChosenAction] = useState<RenderedAction | null>(null);
+
+  const emit = useCallback(
+    <E extends V3FeOwnedEvent>(event: E, payload: V3EventPayloads[E]) => {
+      // No identity yet ⇒ no event. An orphaned envelope is worse than a gap.
+      const context = eventContext();
+      if (context) trackV3(event, payload, context);
+    },
+    [eventContext],
+  );
+
+  // One flow = one "should I buy this" attempt. It must open BEFORE the first
+  // emit: every decision event declares `flow_id: required`, and `trackV3`
+  // throws on a contract violation in dev builds.
+  useEffect(() => endV3Flow, []);
+
+  const runDecision = useCallback(async (): Promise<DecisionResult> => {
+    const sourceType = sourceTypeForInput(objectKey !== null);
+    beginV3Flow();
+    emit('v3_decision_started', { source_type: sourceType });
+    const candidate = await createPurchaseCandidate(
+      objectKey !== null
+        ? { sourceType, sourceAssetId: objectKey }
+        : { sourceType, sourceUrl: url.trim() },
+      { silentErrorToast: true },
+    ).catch((error: unknown) => {
+      // `create`'s 404 means "unusable source", not "missing resource" — the
+      // two endpoints therefore map their failures with different contexts.
+      throw withEndpointContext(error, 'create');
+    });
+    // Parsing is synchronous in P0 (contract §5.2): the POST already returns a
+    // terminal candidate, and a `parse_failed` one is still decidable —
+    // partial information, not a dead end.
+    const decision = await decidePurchaseCandidate(candidate.id, 'none', {
+      silentErrorToast: true,
+    }).catch((error: unknown) => {
+      throw withEndpointContext(error, 'decide');
+    });
+    return { candidate, decision };
+  }, [emit, objectKey, url]);
+
+  const decisionMutation = useMutation({
+    mutationFn: runDecision,
+    onMutate: () => {
+      setErrorState(null);
+      setResult(null);
+      setChosenAction(null);
+    },
+    onSuccess: (next) => {
+      setResult(next);
+      const value = viewedEventDecision(next.decision);
+      // A skewed unknown decision still renders (server copy) but is never
+      // emitted — the frozen enum would reject it.
+      if (value) emit('v3_decision_viewed', { decision: value });
+    },
+    onError: (error: unknown) => {
+      setErrorState(toDecisionErrorState(error as HttpErrorLike, endpointContextOf(error)));
+      endV3Flow();
+    },
+  });
+
+  const onUpload = async () => {
+    setUploading(true);
+    try {
+      const picked = await pickAndUploadImage('v3-candidate');
+      if (picked) {
+        setImageUri(picked.uri);
+        // The DURABLE reference (contract §5.2) — never the TTL-bound fileUrl.
+        setObjectKey(picked.objectKey);
+      }
+    } catch (e) {
+      showToast({ message: uploadErrorMessage(e), kind: 'error' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const clearImage = () => {
+    setImageUri(null);
+    setObjectKey(null);
+  };
+
+  const onChooseAction = (action: RenderedAction) => {
+    setChosenAction(action);
+    emit('v3_decision_action', { action });
+    // The flow ends with the user's choice; `recheck_color` starts a new one on
+    // the next submit (a fresh candidate, a fresh flow id).
+    if (action !== 'recheck_color') endV3Flow();
+  };
+
+  const canSubmit =
+    (objectKey !== null || url.trim().length > 0) && !decisionMutation.isPending && !uploading;
+  const card = result ? buildDecisionCard(result.decision) : null;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: T.bg }}>
+      <ScreenHeader title={t.t('should_i_buy.title')} onBack={() => navigation.goBack()} />
+
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: spacing.screen, paddingBottom: 100, gap: 16 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* §5.2 — the natural entrances, no "new try-on project" ceremony. */}
+        <View style={{ backgroundColor: T.card, borderRadius: radius.xl, padding: 16, gap: 12, ...shadow.soft }}>
+          <Text style={{ ...type.footnote, color: T.ink3, lineHeight: 18 }}>
+            {t.t('should_i_buy.input.hint')}
+          </Text>
+
+          {imageUri ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <ImageThumb
+                uri={imageUri}
+                size={56}
+                cornerRadius={radius.sm}
+                fallbackLabel={t.t('should_i_buy.candidate.fallbackName')}
+              />
+              <Text style={{ ...type.footnote, color: T.ink2, flex: 1 }}>
+                {t.t('should_i_buy.input.uploaded')}
+              </Text>
+              <Pressable
+                onPress={clearImage}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel={t.t('common.retry')}
+              >
+                <SystemIcon name="x" size={16} color={T.ink3} />
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              onPress={onUpload}
+              disabled={uploading}
+              accessibilityRole="button"
+              accessibilityLabel={t.t('should_i_buy.input.upload')}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                minHeight: 48,
+                borderRadius: radius.md,
+                borderWidth: 1.5,
+                borderColor: colors.separator,
+                borderStyle: 'dashed',
+              }}
+            >
+              {uploading ? (
+                <ActivityIndicator color={T.accent} />
+              ) : (
+                <>
+                  <SystemIcon name="camera" size={18} color={T.accent} strokeWidth={1.8} />
+                  <Text style={{ ...type.callout, color: T.ink2 }}>{t.t('should_i_buy.input.upload')}</Text>
+                </>
+              )}
+            </Pressable>
+          )}
+
+          <Text style={{ ...type.footnote, color: T.ink3 }}>{t.t('should_i_buy.input.or')}</Text>
+          <TextInput
+            value={url}
+            onChangeText={setUrl}
+            editable={objectKey === null}
+            placeholder={t.t('should_i_buy.input.placeholder')}
+            placeholderTextColor={colors.quaternaryLabel}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            accessibilityLabel={t.t('should_i_buy.input.or')}
+            style={{
+              backgroundColor: T.bg,
+              borderRadius: radius.md,
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              ...type.body,
+              color: T.ink,
+              opacity: objectKey === null ? 1 : 0.4,
+            }}
+          />
+
+          <Pressable
+            onPress={() => decisionMutation.mutate()}
+            disabled={!canSubmit}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !canSubmit, busy: decisionMutation.isPending }}
+            accessibilityLabel={t.t('should_i_buy.input.submit')}
+            style={{
+              minHeight: 50,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: radius.md,
+              backgroundColor: colors.label,
+              opacity: canSubmit ? 1 : 0.42,
+            }}
+          >
+            <Text style={{ ...type.body, fontWeight: '700', color: colors.inverse }}>
+              {decisionMutation.isPending
+                ? t.t('should_i_buy.input.checking')
+                : t.t('should_i_buy.input.submit')}
+            </Text>
+          </Pressable>
+        </View>
+
+        {errorState ? (
+          <ErrorCard state={errorState} onRetry={() => decisionMutation.mutate()} t={t} />
+        ) : null}
+
+        {/* The decision card: §5.4 layers 1, 2, 3, 5, 6 — layer 4 (visual
+            preview) is absent by design, so nothing here depends on an avatar
+            or a visual provider (feature acceptance 1). */}
+        {result && card ? (
+          <View style={{ backgroundColor: T.card, borderRadius: radius.xl, padding: 16, gap: 16, ...shadow.soft }}>
+            <CandidateHeader candidate={result.candidate} t={t} />
+
+            <Judgment decision={result.decision} t={t} />
+
+            {card.reasons.length > 0 ? (
+              <Section title={t.t('should_i_buy.section.reasons')}>
+                <View style={{ gap: 8 }}>
+                  {card.reasons.map((reason, index) => (
+                    <View key={`${reason.kind}-${index}`} style={{ flexDirection: 'row', gap: 8 }}>
+                      <Text style={{ ...type.body, color: T.ink3, lineHeight: 22 }}>·</Text>
+                      <Text style={{ ...type.body, color: T.ink2, flex: 1, lineHeight: 22 }}>
+                        {reason.text}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </Section>
+            ) : null}
+
+            {card.comparison ? <ClosetComparison comparison={card.comparison} t={t} /> : null}
+
+            {/* §5.4 layer 5 — the boundary the product must never overstate. */}
+            {card.boundaryNote ? (
+              <Text style={{ ...type.caption, color: T.ink3, lineHeight: 17 }}>{card.boundaryNote}</Text>
+            ) : null}
+
+            <NextActions actions={card.actions} chosen={chosenAction} onChoose={onChooseAction} t={t} />
+          </View>
+        ) : null}
+      </ScrollView>
+    </View>
+  );
+}
+
+/** §9.2's "product thumbnail + name" row, honestly built: the frozen candidate
+ * carries neither, so the row shows the parsed attributes we actually have and
+ * says so when the parser could not read the source. */
+function CandidateHeader({ candidate, t }: { candidate: PurchaseCandidate; t: UseT }) {
+  const summary = candidateSummary(candidate);
+  const parts = [
+    summary.category ? t.tEnum('category', summary.category) : null,
+    ...summary.colors.map((c) => t.tEnum('color', c)),
+    summary.price,
+  ].filter((part): part is string => !!part);
+
+  return (
+    <View style={{ gap: 4 }}>
+      <Text style={{ ...type.headline, color: T.ink }}>
+        {parts.length > 0 ? parts.join(' · ') : t.t('should_i_buy.candidate.fallbackName')}
+      </Text>
+      {summary.parseIncomplete ? (
+        <Text style={{ ...type.caption, color: T.ink3, lineHeight: 16 }}>
+          {t.t('should_i_buy.candidate.partialParse')}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+/** Which §5.1 endpoint failed. Tagged at the throw site rather than sniffed
+ * from the axios config, because only the caller knows which step it was in —
+ * and `create`'s 404 maps to a different, input-recoverable state than
+ * `decide`'s (V3-008 / codex review FE#137). */
+type TaggedError = { v3Endpoint?: 'create' | 'decide' };
+
+function withEndpointContext(error: unknown, endpoint: 'create' | 'decide'): unknown {
+  if (error && typeof error === 'object') (error as TaggedError).v3Endpoint = endpoint;
+  return error;
+}
+
+function endpointContextOf(error: unknown): 'create' | 'decide' {
+  return (error as TaggedError)?.v3Endpoint ?? 'decide';
+}

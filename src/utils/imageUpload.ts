@@ -3,14 +3,19 @@ import * as ImagePicker from 'expo-image-picker';
 import { createPresignedUpload, uploadFileUriToPresigned } from '@/api/uploads';
 import { compressImage, MAX_UPLOAD_BYTES } from '@/utils/image';
 
-export type PickedUpload = { uri: string; url: string };
+export type PickedUpload = { uri: string; url: string; objectKey: string };
 
 /**
  * Pick one image from the album, compress, and upload via presign.
- * Returns `{ uri (local preview), url (uploaded fileUrl) }`, or `null` if the
- * user cancelled. Throws `Error('permission')` or a network/upload error —
- * callers map these to a toast. Size is enforced server-side via the presign
- * `maxContentLength`, so there's no client-side `too_large` reject anymore.
+ * Returns `{ uri (local preview), url (uploaded fileUrl), objectKey }`, or
+ * `null` if the user cancelled. Throws `Error('permission')` or a network/upload
+ * error — callers map these to a toast. Size is enforced server-side via the
+ * presign `maxContentLength`, so there's no client-side `too_large` reject
+ * anymore.
+ *
+ * `objectKey` is the DURABLE storage reference; `url` is a TTL-bound read URL.
+ * V3's purchase-candidate contract (§5.2 `source_asset_id`) requires the former
+ * — a signed URL must never be persisted as truth.
  */
 export async function pickAndUploadImage(filePrefix = 'upload'): Promise<PickedUpload | null> {
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -27,7 +32,7 @@ export async function pickAndUploadImage(filePrefix = 'upload'): Promise<PickedU
     maxContentLength: MAX_UPLOAD_BYTES,
   });
   await uploadFileUriToPresigned(presign, 'image/jpeg', compressed.uri, fileName);
-  return { uri: compressed.uri, url: presign.fileUrl };
+  return { uri: compressed.uri, url: presign.fileUrl, objectKey: presign.objectKey };
 }
 
 /** Map a pickAndUploadImage rejection to a user-facing message. */

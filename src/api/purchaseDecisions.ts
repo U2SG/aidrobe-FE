@@ -3,8 +3,8 @@
 // `purchaseDecisionMapping.ts` (RN-free, Node-tested); this file only carries
 // the HTTP calls, so no decision logic can hide in here either.
 //
-// Screens arrive with V3-009/V3-010; nothing imports this yet. Callers whose
-// surface hides itself on error should pass `{ silentErrorToast: true }` and
+// Callers whose surface renders its own error state (V3-009's decision card
+// does) pass `{ silentErrorToast: true }` so the global toast stays quiet, and
 // map failures through `toDecisionErrorState` — every wrapper forwards a
 // per-request `config` so that flag actually reaches the interceptor
 // (codex review, FE#137).
