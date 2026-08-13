@@ -338,6 +338,7 @@ export const zhCN = {
   'should_i_buy.input.checking': '判断中…',
   'should_i_buy.input.upload': '上传商品图（相册）',
   'should_i_buy.input.uploaded': '已选商品图',
+  'should_i_buy.input.clearImage': '移除商品图',
   'should_i_buy.input.or': '或粘贴商品链接',
   'should_i_buy.candidate.fallbackName': '商品',
   'should_i_buy.candidate.partialParse': '商品信息未能完整解析，以下判断基于已识别的部分。',

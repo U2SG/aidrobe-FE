@@ -1,6 +1,7 @@
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation } from '@tanstack/react-query';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import type {
@@ -290,10 +291,18 @@ export function ShouldIBuyScreen({ navigation }: Props) {
     [eventContext],
   );
 
-  // One flow = one "should I buy this" attempt. It must open BEFORE the first
-  // emit: every decision event declares `flow_id: required`, and `trackV3`
-  // throws on a contract violation in dev builds.
-  useEffect(() => endV3Flow, []);
+  // One flow = one "should I buy this" attempt, with exactly ONE opener
+  // (submitting) and ONE closer (leaving the screen). That invariant is
+  // load-bearing rather than tidy: every decision event declares
+  // `flow_id: required` and `trackV3` THROWS in a dev build on a contract
+  // violation, so any code path that closed the flow while the card was still
+  // interactive would turn the next tap into a red screen.
+  //
+  // Closing hangs off BLUR, not unmount: this repo's tabs are persistent and
+  // never unmount on a tab switch (repo CLAUDE.md), so an unmount cleanup would
+  // often never run — and a flow left open keeps the client interceptor
+  // stamping X-Correlation-Id onto other tabs' unrelated requests.
+  useFocusEffect(useCallback(() => endV3Flow, []));
 
   const runDecision = useCallback(async (): Promise<DecisionResult> => {
     const sourceType = sourceTypeForInput(objectKey !== null);
@@ -335,8 +344,9 @@ export function ShouldIBuyScreen({ navigation }: Props) {
       if (value) emit('v3_decision_viewed', { decision: value });
     },
     onError: (error: unknown) => {
+      // The flow deliberately stays OPEN: the attempt is not over while the
+      // retry button is on screen, and blur is the single closer.
       setErrorState(toDecisionErrorState(error as HttpErrorLike, endpointContextOf(error)));
-      endV3Flow();
     },
   });
 
@@ -363,10 +373,10 @@ export function ShouldIBuyScreen({ navigation }: Props) {
 
   const onChooseAction = (action: RenderedAction) => {
     setChosenAction(action);
+    // No `endV3Flow()` here. Choosing an action does not remove the card, so a
+    // second tap is a normal thing for a user to do — and closing the flow on
+    // the first tap made that second emit fail validation and throw.
     emit('v3_decision_action', { action });
-    // The flow ends with the user's choice; `recheck_color` starts a new one on
-    // the next submit (a fresh candidate, a fresh flow id).
-    if (action !== 'recheck_color') endV3Flow();
   };
 
   const canSubmit =
@@ -404,7 +414,7 @@ export function ShouldIBuyScreen({ navigation }: Props) {
                 onPress={clearImage}
                 hitSlop={12}
                 accessibilityRole="button"
-                accessibilityLabel={t.t('common.retry')}
+                accessibilityLabel={t.t('should_i_buy.input.clearImage')}
               >
                 <SystemIcon name="x" size={16} color={T.ink3} />
               </Pressable>

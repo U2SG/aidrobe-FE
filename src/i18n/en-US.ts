@@ -351,6 +351,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'should_i_buy.input.checking': 'Checking…',
   'should_i_buy.input.upload': 'Upload a product photo (album)',
   'should_i_buy.input.uploaded': 'Product photo selected',
+  'should_i_buy.input.clearImage': 'Remove the product photo',
   'should_i_buy.input.or': 'or paste a product link',
   'should_i_buy.candidate.fallbackName': 'Product',
   'should_i_buy.candidate.partialParse':
