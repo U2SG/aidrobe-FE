@@ -141,7 +141,10 @@ export function buildDecisionCard(decision: WardrobeDecision): DecisionCardView 
     reasons: decision.reasons.slice(0, MAX_REASONS),
     comparison: hasComparison ? { summaryText, items: similarItems } : null,
     boundaryNote: decision.boundaryNote,
-    actions: renderableActions(decision.nextActions),
+    // Frozen §3 skew rule: an unknown decision renders server texts with NO
+    // decision-specific actions — the user must not act on a judgment this
+    // client cannot interpret (codex review, FE#141).
+    actions: decision.knownDecision === null ? [] : renderableActions(decision.nextActions),
   };
 }
 

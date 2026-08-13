@@ -126,6 +126,20 @@ check(
   ).comparison === null,
 );
 
+// --- Frozen §3 skew rule: unknown decision → texts only, NO actions ----------
+// (codex review, FE#141: acting on a judgment this client cannot interpret.)
+
+const skewedCard = buildDecisionCard(
+  toWardrobeDecision({
+    ...WORTH_ADDING_DECISION,
+    decision: 'buy_immediately_v9',
+    next_actions: ['add_to_candidates', 'skip'],
+  }),
+);
+check('unknown decision still renders the server text', skewedCard.emphasis.text.length > 0);
+check('unknown decision renders with neutral tone', skewedCard.emphasis.tone === null);
+check('unknown decision suppresses ALL actions', skewedCard.actions.length === 0);
+
 // --- Acceptance 4: no new tab, avatar center or infinite choice grid ---------
 // The action row is a closed, bounded set — three entries, no "try another"
 // generator, and `style_with_existing` withheld until V3-010 gives it a real
@@ -155,7 +169,20 @@ const unknown = toWardrobeDecision(UNKNOWN_DECISION);
 const unknownCard = buildDecisionCard(unknown);
 check('an unknown decision still renders the server copy', unknownCard.emphasis.text.length > 0);
 check('with no decision-specific tone', unknownCard.emphasis.tone === null);
-check('an unknown next_action is dropped', unknownCard.actions.join(',') === 'add_to_candidates');
+// Unknown DECISION → no actions at all (frozen §3; codex review, FE#141):
+// the user must not act on a judgment this client cannot interpret.
+check('an unknown decision suppresses ALL actions', unknownCard.actions.length === 0);
+// Dropping unknown ACTIONS is asserted on a KNOWN decision, where the action
+// row legitimately renders.
+check(
+  'an unknown next_action is dropped from a known decision',
+  buildDecisionCard(
+    toWardrobeDecision({
+      ...WORTH_ADDING_DECISION,
+      next_actions: ['add_to_candidates', 'summon_stylist'],
+    }),
+  ).actions.join(',') === 'add_to_candidates',
+);
 check('and it is never emitted as analytics', viewedEventDecision(unknown) === null);
 check('a known decision is', viewedEventDecision(duplicate) === 'avoid_duplicate');
 

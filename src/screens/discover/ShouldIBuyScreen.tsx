@@ -5,13 +5,18 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import type {
+  DecisionEndpointContext,
   DecisionErrorState,
   HttpErrorLike,
   PurchaseCandidate,
   WardrobeDecision,
 } from '@/api/purchaseDecisionMapping';
 import { toDecisionErrorState } from '@/api/purchaseDecisionMapping';
-import { createPurchaseCandidate, decidePurchaseCandidate } from '@/api/purchaseDecisions';
+import {
+  createPurchaseCandidate,
+  decidePurchaseCandidate,
+  getPurchaseCandidate,
+} from '@/api/purchaseDecisions';
 import { beginV3Flow, endV3Flow } from '@/api/v3Flow';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { ImageThumb } from '@/components/ui/ImageThumb';
@@ -75,6 +80,11 @@ const TONE_STYLE: Record<DecisionTone, { fg: string; bg: string }> = {
 };
 
 const THUMB = 64;
+
+// Bounded wait for a `submitted` (async-parsing) candidate to settle before
+// requesting a decision — zero iterations while P0 parsing is synchronous.
+const MAX_PARSE_POLLS = 5;
+const PARSE_POLL_MS = 1200;
 
 /** The candidate is kept beside the decision so §9.2's product header can show
  * the parsed attributes — the decision response carries none of them. */
@@ -318,15 +328,28 @@ export function ShouldIBuyScreen({ navigation }: Props) {
       // two endpoints therefore map their failures with different contexts.
       throw withEndpointContext(error, 'create');
     });
-    // Parsing is synchronous in P0 (contract §5.2): the POST already returns a
-    // terminal candidate, and a `parse_failed` one is still decidable —
-    // partial information, not a dead end.
-    const decision = await decidePurchaseCandidate(candidate.id, 'none', {
+    // Parsing is synchronous in P0 (contract §5.2), so this loop normally runs
+    // zero times — but the contract reserves `submitted` for asynchronous
+    // parsing, and deciding on an unparsed candidate would ask for a judgment
+    // before the evidence exists (codex review, FE#141). Bounded: unknown
+    // statuses are terminal by the frozen skew rule, so this can never spin.
+    let settled = candidate;
+    for (let attempt = 0; !settled.isTerminal && attempt < MAX_PARSE_POLLS; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, PARSE_POLL_MS));
+      settled = await getPurchaseCandidate(settled.id, { silentErrorToast: true }).catch(
+        (error: unknown) => {
+          throw withEndpointContext(error, 'read');
+        },
+      );
+    }
+    // A `parse_failed` candidate is still decidable — partial information,
+    // not a dead end (contract §5.2).
+    const decision = await decidePurchaseCandidate(settled.id, 'none', {
       silentErrorToast: true,
     }).catch((error: unknown) => {
       throw withEndpointContext(error, 'decide');
     });
-    return { candidate, decision };
+    return { candidate: settled, decision };
   }, [emit, objectKey, url]);
 
   const decisionMutation = useMutation({
@@ -565,13 +588,13 @@ function CandidateHeader({ candidate, t }: { candidate: PurchaseCandidate; t: Us
  * from the axios config, because only the caller knows which step it was in —
  * and `create`'s 404 maps to a different, input-recoverable state than
  * `decide`'s (V3-008 / codex review FE#137). */
-type TaggedError = { v3Endpoint?: 'create' | 'decide' };
+type TaggedError = { v3Endpoint?: DecisionEndpointContext };
 
-function withEndpointContext(error: unknown, endpoint: 'create' | 'decide'): unknown {
+function withEndpointContext(error: unknown, endpoint: DecisionEndpointContext): unknown {
   if (error && typeof error === 'object') (error as TaggedError).v3Endpoint = endpoint;
   return error;
 }
 
-function endpointContextOf(error: unknown): 'create' | 'decide' {
+function endpointContextOf(error: unknown): DecisionEndpointContext {
   return (error as TaggedError)?.v3Endpoint ?? 'decide';
 }
