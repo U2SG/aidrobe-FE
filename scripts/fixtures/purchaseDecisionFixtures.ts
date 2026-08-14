@@ -55,7 +55,16 @@ export const DUPLICATE_DECISION: ServerWardrobeDecision = {
   closet_comparison: {
     summary_text: '你已有的米色短外套覆盖了它的大部分使用场景。',
     similar_items: [
-      { item_id: '11111111-1111-4111-8111-111111111111', image_url: null, relation: 'covers' },
+      // The first `covers` row carries a real image so the comparison layer is
+      // evidenced with a thumbnail rather than only its placeholder, and so the
+      // item V3-010 anchors its outfit on is visible. Signed-URL shaped on
+      // purpose (§13.5: short-lived, never persisted).
+      {
+        item_id: '11111111-1111-4111-8111-111111111111',
+        image_url:
+          'https://cdn.aidrobe.test/wardrobe/11111111-1111-4111-8111-111111111111.png?X-Amz-Expires=1800&X-Amz-Signature=stub',
+        relation: 'covers',
+      },
       { item_id: '22222222-2222-4222-8222-222222222222', image_url: null, relation: 'covers' },
       { item_id: '33333333-3333-4333-8333-333333333333', image_url: null, relation: 'complements' },
     ],
@@ -63,7 +72,12 @@ export const DUPLICATE_DECISION: ServerWardrobeDecision = {
   uncertainty: 'low',
   visual_need: 'none',
   boundary_note: '用于判断整体感觉；实际尺码、触感和精确垂坠仍需参考商品信息。',
-  next_actions: ['skip', 'style_with_existing', 'recheck_color'],
+  // Exactly what `purchase_decision_rules._next_actions` emits for
+  // `avoid_duplicate` when V3-006 composed an owned-item alternative: the reuse
+  // action first, then skip. Nothing else — the BE never adds `recheck_color`
+  // to this state, and a fixture that did would evidence a screen the backend
+  // cannot produce.
+  next_actions: ['style_with_existing', 'skip'],
   created_at: '2026-08-13T04:12:07.512000+00:00',
 };
 
@@ -121,8 +135,28 @@ export const LONG_COPY_DECISION: ServerWardrobeDecision = {
   visual_need: 'helpful',
   boundary_note:
     '用于判断整体感觉；实际尺码、触感和精确垂坠仍需参考商品信息。This judgment describes fit against your wardrobe, not against your body.',
-  next_actions: ['recheck_color', 'add_to_candidates', 'skip'],
+  // `consider_alternate` with a composed alternative, exactly as the BE orders
+  // it — so the long-copy shot also stresses the widest action row this screen
+  // can render.
+  next_actions: ['recheck_color', 'add_to_candidates', 'style_with_existing'],
   created_at: '2026-08-13T04:12:07.512000+00:00',
+};
+
+/** V3-010 skew case: the server offers `style_with_existing` but names no owned
+ * item that COVERS the need — only a complementary one. Today's BE cannot
+ * produce this (it offers the action only when V3-006 composed an alternative,
+ * and those are seeded from `covers` items alone), but a newer one could, and
+ * the reuse action has nothing to build an outfit around. The action must
+ * therefore not render, while every other offered action still does. */
+export const NO_COVERS_ALTERNATIVE_DECISION: ServerWardrobeDecision = {
+  ...DUPLICATE_DECISION,
+  closet_comparison: {
+    summary_text: '你已有的那条直筒长裤能和它搭在一起，但没有同类单品可以替代它。',
+    similar_items: [
+      { item_id: '33333333-3333-4333-8333-333333333333', image_url: null, relation: 'complements' },
+    ],
+  },
+  next_actions: ['style_with_existing', 'skip'],
 };
 
 /** Version skew: a decision value this build has never heard of. The card must

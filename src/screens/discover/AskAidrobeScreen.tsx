@@ -1,6 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -611,17 +611,50 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     });
   };
 
-  const submitQuestion = (question: string) => {
-    const q = question.trim();
-    if (!q || askMutation.isPending) return;
-    setInput('');
-    askMutation.mutate({
-      tempId: `local-${Date.now()}`,
-      question: q,
-      conversationId,
-      epoch: conversationEpoch.current,
-    });
-  };
+  // `useCallback` so the V3-010 auto-ask effect below can list it as a
+  // dependency (exhaustive-deps) without re-declaring the send inline.
+  //
+  // It does NOT stabilize identity, and the effect does not rely on it doing
+  // so: `askMutation` is a fresh object on every render, so this callback is
+  // re-created every render and the effect re-runs every render. That is
+  // harmless because the guard against re-asking is `autoAskedRef` below, which
+  // keys on (item, question) — not the dependency list.
+  const submitQuestion = useCallback(
+    (question: string) => {
+      const q = question.trim();
+      if (!q || askMutation.isPending) return;
+      setInput('');
+      askMutation.mutate({
+        tempId: `local-${Date.now()}`,
+        question: q,
+        conversationId,
+        epoch: conversationEpoch.current,
+      });
+    },
+    [askMutation, conversationId],
+  );
+
+  // V3-010 — a hand-off that promises an outfit has to deliver one, so the
+  // question travels with the navigation and is asked once on arrival; landing
+  // on an empty composer would make the decision card's reuse action a
+  // redirect rather than an answer.
+  //
+  // Guarded on emptiness rather than on effect ordering: the scope-change
+  // effect above clears `turns` in the same commit as a param update, and
+  // `submitQuestion` silently no-ops while a previous ask is in flight — so
+  // firing only from a settled, empty thread is what makes the send observable
+  // instead of maybe-swallowed. The ref keys on (item, question) so a
+  // re-render, a tab switch or a return trip cannot re-ask the same thing.
+  const autoAsk = route.params?.autoAsk;
+  const autoAskedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!autoAsk) return;
+    const key = `${focusedItemId ?? ''}::${autoAsk}`;
+    if (autoAskedRef.current === key) return;
+    if (askMutation.isPending || turns.length > 0) return;
+    autoAskedRef.current = key;
+    submitQuestion(autoAsk);
+  }, [autoAsk, focusedItemId, askMutation.isPending, turns.length, submitQuestion]);
 
   const send = () => {
     if (!input.trim()) return;

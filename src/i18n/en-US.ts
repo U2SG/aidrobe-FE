@@ -368,6 +368,8 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'should_i_buy.action.skip': 'Not this time',
   'should_i_buy.action.recheckColor': 'Check another color',
   'should_i_buy.action.recheckColorHint': 'Paste the link for the other color and check again',
+  'should_i_buy.action.styleWithExisting': 'Style what you already own',
+  'should_i_buy.action.styleWithExistingQuestion': 'Style an outfit around this piece.',
   'should_i_buy.error.featureUnavailable':
     'This feature is not open yet — the existing outfit advice still works.',
   'should_i_buy.error.notFound': 'This judgment could not be found; it may have been deleted.',
