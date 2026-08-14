@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation } from '@tanstack/react-query';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import type {
@@ -17,7 +17,7 @@ import {
   decidePurchaseCandidate,
   getPurchaseCandidate,
 } from '@/api/purchaseDecisions';
-import { beginV3Flow, endV3Flow } from '@/api/v3Flow';
+import { adoptV3Flow, beginV3Flow, endV3Flow } from '@/api/v3Flow';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { ImageThumb } from '@/components/ui/ImageThumb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
@@ -125,8 +125,8 @@ function Judgment({ decision, t }: { decision: WardrobeDecision; t: UseT }) {
 }
 
 /** §5.4 layer 3. The comparison is where the existing-item alternative becomes
- * visible (feature acceptance 3): `covers` items are the owned things that
- * already do this job. Acting on one is V3-010; seeing them is this feature. */
+ * visible: `covers` items are the owned things that already do this job, and
+ * V3-010's reuse action styles an outfit around the first of them. */
 function ClosetComparison({
   comparison,
   t,
@@ -170,8 +170,9 @@ function ClosetComparison({
   );
 }
 
-/** §5.4 layer 6. `style_with_existing` is filtered out upstream because its
- * destination is V3-010 — every button here leads somewhere real. */
+/** §5.4 layer 6 — the frozen four, filtered upstream to the ones that lead
+ * somewhere real. Only `add_to_candidates` is filled: the page must not make
+ * buying look like the default, and two emphasized buttons would (§5.1). */
 function NextActions({
   actions,
   chosen,
@@ -291,6 +292,10 @@ export function ShouldIBuyScreen({ navigation }: Props) {
   const [result, setResult] = useState<DecisionResult | null>(null);
   const [errorState, setErrorState] = useState<DecisionErrorState | null>(null);
   const [chosenAction, setChosenAction] = useState<RenderedAction | null>(null);
+  // The current attempt's flow id, and whether we left the screen for the
+  // existing-item alternative rather than for good. See the focus effect below.
+  const flowIdRef = useRef<string | null>(null);
+  const handedOffRef = useRef(false);
 
   const emit = useCallback(
     <E extends V3FeOwnedEvent>(event: E, payload: V3EventPayloads[E]) => {
@@ -312,11 +317,27 @@ export function ShouldIBuyScreen({ navigation }: Props) {
   // never unmount on a tab switch (repo CLAUDE.md), so an unmount cleanup would
   // often never run — and a flow left open keeps the client interceptor
   // stamping X-Correlation-Id onto other tabs' unrelated requests.
-  useFocusEffect(useCallback(() => endV3Flow, []));
+  //
+  // V3-010 adds exactly one exception, scoped to the round trip it needs: the
+  // existing-item hand-off leaves this screen and comes back to the SAME card,
+  // so the attempt is not over and its later actions must keep the same
+  // `flow_id`. The flow is therefore suspended on blur and re-adopted on
+  // return — but ONLY when we handed off. Re-adopting on every focus would
+  // resurrect a stale id after an unrelated ten-minute tab switch and stamp it
+  // onto fresh requests, which is the leak the blur closer exists to prevent.
+  useFocusEffect(
+    useCallback(() => {
+      if (handedOffRef.current && flowIdRef.current) adoptV3Flow(flowIdRef.current);
+      handedOffRef.current = false;
+      return endV3Flow;
+    }, []),
+  );
 
   const runDecision = useCallback(async (): Promise<DecisionResult> => {
     const sourceType = sourceTypeForInput(objectKey !== null);
-    beginV3Flow();
+    // Kept so the same attempt can re-adopt its own id after the existing-item
+    // hand-off; a new submit is a new attempt and overwrites it.
+    flowIdRef.current = beginV3Flow();
     emit('v3_decision_started', { source_type: sourceType });
     const candidate = await createPurchaseCandidate(
       objectKey !== null
@@ -373,6 +394,10 @@ export function ShouldIBuyScreen({ navigation }: Props) {
     },
   });
 
+  // Derived before the handlers that read it, so the reuse hand-off does not
+  // depend on a binding declared further down the component.
+  const card = result ? buildDecisionCard(result.decision) : null;
+
   const onUpload = async () => {
     setUploading(true);
     try {
@@ -399,12 +424,36 @@ export function ShouldIBuyScreen({ navigation }: Props) {
     // No `endV3Flow()` here. Choosing an action does not remove the card, so a
     // second tap is a normal thing for a user to do — and closing the flow on
     // the first tap made that second emit fail validation and throw.
+    //
+    // The reuse choice is recorded as exactly this event and nothing else: no
+    // candidate is added, no shopping surface opens, so the V3-002 dashboard
+    // reads it as a reuse outcome rather than a purchase conversion (feature
+    // acceptance 3).
     emit('v3_decision_action', { action });
+    if (action === 'style_with_existing') openExistingItemAlternative();
+  };
+
+  /** §5.4 layer 6's "用现有类似单品搭一套" — §4.2's 回流动作, reached with the
+   * owned item the decision named. The destination is not a new screen: the
+   * item-scoped Ask is where this app already builds an outfit AROUND one owned
+   * piece, and it does so from the wardrobe alone (its backend prompt makes the
+   * focused item mandatory and its candidate list is wardrobe-only). Pushing on
+   * THIS stack, not a tab jump, is what lets `goBack` land on this same card
+   * with its decision still on screen. */
+  const openExistingItemAlternative = () => {
+    const anchorId = card?.reuseAnchorId;
+    // `buildDecisionCard` does not offer the action without an anchor, so this
+    // is unreachable defence rather than a user-visible branch.
+    if (!anchorId) return;
+    handedOffRef.current = true;
+    navigation.navigate('AskAidrobe', {
+      focusedItemId: anchorId,
+      autoAsk: t.t('should_i_buy.action.styleWithExistingQuestion'),
+    });
   };
 
   const canSubmit =
     (objectKey !== null || url.trim().length > 0) && !decisionMutation.isPending && !uploading;
-  const card = result ? buildDecisionCard(result.decision) : null;
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>

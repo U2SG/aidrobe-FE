@@ -5,12 +5,17 @@
 // The card itself is a React tree this repo has no renderer for (there is no
 // jest/RNTL stack — see scripts/run-regressions.ts), so the split is
 // deliberate: every decision the card MAKES lives in the pure module and is
-// asserted here, and what the card LOOKS like is evidenced in the browser
-// (.agent-artifacts/v3-009/). The fixtures below are the same objects the
-// browser driver serves, so the two halves describe one payload.
+// asserted here, and what the card LOOKS like — and where its actions LEAD —
+// is evidenced in the browser (.agent-artifacts/v3-009/, v3-010/). The fixtures
+// below are the same objects the browser drivers serve, so the halves describe
+// one payload.
 import assert from 'node:assert/strict';
 
-import { toPurchaseCandidate, toWardrobeDecision } from '../src/api/purchaseDecisionMapping.ts';
+import {
+  DECISION_NEXT_ACTIONS,
+  toPurchaseCandidate,
+  toWardrobeDecision,
+} from '../src/api/purchaseDecisionMapping.ts';
 import {
   ACTION_LABEL_KEYS,
   buildDecisionCard,
@@ -21,6 +26,7 @@ import {
   RELATION_LABEL_KEYS,
   RENDERED_ACTIONS,
   renderableActions,
+  reuseAnchorItemId,
   sourceTypeForInput,
   uncertaintyCaveatKey,
   viewedEventDecision,
@@ -28,6 +34,7 @@ import {
 import {
   DUPLICATE_DECISION,
   LONG_COPY_DECISION,
+  NO_COVERS_ALTERNATIVE_DECISION,
   PARSED_CANDIDATE,
   UNKNOWN_DECISION,
   UNPARSED_CANDIDATE,
@@ -141,26 +148,58 @@ check('unknown decision renders with neutral tone', skewedCard.emphasis.tone ===
 check('unknown decision suppresses ALL actions', skewedCard.actions.length === 0);
 
 // --- Acceptance 4: no new tab, avatar center or infinite choice grid ---------
-// The action row is a closed, bounded set — three entries, no "try another"
-// generator, and `style_with_existing` withheld until V3-010 gives it a real
-// destination.
+// The action row is a closed, bounded set: exactly the frozen wire vocabulary,
+// with no "try another" generator. V3-010 completed it — every one of the four
+// now leads somewhere real.
 
-check('exactly three renderable actions', RENDERED_ACTIONS.length === 3);
+check('the renderable actions are exactly the frozen four', RENDERED_ACTIONS.length === 4);
 check(
-  'style_with_existing is not among them',
-  !(RENDERED_ACTIONS as readonly string[]).includes('style_with_existing'),
+  'and nothing outside the wire vocabulary can render',
+  [...RENDERED_ACTIONS].sort().join(',') === [...DECISION_NEXT_ACTIONS].sort().join(','),
 );
 check(
-  'the server offering it does not add a button',
-  !renderableActions(duplicate.nextActions).includes('style_with_existing' as never),
-);
-check(
-  'but the other offered actions do render',
-  renderableActions(duplicate.nextActions).join(',') === 'skip,recheck_color',
+  'the order the server sent is preserved',
+  renderableActions(duplicate.nextActions).join(',') === 'style_with_existing,skip',
 );
 check(
   'every rendered action has a label key',
   RENDERED_ACTIONS.every((a) => !!ACTION_LABEL_KEYS[a]),
+);
+
+// --- V3-010: the existing-item alternative's anchor --------------------------
+// The action styles an outfit around ONE owned item, so which item it picks is
+// the whole behavior. `covers` only: the BE offers this action exactly when
+// V3-006 composed an alternative, and it seeds those from V3-005's `covers`
+// items alone — a `complements` item pairs WITH the candidate rather than doing
+// its job, so anchoring on one would answer a different question.
+
+check(
+  'the anchor is the first covers item, not merely the first item',
+  reuseAnchorItemId(duplicate) === '11111111-1111-4111-8111-111111111111',
+);
+check('the card carries that anchor for the hand-off', duplicateCard.reuseAnchorId === reuseAnchorItemId(duplicate));
+check('so the reuse action renders', duplicateCard.actions.includes('style_with_existing'));
+
+const complementsOnly = toWardrobeDecision(NO_COVERS_ALTERNATIVE_DECISION);
+const complementsOnlyCard = buildDecisionCard(complementsOnly);
+check('the server still offered the action', complementsOnly.nextActions.includes('style_with_existing'));
+check('but no owned item covers the need', reuseAnchorItemId(complementsOnly) === null);
+check(
+  'so the action is dropped rather than opening an item-less styling flow',
+  !complementsOnlyCard.actions.includes('style_with_existing'),
+);
+check('while the other offered actions still render', complementsOnlyCard.actions.join(',') === 'skip');
+check(
+  'a decision with no comparison block at all is treated the same way',
+  buildDecisionCard(
+    toWardrobeDecision({ ...DUPLICATE_DECISION, closet_comparison: null }),
+  ).actions.join(',') === 'skip',
+);
+// The reuse choice is an action emit, not a purchase: `add_to_candidates` is a
+// separate value and neither implies the other.
+check(
+  'the reuse action is its own analytics value',
+  ACTION_LABEL_KEYS.style_with_existing !== ACTION_LABEL_KEYS.add_to_candidates,
 );
 
 // --- Version skew (contract §3, frozen) -------------------------------------

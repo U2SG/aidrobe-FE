@@ -86,7 +86,10 @@ export type SettingsStackParamList = {
 // V1 Discover stack and this V2 stack. `focusedItemId` scopes to one item
 // (scope=item); `scope: 'today'` flows from Today; absent → global.
 export type AskStackParamList = {
-  AskAidrobe: { focusedItemId?: string; scope?: 'today' } | undefined;
+  // `autoAsk` is declared here because `AskAidrobeScreen`'s own props are typed
+  // against this list — the screen cannot read a param the list omits. No Ask-tab
+  // entrance passes it today (V3-010's only caller is Discover-hosted ShouldIBuy).
+  AskAidrobe: { focusedItemId?: string; scope?: 'today'; autoAsk?: string } | undefined;
   SenseCheck: undefined;
   PackingList: undefined;
   PackingListDetail: { id: string };
@@ -114,7 +117,10 @@ export type DiscoverStackParamList = {
   AddInspiration: undefined;
   // `focusedItemId` scopes the Ask to one wardrobe item (scope=item). `scope`
   // lets other entrypoints (e.g. today) flow through; absent → global.
-  AskAidrobe: { focusedItemId?: string; scope?: 'today' } | undefined;
+  // V3-010: `autoAsk` sends that question once on arrival, so a hand-off that
+  // promises an outfit delivers one instead of an empty composer. Only the
+  // Discover stack declares it — ShouldIBuy, its only caller, lives here.
+  AskAidrobe: { focusedItemId?: string; scope?: 'today'; autoAsk?: string } | undefined;
 };
 
 export type MainTabsParamList = {

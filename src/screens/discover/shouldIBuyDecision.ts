@@ -47,13 +47,16 @@ export function decisionTone(knownDecision: PurchaseDecisionValue | null): Decis
  * layer, so the card renders at most the first three. */
 export const MAX_REASONS = 3;
 
-/** Actions the V3-009 card renders. `style_with_existing` is deliberately NOT
- * here: its real behavior (open/create an owned-items outfit and return to
- * this context) is feature V3-010, and a button that leads nowhere real must
- * not render. The existing-item alternative is still VISIBLE when relevant
- * through the closet-comparison layer (feature acceptance 3). Unknown wire
- * values were already dropped by `toWardrobeDecision`. */
-export const RENDERED_ACTIONS = ['add_to_candidates', 'skip', 'recheck_color'] as const;
+/** Actions the card renders — now the frozen four. `style_with_existing` joined
+ * in V3-010, which gave it a real destination: the owned-item styling flow that
+ * §4.2 calls the wardrobe's 回流动作. Unknown wire values were already dropped
+ * by `toWardrobeDecision`. */
+export const RENDERED_ACTIONS = [
+  'add_to_candidates',
+  'skip',
+  'recheck_color',
+  'style_with_existing',
+] as const;
 export type RenderedAction = (typeof RENDERED_ACTIONS)[number];
 
 export function renderableActions(nextActions: DecisionNextAction[]): RenderedAction[] {
@@ -66,7 +69,28 @@ export const ACTION_LABEL_KEYS: Record<RenderedAction, I18nKey> = {
   add_to_candidates: 'should_i_buy.action.addToCandidates',
   skip: 'should_i_buy.action.skip',
   recheck_color: 'should_i_buy.action.recheckColor',
+  style_with_existing: 'should_i_buy.action.styleWithExisting',
 };
+
+/**
+ * V3-010 — the owned item the existing-item alternative is built around.
+ *
+ * `covers` ONLY, and never `complements`. That is the server's own semantics,
+ * not a preference: the BE offers `style_with_existing` exactly when V3-006
+ * composed an owned-item alternative, and V3-006 seeds those alternatives from
+ * V3-005's `covers` items alone (`compose_outfit_evidence._alternative_seeds`,
+ * `purchase_decision_rules._next_actions`). A `complements` item pairs WITH the
+ * candidate; it does not do the candidate's job, so styling around one would
+ * quietly answer a different question than the button asks.
+ *
+ * The first `covers` row is the top-ranked one — V3-005 orders `covers` before
+ * `complements` and the API slices that ordered list — so this is the owned item
+ * the comparison layer already put first, not an arbitrary pick.
+ */
+export function reuseAnchorItemId(decision: WardrobeDecision): string | null {
+  const anchor = decision.closetComparison.similarItems.find((i) => i.relation === 'covers');
+  return anchor ? anchor.itemId : null;
+}
 
 /** Comparison-item relation labels (§5.4 layer 3). A skewed unknown relation
  * maps to null in the wire layer and renders no tag rather than a guess. */
@@ -131,20 +155,31 @@ export interface DecisionCardView {
   comparison: { summaryText: string | null; items: ComparisonItem[] } | null;
   boundaryNote: string | null;
   actions: RenderedAction[];
+  /** V3-010 — the owned item `style_with_existing` builds its outfit around;
+   * null when the decision names none, in which case that action is not
+   * offered at all (see `actions`). */
+  reuseAnchorId: string | null;
 }
 
 export function buildDecisionCard(decision: WardrobeDecision): DecisionCardView {
   const { summaryText, similarItems } = decision.closetComparison;
   const hasComparison = summaryText !== null || similarItems.length > 0;
+  // Frozen §3 skew rule: an unknown decision renders server texts with NO
+  // decision-specific actions — the user must not act on a judgment this
+  // client cannot interpret (codex review, FE#141).
+  const offered = decision.knownDecision === null ? [] : renderableActions(decision.nextActions);
+  const reuseAnchorId = reuseAnchorItemId(decision);
   return {
     emphasis: { text: decision.decisionText, tone: decisionTone(decision.knownDecision) },
     reasons: decision.reasons.slice(0, MAX_REASONS),
     comparison: hasComparison ? { summaryText, items: similarItems } : null,
     boundaryNote: decision.boundaryNote,
-    // Frozen §3 skew rule: an unknown decision renders server texts with NO
-    // decision-specific actions — the user must not act on a judgment this
-    // client cannot interpret (codex review, FE#141).
-    actions: decision.knownDecision === null ? [] : renderableActions(decision.nextActions),
+    // The reuse action needs an owned item to build the outfit around. Today's
+    // BE cannot offer the action without one, so this guard is unreachable
+    // against it — but a newer BE could, and an action button that opens a
+    // styling flow with nothing to style is the dead end §3.6 forbids.
+    actions: reuseAnchorId === null ? offered.filter((a) => a !== 'style_with_existing') : offered,
+    reuseAnchorId,
   };
 }
 

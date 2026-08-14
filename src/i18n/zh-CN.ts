@@ -353,6 +353,11 @@ export const zhCN = {
   'should_i_buy.action.skip': '这次不买',
   'should_i_buy.action.recheckColor': '换个颜色判断',
   'should_i_buy.action.recheckColorHint': '粘贴另一个颜色的商品链接，再判断一次',
+  'should_i_buy.action.styleWithExisting': '用现有类似单品搭一套',
+  // The question the reuse action sends on the user's behalf. Phrased as the
+  // user would ask it — the backend scopes the answer to this one owned item and
+  // builds the outfit from the wardrobe only.
+  'should_i_buy.action.styleWithExistingQuestion': '帮我用这件搭一套。',
   'should_i_buy.error.featureUnavailable': '这个功能还没开放，先用现有的搭配建议吧。',
   'should_i_buy.error.notFound': '没有找到这条判断，它可能已被删除。',
   'should_i_buy.error.invalidSource': '这个链接无法安全解析，换一个商品链接试试。',
