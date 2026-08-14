@@ -400,6 +400,18 @@ export function ShouldIBuyScreen({ navigation }: Props) {
     }
   }, []);
 
+  // THE DEPENDENCY LIST IS LOAD-BEARING, AND `result` MUST NOT BE IN IT.
+  //
+  // `useFocusEffect` keys its inner `useEffect` on this callback's identity, so a
+  // dependency that changes mid-visit runs the effect's CLEANUP — which is
+  // `endV3Flow`. V3-015 first added `result` here (to skip a pointless probe) and
+  // that silently killed the flow the moment a decision arrived: the card was
+  // still interactive, `v3_decision_action` declares `flow_id: required`, and
+  // `trackV3` throws in a dev build and drops the event in production. The probe
+  // that caught it is `.agent-artifacts/v3-015/decision-action-flow-probe.mjs`,
+  // run against the broken tree before the fix. `probeAvatar` is stable
+  // (`useCallback(…, [])`), so this list never changes and V3-009/V3-010's
+  // one-opener/one-closer invariant is intact.
   useFocusEffect(
     useCallback(() => {
       if (handedOffRef.current && flowIdRef.current) adoptV3Flow(flowIdRef.current);
@@ -407,11 +419,12 @@ export function ShouldIBuyScreen({ navigation }: Props) {
       // (`preparing`, or `ready` if it was already prepared), and the entry must
       // reflect that instead of inviting the user back into a flow they just
       // completed. Re-probed only on a hand-off return, for the same reason the
-      // flow is only re-adopted then.
-      if (handedOffRef.current && result) void probeAvatar();
+      // flow is only re-adopted then — and unconditionally, because a hand-off can
+      // only originate from a card that was rendered.
+      if (handedOffRef.current) void probeAvatar();
       handedOffRef.current = false;
       return endV3Flow;
-    }, [probeAvatar, result]),
+    }, [probeAvatar]),
   );
 
   const runDecision = useCallback(async (): Promise<DecisionResult> => {
