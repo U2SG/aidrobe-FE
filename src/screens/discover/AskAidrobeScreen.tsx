@@ -611,8 +611,14 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     });
   };
 
-  // `useCallback` so the V3-010 auto-ask effect below can depend on it honestly
-  // instead of on a function identity that changes every render.
+  // `useCallback` so the V3-010 auto-ask effect below can list it as a
+  // dependency (exhaustive-deps) without re-declaring the send inline.
+  //
+  // It does NOT stabilize identity, and the effect does not rely on it doing
+  // so: `askMutation` is a fresh object on every render, so this callback is
+  // re-created every render and the effect re-runs every render. That is
+  // harmless because the guard against re-asking is `autoAskedRef` below, which
+  // keys on (item, question) — not the dependency list.
   const submitQuestion = useCallback(
     (question: string) => {
       const q = question.trim();
