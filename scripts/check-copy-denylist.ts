@@ -18,6 +18,13 @@ import { fileURLToPath } from 'node:url';
 const srcDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 
 // Forbidden in the i18n copy registry (user-visible strings).
+//
+// The last group is V3_SPEC §22's 不推荐 list plus §9.3's "不要使用『创建数字人』
+// 『开始建模』等高负担语言". V3-014 puts a person-photo consent sheet in front
+// of users, and "the copy avoids high-burden framing" is an acceptance
+// criterion — a guard here makes it a build failure instead of a claim in a
+// review. Scoped to the i18n catalogues so identifiers and comments are free to
+// discuss the rule.
 const I18N_DENY = [
   'demo',
   'mock',
@@ -30,6 +37,14 @@ const I18N_DENY = [
   '遮肉',
   '减龄',
   '中年',
+  '创建数字人',
+  '数字分身',
+  '开始建模',
+  'AI 虚拟试衣',
+  'AI虚拟试衣',
+  '3D 分身',
+  '3D分身',
+  '元宇宙衣橱',
 ];
 
 // Forbidden anywhere in src (never legitimate in code or comments).

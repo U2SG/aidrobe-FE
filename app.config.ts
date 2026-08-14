@@ -29,6 +29,13 @@ const ENABLE_MVP_V2_UI = (process.env.ENABLE_MVP_V2_UI ?? 'false') === 'true';
 // in production is a human gate.
 const ENABLE_V3_PURCHASE_DECISION = (process.env.ENABLE_V3_PURCHASE_DECISION ?? 'false') === 'true';
 
+// V3 avatar (person reference) surfaces (v3-p0-contract §2 / §4). Off by
+// default: the BE gate ENABLE_V3_AVATAR also defaults off and answers 503 on
+// every avatar operation, so this build flag only controls whether the client
+// asks at all. Enabling it in production is a human gate, and so is the
+// consent copy it would show (V3_SPEC §4.3).
+const ENABLE_V3_AVATAR = (process.env.ENABLE_V3_AVATAR ?? 'false') === 'true';
+
 const androidConfig: NonNullable<ExpoConfig['android']> & {
   usesCleartextTraffic?: boolean;
 } = {
@@ -133,6 +140,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     DEV_USER_ID,
     ENABLE_MVP_V2_UI,
     ENABLE_V3_PURCHASE_DECISION,
+    ENABLE_V3_AVATAR,
     eas: {
       projectId: '8c50e01b-2844-473e-adec-3668fc2c2e9c',
     },

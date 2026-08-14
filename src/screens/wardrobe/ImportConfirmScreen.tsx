@@ -15,6 +15,7 @@ import { invalidateAfterConfirmImport } from '@/state/invalidation';
 import { confirmationBudgetForImport } from '@/utils/timeUX';
 import { visibleImportFields } from './importConfirmFields';
 import { phaseFromFlags } from '@/state/operationState';
+import { armAvatarSourceFlow } from '@/store/avatarCandidatePrompt';
 import { useImportDraftStore } from '@/store/importDraft';
 import { colors, radius, shadow, type as typeScale } from '@/theme/design';
 import type { ConfirmImportTaskBody, FitIntent, ImportTask, ItemCategory } from '@/types/api';
@@ -249,6 +250,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
         current={current}
         total={total}
         inQueue={inQueue}
+        isLastInBatch={!(queue && queue[idx + 1])}
         onClose={exitFlow}
         onAdvance={goNextOrExit}
       />
@@ -515,6 +517,7 @@ function MultiCandidateConfirm({
   current,
   total,
   inQueue,
+  isLastInBatch,
   onClose,
   onAdvance,
 }: {
@@ -522,6 +525,9 @@ function MultiCandidateConfirm({
   current: number;
   total: number;
   inQueue: boolean;
+  /** False while more photos of an album batch are still queued behind this
+   *  one — see the avatar arm in `save`. */
+  isLastInBatch: boolean;
   onClose: () => void;
   onAdvance: () => void;
 }) {
@@ -571,6 +577,17 @@ function MultiCandidateConfirm({
           })),
       );
       track('item_saved', { taskId: task.id, count: selectedCount });
+      // V3-014 source B (V3_SPEC §7.1): the person-reference question comes
+      // AFTER the clothing import completes and is authorized separately —
+      // importing clothes never implies consent (contract §4.3). `confirm-items`
+      // is the only endpoint whose handler enqueues detection, which is why the
+      // arm is here and not on the single-candidate `confirm` path.
+      //
+      // Gated on the LAST photo of a batch. An album import fans out one task
+      // per image and BE queues detection per task, so arming on every confirm
+      // would walk the user through one sheet per photo — the repeated
+      // prompting §7.3 and acceptance 4 forbid.
+      if (isLastInBatch) armAvatarSourceFlow();
       // confirm import → wardrobeItems, todayRecommendation.
       invalidateAfterConfirmImport(qc);
       resetDraft();

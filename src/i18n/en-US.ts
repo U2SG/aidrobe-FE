@@ -810,4 +810,19 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'onboarding.styleMemory.skip': 'Skip',
   'onboarding.styleMemory.footnote':
     'You can view, replace, or delete this inspiration anytime in your Profile.',
+
+  // --- V3-014: avatar candidate sheet (V3_SPEC §9.3 / §15 / §22) -----------
+  // Placeholder copy behind ENABLE_V3_AVATAR; production wording is a human gate.
+  'avatarConsent.title': 'See how things look on you',
+  'avatarConsent.purpose':
+    'Use this photo as your appearance reference. It is only used to generate previews of your own outfits.',
+  'avatarConsent.thirdParty':
+    'When a preview is generated, the photo is sent to a third-party AI model to process. It is not used for anything else.',
+  'avatarConsent.control':
+    'Replace or delete it anytime; deleting also removes the previews generated from it.',
+  'avatarConsent.accept': 'Use as reference',
+  'avatarConsent.decline': 'Not now',
+  'avatarConsent.error': "Couldn't save your choice.",
+  'avatarConsent.retry': 'Retry',
+  'avatarConsent.previewAlt': 'Candidate photo',
 };

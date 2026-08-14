@@ -12,6 +12,7 @@ import { PrimaryButton } from '@/components/forms/PrimaryButton';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
+import { armAvatarSourceFlow } from '@/store/avatarCandidatePrompt';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { OotdPosterTemplate } from '@/types/api';
@@ -108,6 +109,12 @@ export function OotdPosterScreen({ navigation, route }: Props) {
       const entry = await getWearHistoryByDate(todayISO(), { silentErrorToast: true });
       await uploadOotdPhoto(entry.wearHistoryId, photoUrl, { silentErrorToast: true });
       track('ootd_attached_to_history', { wearHistoryId: entry.wearHistoryId });
+      // V3-014 source A (V3_SPEC §7.1). Armed here and not on poster success,
+      // because THIS is the request whose handler enqueues candidate detection
+      // — when there is no wear-history record for today the attach is skipped
+      // entirely, no detection is queued, and there is nothing to ask about.
+      // Arming a question only; no consent is granted or implied (contract §4.3).
+      armAvatarSourceFlow();
     } catch {
       track('ootd_attach_skipped', {});
     }

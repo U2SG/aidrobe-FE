@@ -798,6 +798,22 @@ export const zhCN = {
   'onboarding.styleMemory.cta.pick': '选择一张照片',
   'onboarding.styleMemory.skip': '跳过',
   'onboarding.styleMemory.footnote': '随时可以在「我的」里查看、更换或删除灵感。',
+
+  // --- V3-014: avatar candidate sheet (V3_SPEC §9.3 / §15 / §22) -----------
+  // PLACEHOLDER COPY behind ENABLE_V3_AVATAR (default off). The production
+  // wording is an open human gate; `AVATAR_CONSENT_COPY_VERSION` in
+  // src/i18n/avatarConsentCopy.ts names exactly this block and reads
+  // `unapproved` until it is approved. §22 bans 创建数字人 / 开始建模 /
+  // AI 虚拟试衣 / 3D 分身 / 元宇宙衣橱 — enforced by scripts/check-copy-denylist.ts.
+  'avatarConsent.title': '以后可以直接看上身效果',
+  'avatarConsent.purpose': '将这张照片设为形象参考，只用于生成你自己的穿搭预览。',
+  'avatarConsent.thirdParty': '生成预览时，照片会发送给第三方 AI 模型处理，不用于其他用途。',
+  'avatarConsent.control': '可随时替换或删除；删除后由它生成的预览一并清除。',
+  'avatarConsent.accept': '设为形象参考',
+  'avatarConsent.decline': '暂不用',
+  'avatarConsent.error': '没能保存你的选择。',
+  'avatarConsent.retry': '重试',
+  'avatarConsent.previewAlt': '候选照片',
 } as const;
 
 export type I18nKey = keyof typeof zhCN;

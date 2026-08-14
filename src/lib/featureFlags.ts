@@ -21,3 +21,13 @@ export const enableMvpV2Ui: boolean = extra.ENABLE_MVP_V2_UI === true;
  * self-hiding "not open yet" state instead of a broken screen.
  */
 export const enableV3PurchaseDecision: boolean = extra.ENABLE_V3_PURCHASE_DECISION === true;
+
+/**
+ * V3 avatar (person reference) surfaces (v3-p0-contract §4). When false
+ * (default), no avatar candidate is ever asked about and no avatar request is
+ * made — the OOTD and import flows are byte-for-byte their V2 selves. The BE
+ * flag ENABLE_V3_AVATAR independently gates the endpoints (503 while off) AND
+ * gates candidate detection itself, so a skewed build that has this on simply
+ * finds no candidate and stays silent.
+ */
+export const enableV3Avatar: boolean = extra.ENABLE_V3_AVATAR === true;
