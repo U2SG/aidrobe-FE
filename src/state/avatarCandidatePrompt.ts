@@ -71,9 +71,3 @@ export function recordPrompted(
 export function nextPollDelayMs(attempt: number): number | null {
   return attempt < AVATAR_CANDIDATE_POLL_ATTEMPTS ? AVATAR_CANDIDATE_POLL_INTERVAL_MS : null;
 }
-
-/** Total time the discovery window can stay open — the property that keeps the
- *  sheet tied to the flow that armed it. */
-export function promptWindowMs(): number {
-  return AVATAR_CANDIDATE_POLL_ATTEMPTS * AVATAR_CANDIDATE_POLL_INTERVAL_MS;
-}
