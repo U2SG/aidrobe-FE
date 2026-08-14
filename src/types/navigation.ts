@@ -1,6 +1,31 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 
-import type { ImportFailureReason } from './api';
+import type { ImportFailureReason, ImportInputType } from './api';
+
+/**
+ * Shared by the wardrobe and onboarding stacks — ImportConfirm is the same
+ * component re-hosted, so one shape keeps the two declarations from drifting.
+ *
+ * queue/queueIndex are set for a multi-image batch import: confirm one task,
+ * then advance to the next. Absent for a single import.
+ *
+ * onboarding: true when the screen is re-hosted inside the onboarding stack, so
+ * its "next" branches continue onboarding instead of the wardrobe flow.
+ *
+ * inputType is REQUIRED, and required on purpose (V3-014). It is the input type
+ * this task was CREATED with, threaded from `AddItemScreen` because the
+ * `ImportTaskResponse` the screen reads back does not carry one — see the
+ * avatar arm in `ImportConfirmScreen`. Making it required means the compiler,
+ * not a reviewer, catches a new navigation site that forgets it; optional would
+ * silently disable source B, since `undefined` must fail safe to "do not ask".
+ */
+export type ImportConfirmParams = {
+  taskId: string;
+  inputType: ImportInputType;
+  queue?: string[];
+  queueIndex?: number;
+  onboarding?: boolean;
+};
 
 // ---------------------------------------------------------------------------
 // Onboarding stack
@@ -14,7 +39,7 @@ export type OnboardingStackParamList = {
   // components re-hosted from the wardrobe stack, driven by `onboarding: true`
   // so their "next" continues onboarding instead of the main app.
   AddWardrobe: undefined;
-  ImportConfirm: { taskId: string; queue?: string[]; queueIndex?: number; onboarding?: boolean };
+  ImportConfirm: ImportConfirmParams;
   ImportFailure: {
     reason: ImportFailureReason;
     onboarding?: boolean;
@@ -45,11 +70,7 @@ export type WardrobeStackParamList = {
   WardrobeList: undefined;
   ItemDetail: { itemId: string };
   AddItem: undefined;
-  // queue/queueIndex set for multi-image batch import: confirm one task, then
-  // advance to the next. Absent for a single import.
-  // onboarding: true when this screen is re-hosted inside the onboarding stack,
-  // so its "next" branches continue onboarding instead of the wardrobe flow.
-  ImportConfirm: { taskId: string; queue?: string[]; queueIndex?: number; onboarding?: boolean };
+  ImportConfirm: ImportConfirmParams;
   ImportFailure: {
     reason: ImportFailureReason;
     onboarding?: boolean;

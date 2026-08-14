@@ -825,4 +825,10 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'avatarConsent.error': "Couldn't save your choice.",
   'avatarConsent.retry': 'Retry',
   'avatarConsent.previewAlt': 'Candidate photo',
+  // Navigation, NOT an authorization clause — see the zh-CN note. Outside
+  // AVATAR_CONSENT_COPY_KEYS on purpose.
+  'avatarConsent.more': 'Scroll to read the rest',
+  // Toast, NOT sheet copy — see the zh-CN note. Outside AVATAR_CONSENT_COPY_KEYS
+  // on purpose; shown only on an unretryable accept failure, never on decline.
+  'avatarConsent.unavailable': "Couldn't set your appearance reference — this photo isn't available right now.",
 };

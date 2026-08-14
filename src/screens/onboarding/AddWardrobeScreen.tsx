@@ -117,7 +117,11 @@ export function AddWardrobeScreen({ navigation }: Props) {
       });
       // ImportConfirm is re-hosted in the onboarding stack; onboarding:true makes
       // its post-save "next" continue onboarding (→ FirstOutfit → StyleMemory).
-      navigation.navigate('ImportConfirm', { taskId: task.id, onboarding: true });
+      navigation.navigate('ImportConfirm', {
+        taskId: task.id,
+        inputType: 'image',
+        onboarding: true,
+      });
     } catch {
       showToast({ message: t('onboarding.addWardrobe.uploadFailed'), kind: 'error' });
     } finally {

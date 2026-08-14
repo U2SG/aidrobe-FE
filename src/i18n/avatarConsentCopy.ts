@@ -32,6 +32,17 @@ export const AVATAR_CONSENT_COPY_VERSION = 'v3-p0-2026-08-14-unapproved';
  * model, and how to replace/delete it. Each of those clauses is a key here, so
  * "the copy explains X" is checkable against this list rather than by reading
  * the component.
+ *
+ * TWO DELIBERATE EXCLUSIONS, both for the same reason: this list defines what a
+ * stored `consent_version` STANDS FOR, so only text the user authorized may
+ * join it. Adding either would silently widen the meaning of every version
+ * already recorded. Both exclusions are pinned by a test rather than left to
+ * this comment.
+ *   - `avatarConsent.unavailable` — the toast shown when an accept fails
+ *     unretryably. Rendered by `ToastHost`, never inside the sheet, and a
+ *     failure notice is no part of an authorization.
+ *   - `avatarConsent.more` — the fold notice shown while copy remains below the
+ *     scroller. It points AT the clauses; it is not one of them.
  */
 export const AVATAR_CONSENT_COPY_KEYS = [
   'avatarConsent.title',

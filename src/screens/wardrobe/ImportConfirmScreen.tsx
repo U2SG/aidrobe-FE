@@ -52,7 +52,18 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
   const { t, tEnum } = useT();
   const CATEGORY_OPTIONS = CATEGORY_KEYS.map((id) => ({ id, label: tEnum('category', id) }));
   const FIT_OPTIONS = FIT_KEYS.map((id) => ({ id, label: tEnum('fitIntent', id) }));
-  const { taskId, queue, queueIndex, onboarding } = route.params;
+  const { taskId, inputType, queue, queueIndex, onboarding } = route.params;
+  // V3-014 — the only import input type whose BE handler queues avatar
+  // candidate detection (`import_tasks.py::_offer_outfit_import_as_avatar_
+  // candidate` filters on `input_type == outfit_image`; every other type is a
+  // single garment, a product page or a receipt). Arming on the rest would open
+  // a 6-poll / 12-second discovery window that cannot possibly find anything.
+  //
+  // It comes from the nav param, not from `data`: `ImportTaskResponse` carries
+  // no `input_type` field at all, so reading it back would be a BE schema
+  // change — and that would turn this FE-only feature into a two-repo OpenAPI
+  // change for a bounded, silent, flag-off-by-default waste.
+  const canArmAvatarCandidate = inputType === 'outfit_image';
   // Multi-image batch: confirm this task, then advance to the next one.
   const queueLen = queue?.length ?? 0;
   const inQueue = queueLen > 1;
@@ -62,7 +73,13 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
   const goNextOrExit = () => {
     const nextId = queue && queue[idx + 1];
     if (nextId) {
-      navigation.replace('ImportConfirm', { taskId: nextId, queue, queueIndex: idx + 1, onboarding });
+      navigation.replace('ImportConfirm', {
+        taskId: nextId,
+        inputType,
+        queue,
+        queueIndex: idx + 1,
+        onboarding,
+      });
     } else if (enableMvpV2Ui) {
       // V2: after the last item, land on the First Outfit activation gate
       // instead of dropping the user back onto the list. Forward `onboarding`
@@ -251,6 +268,7 @@ export function ImportConfirmScreen({ navigation, route }: Props) {
         total={total}
         inQueue={inQueue}
         isLastInBatch={!(queue && queue[idx + 1])}
+        canArmAvatarCandidate={canArmAvatarCandidate}
         onClose={exitFlow}
         onAdvance={goNextOrExit}
       />
@@ -518,6 +536,7 @@ function MultiCandidateConfirm({
   total,
   inQueue,
   isLastInBatch,
+  canArmAvatarCandidate,
   onClose,
   onAdvance,
 }: {
@@ -528,6 +547,9 @@ function MultiCandidateConfirm({
   /** False while more photos of an album batch are still queued behind this
    *  one — see the avatar arm in `save`. */
   isLastInBatch: boolean;
+  /** True only for an `outfit_image` import — the one input type whose BE
+   *  handler queues avatar candidate detection. See the arm in `save`. */
+  canArmAvatarCandidate: boolean;
   onClose: () => void;
   onAdvance: () => void;
 }) {
@@ -587,7 +609,11 @@ function MultiCandidateConfirm({
       // per image and BE queues detection per task, so arming on every confirm
       // would walk the user through one sheet per photo — the repeated
       // prompting §7.3 and acceptance 4 forbid.
-      if (isLastInBatch) armAvatarSourceFlow();
+      //
+      // Gated on the input type as well: BE only queues detection for
+      // `outfit_image`, so without this every screenshot / link / receipt
+      // import burned a silent 6-poll window that could never find a candidate.
+      if (isLastInBatch && canArmAvatarCandidate) armAvatarSourceFlow();
       // confirm import → wardrobeItems, todayRecommendation.
       invalidateAfterConfirmImport(qc);
       resetDraft();

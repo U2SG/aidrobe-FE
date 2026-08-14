@@ -814,6 +814,15 @@ export const zhCN = {
   'avatarConsent.error': '没能保存你的选择。',
   'avatarConsent.retry': '重试',
   'avatarConsent.previewAlt': '候选照片',
+  // Navigation, NOT an authorization clause — deliberately outside
+  // AVATAR_CONSENT_COPY_KEYS. Shown only while copy remains below the fold,
+  // which at the shipped text sizes means only at very large dynamic type.
+  'avatarConsent.more': '向下滑动查看完整说明',
+  // Toast, NOT sheet copy — deliberately outside AVATAR_CONSENT_COPY_KEYS,
+  // because the consent version names the authorization the user agreed to and
+  // a transient failure notice is not part of it. Shown only when the accept
+  // POST fails unretryably (503/404/409), never on decline.
+  'avatarConsent.unavailable': '没能设为形象参考，这张照片暂时不可用。',
 } as const;
 
 export type I18nKey = keyof typeof zhCN;

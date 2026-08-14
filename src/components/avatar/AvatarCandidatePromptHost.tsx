@@ -1,13 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getAvatarProfile, decideAvatarConsent } from '@/api/avatarProfile';
-import { isPromptableCandidate, type AvatarCandidate } from '@/api/avatarProfileMapping';
+import {
+  isPromptableCandidate,
+  toAvatarConsentErrorState,
+  type AvatarCandidate,
+} from '@/api/avatarProfileMapping';
+import type { HttpErrorLike } from '@/api/purchaseDecisionMapping';
 import { AvatarCandidateSheet } from '@/components/avatar/AvatarCandidateSheet';
+import { useT } from '@/hooks/useT';
 import { useV3EventContext } from '@/hooks/useV3EventContext';
 import { AVATAR_CONSENT_COPY_VERSION } from '@/i18n/avatarConsentCopy';
 import { enableV3Avatar } from '@/lib/featureFlags';
 import { nextPollDelayMs } from '@/state/avatarCandidatePrompt';
 import { useAvatarCandidatePromptStore } from '@/store/avatarCandidatePrompt';
+import { useToastStore } from '@/store/toast';
 import { trackV3 } from '@/utils/analytics';
 
 /**
@@ -43,9 +50,12 @@ import { trackV3 } from '@/utils/analytics';
  */
 export function AvatarCandidatePromptHost() {
   const armedAt = useAvatarCandidatePromptStore((s) => s.armedAt);
+  const hydrated = useAvatarCandidatePromptStore((s) => s.hydrated);
   const disarm = useAvatarCandidatePromptStore((s) => s.disarm);
   const markPrompted = useAvatarCandidatePromptStore((s) => s.markPrompted);
   const getEventContext = useV3EventContext();
+  const { t } = useT();
+  const showToast = useToastStore((s) => s.show);
 
   const [candidate, setCandidate] = useState<AvatarCandidate | null>(null);
   const [busy, setBusy] = useState(false);
@@ -58,7 +68,15 @@ export function AvatarCandidatePromptHost() {
   useEffect(() => {
     // The flag is read inside the effect as well as at the call sites so that
     // NOTHING — not one request — happens while the feature is off.
-    if (!enableV3Avatar || armedAt == null) return;
+    //
+    // `hydrated` gates the window because the persisted ledger is the SOLE
+    // mechanism enforcing acceptance 4: a poll that resolved before rehydration
+    // would read an empty ledger and could re-ask about a candidate this device
+    // already declined. The first GET is ≥2s out so this is not reachable in
+    // practice today — but "not reachable in practice" is not the guarantee
+    // acceptance 4 asks for, and it is the repo's convention anyway
+    // (`RootNavigator`, `useLocationSync` gate on hydration the same way).
+    if (!enableV3Avatar || !hydrated || armedAt == null) return;
 
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -121,7 +139,7 @@ export function AvatarCandidatePromptHost() {
 
     void poll(0);
     return stop;
-  }, [armedAt, disarm, markPrompted, getEventContext]);
+  }, [armedAt, hydrated, disarm, markPrompted, getEventContext]);
 
   const close = useCallback(() => {
     setCandidate(null);
@@ -145,6 +163,22 @@ export function AvatarCandidatePromptHost() {
    * what makes the dismissal durable server-side; if it is lost, the candidate
    * stays consentable on the server and V3-015's on-demand path is where a user
    * who changes their mind picks it up.
+   *
+   * ## Not every accept failure is retryable, and the difference is rendered
+   *
+   * `toAvatarConsentErrorState` splits them, and this is its only caller.
+   * 503 (BE flag flipped off mid-window), 404 (asset or profile gone — the
+   * router raises it twice) and 409 (`STATE_CONFLICT`, the profile moved on)
+   * cannot be fixed by tapping again, so offering Retry would be a button that
+   * is guaranteed to fail. Those close the sheet.
+   *
+   * They close it with a toast, not silently. The paragraph above — "if the
+   * POST failed and the sheet closed anyway, the user would believe they had
+   * set an appearance reference and they would not have one" — applies just as
+   * much when the failure is permanent; only the affordance changes, from an
+   * action to a statement. The toast is deliberately on this path ONLY: `[7]`
+   * asserts that declining raises no error toast, and a dismissal that reports
+   * its own failure is exactly the degradation acceptance 2 forbids.
    */
   const answer = useCallback(
     async (accept: boolean) => {
@@ -166,13 +200,18 @@ export function AvatarCandidatePromptHost() {
       try {
         await decideAvatarConsent(candidate.sourceAssetId, true, AVATAR_CONSENT_COPY_VERSION);
         close();
-      } catch {
-        setBusy(false);
-        setFailed(true);
-        answeringRef.current = false;
+      } catch (error) {
+        if (toAvatarConsentErrorState(error as HttpErrorLike).retryable) {
+          setBusy(false);
+          setFailed(true);
+          answeringRef.current = false;
+          return;
+        }
+        close();
+        showToast({ message: t('avatarConsent.unavailable'), kind: 'error' });
       }
     },
-    [candidate, close],
+    [candidate, close, showToast, t],
   );
 
   if (!enableV3Avatar || !candidate) return null;

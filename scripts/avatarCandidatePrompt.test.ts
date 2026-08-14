@@ -174,7 +174,12 @@ check('503 (flag off) is not retryable — a retry could never succeed', () => {
   });
 });
 
-check('404 / 409 close the sheet instead of offering a dead retry', () => {
+check('404 / 409 are classified unretryable, so the host closes the sheet', () => {
+  // The classification is asserted here; that `AvatarCandidatePromptHost.answer`
+  // actually CONSUMES it — closing the sheet and stating the outcome instead of
+  // offering a dead Retry — is a rendered behavior, evidenced by driver
+  // scenarios [9] (404), [10] (409) and [11] (503). Round 2 shipped this
+  // mapping with no caller, so the two halves are deliberately cross-referenced.
   for (const status of [404, 409, 400, 422, 401]) {
     assert.equal(
       toAvatarConsentErrorState({ response: { status } }).retryable,
@@ -289,6 +294,33 @@ check('the copy covers all three §15 authorization clauses', () => {
   assert.match(enUS['avatarConsent.thirdParty'], /third-party/i);
   assert.match(zhCN['avatarConsent.control'], /删除/);
   assert.match(enUS['avatarConsent.control'], /delete/i);
+});
+
+check('the unretryable-failure toast exists but is NOT part of the consent version', () => {
+  // It is rendered by ToastHost, not in the sheet, and the version records what
+  // the user AUTHORIZED — a failure notice is no part of that. Pinned both ways
+  // so neither the key nor the exclusion can be dropped by accident.
+  assert.ok(zhCN['avatarConsent.unavailable'].length > 0);
+  assert.ok(enUS['avatarConsent.unavailable'].length > 0);
+  assert.equal(
+    (AVATAR_CONSENT_COPY_KEYS as readonly string[]).includes('avatarConsent.unavailable'),
+    false,
+    'a failure notice must not widen the meaning of a stored consent_version',
+  );
+});
+
+check('the fold notice exists but is NOT part of the consent version either', () => {
+  // Shown only while a §15 clause remains below the scroller's fold. It is
+  // navigation pointing AT the authorization clauses, not one of them, so the
+  // same rule that excludes the failure toast excludes it: a stored
+  // consent_version must keep meaning exactly what it meant when it was written.
+  assert.ok(zhCN['avatarConsent.more'].length > 0);
+  assert.ok(enUS['avatarConsent.more'].length > 0);
+  assert.equal(
+    (AVATAR_CONSENT_COPY_KEYS as readonly string[]).includes('avatarConsent.more'),
+    false,
+    'a scroll affordance must not widen the meaning of a stored consent_version',
+  );
 });
 
 check('the sheet offers exactly one accept and one decline action', () => {

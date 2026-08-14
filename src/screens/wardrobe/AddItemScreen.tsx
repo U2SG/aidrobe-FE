@@ -95,7 +95,7 @@ export function AddItemScreen({ navigation }: Props) {
       track('import_task_created', { taskId: task.id, sourceType });
       setLinkModalOpen(false);
       setLinkUrl('');
-      navigation.replace('ImportConfirm', { taskId: task.id });
+      navigation.replace('ImportConfirm', { taskId: task.id, inputType: 'link' });
     } catch {
       navigation.replace('ImportFailure', { reason: 'network_error' });
     } finally {
@@ -152,7 +152,7 @@ export function AddItemScreen({ navigation }: Props) {
       const { task, localUri } = await runImportPipeline(uri, sourceType, '', inputType);
       setDraft({ taskId: task.id, localImageUri: localUri, recognized: task.recognized });
       track('import_task_created', { taskId: task.id, sourceType });
-      navigation.replace('ImportConfirm', { taskId: task.id });
+      navigation.replace('ImportConfirm', { taskId: task.id, inputType });
     } catch (error) {
       console.error('[import] failed', error);
       if (APP_ENV !== 'production') {
@@ -196,7 +196,15 @@ export function AddItemScreen({ navigation }: Props) {
     if (failed > 0) {
       showToast({ message: t('add.someSkipped', { count: failed }), kind: 'error' });
     }
-    navigation.replace('ImportConfirm', { taskId: firstTask, queue: taskIds, queueIndex: 0 });
+    // `runImportPipeline` defaults to 'image' for every photo of a batch, so a
+    // batch never produces an avatar candidate — BE only queues detection for
+    // `outfit_image`. Passing it explicitly keeps that visible at the nav site.
+    navigation.replace('ImportConfirm', {
+      taskId: firstTask,
+      inputType: 'image',
+      queue: taskIds,
+      queueIndex: 0,
+    });
   };
 
   const pickFromCamera = async () => {
