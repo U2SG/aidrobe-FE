@@ -379,6 +379,9 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'should_i_buy.error.rateLimited': 'Too many requests — wait a moment and try again.',
   'should_i_buy.error.serverError': 'The service is temporarily unavailable — you can retry.',
   'should_i_buy.error.network': 'Network problem — check your connection and retry.',
+  // V3-015 — the on-demand visual entry (§5.5 Avatar None).
+  'should_i_buy.preview.entry': 'See how it would look on you',
+  'should_i_buy.preview.entryHint': 'Needs one clear full-body photo — set up once',
   // --- Discover empty states ----------------------------------------------
   'discover.inspirations.empty.title': 'No style inspiration yet',
   'discover.inspirations.empty.subtitle':
@@ -831,4 +834,42 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   // Toast, NOT sheet copy — see the zh-CN note. Outside AVATAR_CONSENT_COPY_KEYS
   // on purpose; shown only on an unretryable accept failure, never on decline.
   'avatarConsent.unavailable': "Couldn't set your appearance reference — this photo isn't available right now.",
+
+  // --- V3-015: on-demand photo setup (V3_SPEC §5.5 / §7.4 / §9.4) -----------
+  // Chrome only. The three §15 authorization clauses are rendered from the
+  // `avatarConsent.*` keys above, unchanged — see the zh-CN note for why the
+  // same consent version must not come to mean two different texts.
+  'avatarSetup.title': 'See it on you',
+  'avatarSetup.lead':
+    'Seeing an outfit on you needs one clear full-body photo. Set it up once and it is reused from then on.',
+  'avatarSetup.poseHint':
+    'One person, facing forward or slightly turned, most of the body in frame, decent light.',
+  'avatarSetup.oneShotIsEnough':
+    'One photo is enough — no measurements, no weight, no turnaround video.',
+  'avatarSetup.album': 'Choose from album',
+  'avatarSetup.camera': 'Take a photo',
+  'avatarSetup.notNow': 'Not now',
+  'avatarSetup.keepDecision': 'Skipping this leaves your purchase judgment exactly as it is.',
+  'avatarSetup.uploading': 'Uploading this photo…',
+  'avatarSetup.detecting': 'Checking whether this photo can be used…',
+  'avatarSetup.pickedAlt': 'The photo you just chose',
+  'avatarSetup.reviewTitle': 'Use this photo as your appearance reference?',
+  'avatarSetup.another': 'Choose another photo',
+  'avatarSetup.submitting': 'Saving…',
+  'avatarSetup.preparingTitle': 'Preparing your appearance reference',
+  'avatarSetup.preparingBody':
+    'You can leave this page — once it is ready you will not need to upload a photo again.',
+  'avatarSetup.readyTitle': 'Your appearance reference is ready',
+  'avatarSetup.readyBody': 'It will be used directly next time you look at an outfit on you.',
+  'avatarSetup.back': 'Back to the judgment',
+  'avatarSetup.problem.permission':
+    'Album or camera access has not been granted. Turn it on in Settings and try again.',
+  'avatarSetup.problem.upload': "This photo didn't upload.",
+  'avatarSetup.problem.photo': "This photo can't be used as a reference — try another one.",
+  'avatarSetup.problem.consent': "Couldn't save your choice.",
+  'avatarSetup.problem.preparation': "Preparation couldn't start. Your choice has been saved.",
+  'avatarSetup.problem.unavailable':
+    'Appearance references are unavailable right now; your purchase judgment still stands.',
+  'avatarSetup.problem.revoked':
+    'Your appearance reference is switched off and cannot be turned back on yet.',
 };

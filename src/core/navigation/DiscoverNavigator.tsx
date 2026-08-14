@@ -1,5 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { AvatarPhotoSetupScreen } from '@/screens/avatar/AvatarPhotoSetupScreen';
 import { CreatePackingListScreen } from '@/screens/discover/CreatePackingListScreen';
 import { DiscoverHubScreen } from '@/screens/discover/DiscoverHubScreen';
 import { InsightsScreen } from '@/screens/discover/InsightsScreen';
@@ -59,6 +60,15 @@ export function DiscoverNavigator() {
         options={{ presentation: 'modal', headerShown: false }}
       />
       <Stack.Screen name="AskAidrobe" component={AskAidrobeScreen} options={{ headerShown: false }} />
+      {/* V3-015 — the on-demand photo setup. Registered here rather than behind
+          the flag so the flag stays a property of the ENTRY (which self-hides);
+          the screen itself renders its unavailable state if it is ever reached
+          with the flag off. */}
+      <Stack.Screen
+        name="AvatarPhotoSetup"
+        component={AvatarPhotoSetupScreen}
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
   );
 }
