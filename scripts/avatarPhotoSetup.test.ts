@@ -609,6 +609,27 @@ check('a lost dismissal answer is settled by the PROFILE, not the status code', 
   assert.match(SCREEN_SOURCE, /profile\.candidate\?\.sourceAssetId === dismissedAssetId/);
 });
 
+check('a failed dismissal still offers BOTH moves the server allows', () => {
+  // `settleDismissalFromProfile` only reaches `dismiss_failed` after confirming
+  // the profile STILL offers that exact asset — i.e. the server would accept it.
+  // Rendering a bare error plus a retry would withhold that acceptance, which is
+  // the same shape of defect as the control this round exists to fix. So the
+  // review block (photo + clauses + accept) renders on this problem too, and the
+  // intro copy stands down so the three clause nativeIDs stay unique.
+  assert.match(
+    SCREEN_SOURCE,
+    /const dismissalDidNotLand = step === 'problem' && state\?\.problem === 'dismiss_failed';/,
+  );
+  assert.match(SCREEN_SOURCE, /showReview =\s*\n?\s*step === 'review' \|\| step === 'submitting' \|\| step === 'dismissing' \|\| dismissalDidNotLand;/);
+  assert.match(
+    SCREEN_SOURCE,
+    /const showIntroCopy = step === 'intro' \|\| \(step === 'problem' && !dismissalDidNotLand\);/,
+  );
+  // And no SECOND retry button beside it: the review block's own "another photo"
+  // control IS the dismissal retry, the way `pick` is the album/camera pair.
+  assert.equal(SCREEN_SOURCE.includes("recovery === 'dismiss'"), false);
+});
+
 check('every path that renders a candidate also claims the prompt for it', () => {
   // §7.3 is one prompt per candidate ACROSS surfaces, and the passive sheet
   // reads the same ledger. A path that put a candidate on screen without

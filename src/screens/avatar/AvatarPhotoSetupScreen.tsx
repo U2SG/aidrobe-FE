@@ -581,10 +581,8 @@ export function AvatarPhotoSetupScreen({ navigation, route }: Props) {
     const current = stateRef.current;
     if (!current) return;
     const target = retryTarget(current);
-    if (target === 'dismiss') {
-      void dismissCandidate();
-      return;
-    }
+    // `dismiss` is deliberately absent: that recovery is the review block's own
+    // "换一张照片" button, the same way `pick` is the album/camera pair.
     if (target === 'upload' && current.pickedUri) {
       if (workingRef.current) return;
       workingRef.current = true;
@@ -593,7 +591,7 @@ export function AvatarPhotoSetupScreen({ navigation, route }: Props) {
       return;
     }
     if (target === 'consent' || target === 'prepare') void consentAndPrepare();
-  }, [apply, uploadAndRegister, consentAndPrepare, dismissCandidate]);
+  }, [apply, uploadAndRegister, consentAndPrepare]);
 
   const leave = useCallback(() => navigation.goBack(), [navigation]);
 
@@ -610,14 +608,26 @@ export function AvatarPhotoSetupScreen({ navigation, route }: Props) {
   // A `pick` recovery IS the album/camera pair below, so no separate retry button
   // is rendered for it — two buttons that do the same thing would read as two
   // different offers.
-  const showRetryButton =
-    recovery === 'upload' ||
-    recovery === 'consent' ||
-    recovery === 'prepare' ||
-    recovery === 'dismiss';
+  const showRetryButton = recovery === 'upload' || recovery === 'consent' || recovery === 'prepare';
   const showPickActions = step === 'intro' || (step === 'problem' && recovery === 'pick');
-  const showIntroCopy = step === 'intro' || step === 'problem';
-  const showReview = step === 'review' || step === 'submitting' || step === 'dismissing';
+  /**
+   * A dismissal that did not land leaves the candidate ON OFFER — that is what
+   * `settleDismissalFromProfile` just confirmed by re-reading the profile. So
+   * BOTH server-legal moves must stay on screen: accept this photo, or try the
+   * dismissal again. Dropping to a bare error + retry would withhold the one
+   * action the backend still permits, which is the same shape of defect as the
+   * control this round exists to fix.
+   *
+   * The review block IS the recovery here — its "换一张照片" button is the
+   * `dismiss` retry — so no separate retry button is rendered, exactly as a
+   * `pick` recovery is the album/camera pair below rather than a third button.
+   */
+  const dismissalDidNotLand = step === 'problem' && state?.problem === 'dismiss_failed';
+  const showReview =
+    step === 'review' || step === 'submitting' || step === 'dismissing' || dismissalDidNotLand;
+  // …and then the intro copy must stand down, or its `ConsentClauses` would
+  // render a second copy of the same three `nativeID`s.
+  const showIntroCopy = step === 'intro' || (step === 'problem' && !dismissalDidNotLand);
   const leaveKey: I18nKey =
     step === 'preparing' || step === 'ready' ? 'avatarSetup.back' : 'avatarSetup.notNow';
 
