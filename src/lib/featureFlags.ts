@@ -31,3 +31,13 @@ export const enableV3PurchaseDecision: boolean = extra.ENABLE_V3_PURCHASE_DECISI
  * finds no candidate and stays silent.
  */
 export const enableV3Avatar: boolean = extra.ENABLE_V3_AVATAR === true;
+
+/**
+ * V3 static try-on preview surfaces (v3-p0-contract §6). When false (default),
+ * the decision card offers no generate-preview entry — the layer-4 slot holds
+ * at most V3-015's photo-setup entry, whose own gates are unchanged. The BE
+ * flag ENABLE_V3_STATIC_TRYON independently gates the POST (503 while off);
+ * the M10 GET stays ungated no matter what either flag says, because V2
+ * outfit-board polling depends on it (contract §2 rollback rule 4).
+ */
+export const enableV3StaticTryon: boolean = extra.ENABLE_V3_STATIC_TRYON === true;

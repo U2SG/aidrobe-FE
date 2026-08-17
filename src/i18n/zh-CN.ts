@@ -372,6 +372,20 @@ export const zhCN = {
   // asks once the user shows visual intent, not before).
   'should_i_buy.preview.entry': '看看它会不会被你穿起来',
   'should_i_buy.preview.entryHint': '需要一张清晰全身照，只设置一次',
+  // V3-019 — the generate entry (avatar already ready) and the §9.5 lifecycle
+  // copy. The generating and no-result lines are V3_SPEC §9.5 verbatim; the
+  // no-result line doubles for failed and quality-rejected renders (§6.2's
+  // frozen degradation rule: one copy, technical distinction never exposed).
+  'should_i_buy.preview.generate': '用你的形象参考，预演这一套',
+  'should_i_buy.preview.generateHint': '生成一张静态预演，只在这条判断里用',
+  'should_i_buy.preview.generating': '正在把这套和你的衣橱搭在一起…',
+  'should_i_buy.preview.noResult': '这次没有生成出可信的效果。衣橱判断仍然有效，可以继续查看搭配依据。',
+  'should_i_buy.preview.stillWorking': '还在生成中，可以稍后回来查看。衣橱判断不受影响。',
+  'should_i_buy.preview.checkAgain': '再看一眼',
+  'should_i_buy.preview.quotaExhausted': '今天的预演次数已用完。衣橱判断不受影响。',
+  'should_i_buy.preview.notPossible': '这个候选暂时无法生成预演，可以继续查看搭配依据。',
+  'should_i_buy.preview.requestFailed': '预演请求没有发出去。衣橱判断不受影响。',
+  'should_i_buy.preview.readyAlt': '静态上身预演',
   // --- Discover empty states ----------------------------------------------
   'discover.inspirations.empty.title': '还没有风格灵感',
   'discover.inspirations.empty.subtitle':

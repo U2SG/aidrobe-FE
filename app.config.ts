@@ -36,6 +36,12 @@ const ENABLE_V3_PURCHASE_DECISION = (process.env.ENABLE_V3_PURCHASE_DECISION ?? 
 // consent copy it would show (V3_SPEC §4.3).
 const ENABLE_V3_AVATAR = (process.env.ENABLE_V3_AVATAR ?? 'false') === 'true';
 
+// V3 static try-on preview surfaces (v3-p0-contract §6). Off by default: the
+// BE gate ENABLE_V3_STATIC_TRYON also defaults off and answers 503 on the
+// create POST, so this build flag only controls whether the decision card
+// offers the generate entry at all. Enabling it in production is a human gate.
+const ENABLE_V3_STATIC_TRYON = (process.env.ENABLE_V3_STATIC_TRYON ?? 'false') === 'true';
+
 const androidConfig: NonNullable<ExpoConfig['android']> & {
   usesCleartextTraffic?: boolean;
 } = {
@@ -141,6 +147,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ENABLE_MVP_V2_UI,
     ENABLE_V3_PURCHASE_DECISION,
     ENABLE_V3_AVATAR,
+    ENABLE_V3_STATIC_TRYON,
     eas: {
       projectId: '8c50e01b-2844-473e-adec-3668fc2c2e9c',
     },
