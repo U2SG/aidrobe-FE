@@ -31,11 +31,13 @@ import { trackV3 } from '@/utils/analytics';
 import { uploadLocalImage } from '@/utils/imageUpload';
 import { pickPersonPhoto, type AvatarPhotoSource } from '@/utils/personPhotoPicker';
 import {
-  chooseAnotherPhoto,
+  candidateDismissed,
   consentFailed,
   consentRecorded,
   consentSubmitted,
   detectionPolled,
+  dismissFailed,
+  dismissSubmitted,
   initialAvatarSetupState,
   nextSetupPollDelayMs,
   photoPickCancelled,
@@ -94,6 +96,7 @@ const PROBLEM_COPY: Record<AvatarSetupProblem, I18nKey> = {
   upload_failed: 'avatarSetup.problem.upload',
   photo_unusable: 'avatarSetup.problem.photo',
   consent_failed: 'avatarSetup.problem.consent',
+  dismiss_failed: 'avatarSetup.problem.dismiss',
   preparation_failed: 'avatarSetup.problem.preparation',
   unavailable: 'avatarSetup.problem.unavailable',
   revoked: 'avatarSetup.problem.revoked',
@@ -512,10 +515,72 @@ export function AvatarPhotoSetupScreen({ navigation, route }: Props) {
     await prepare();
   }, [apply, ensureFlow, prepare]);
 
+  /**
+   * A dismissal whose request failed — settled by re-reading the profile.
+   *
+   * The status code cannot answer this on its own: a decided asset answers
+   * `4091` forever, which `toAvatarConsentErrorState` reads as non-retryable, so
+   * a dismissal that landed with only its answer lost would dead-end on a retry
+   * button guaranteed to fail. What the profile says now is the fact:
+   *
+   * - still offering the SAME asset → the dismissal really did not land, so say
+   *   so and keep the retry pointed at it;
+   * - offering nothing, or something else → the answer is on file after all, and
+   *   the normal opening rule renders the truth (intro for `none`, review for a
+   *   different candidate, terminal for a profile that moved on).
+   */
+  const settleDismissalFromProfile = useCallback(
+    async (dismissedAssetId: string, fallback: AvatarSetupState) => {
+      try {
+        const profile = await getAvatarProfile();
+        if (profile.candidate?.sourceAssetId === dismissedAssetId) {
+          apply(dismissFailed(fallback));
+          return;
+        }
+        apply(initialAvatarSetupState(avatarSetupStart(profile), profile.candidate));
+      } catch {
+        apply(dismissFailed(fallback));
+      }
+    },
+    [apply],
+  );
+
+  /**
+   * "Choose another photo" — the dismissal the backend requires, then the intro.
+   *
+   * Not a local reset: while the profile is `candidate` the worker suppresses
+   * every new photo (`CANDIDATE_ALREADY_OFFERED`), so resetting alone would
+   * upload a full-body photo that can never be offered and then re-render the
+   * ORIGINAL candidate. See `dismissSubmitted` for the whole chain.
+   */
+  const dismissCandidate = useCallback(async () => {
+    if (workingRef.current) return;
+    const current = stateRef.current;
+    const candidate = current?.candidate;
+    if (!current || !candidate) return;
+    workingRef.current = true;
+    ensureFlow();
+    apply(dismissSubmitted(current));
+    try {
+      // `buildConsentBody` drops the copy version on a decline — §4.2 forbids it
+      // there and the router answers `4001` to the wrong shape.
+      await decideAvatarConsent(candidate.sourceAssetId, false, AVATAR_CONSENT_COPY_VERSION);
+      apply(candidateDismissed());
+    } catch {
+      await settleDismissalFromProfile(candidate.sourceAssetId, stateRef.current ?? current);
+    } finally {
+      workingRef.current = false;
+    }
+  }, [apply, ensureFlow, settleDismissalFromProfile]);
+
   const retry = useCallback(() => {
     const current = stateRef.current;
     if (!current) return;
     const target = retryTarget(current);
+    if (target === 'dismiss') {
+      void dismissCandidate();
+      return;
+    }
     if (target === 'upload' && current.pickedUri) {
       if (workingRef.current) return;
       workingRef.current = true;
@@ -524,19 +589,31 @@ export function AvatarPhotoSetupScreen({ navigation, route }: Props) {
       return;
     }
     if (target === 'consent' || target === 'prepare') void consentAndPrepare();
-  }, [apply, uploadAndRegister, consentAndPrepare]);
+  }, [apply, uploadAndRegister, consentAndPrepare, dismissCandidate]);
 
   const leave = useCallback(() => navigation.goBack(), [navigation]);
 
   const step = state?.step ?? 'intro';
-  const busy = step === 'uploading' || step === 'detecting' || step === 'submitting';
+  const busy =
+    step === 'uploading' || step === 'detecting' || step === 'submitting' || step === 'dismissing';
+  // The opening profile read has not answered yet. The intro copy renders from
+  // the first frame either way (acceptance 4 — the purpose is stated before any
+  // picker can open), but the picker itself must NOT look usable: `pick()` needs
+  // that profile, and without this a tap in the window between the first frame
+  // and the response was swallowed with no feedback at all.
+  const opening = enableV3Avatar && state === null;
   const recovery = state ? retryTarget(state) : null;
   // A `pick` recovery IS the album/camera pair below, so no separate retry button
   // is rendered for it — two buttons that do the same thing would read as two
   // different offers.
-  const showRetryButton = recovery === 'upload' || recovery === 'consent' || recovery === 'prepare';
+  const showRetryButton =
+    recovery === 'upload' ||
+    recovery === 'consent' ||
+    recovery === 'prepare' ||
+    recovery === 'dismiss';
   const showPickActions = step === 'intro' || (step === 'problem' && recovery === 'pick');
   const showIntroCopy = step === 'intro' || step === 'problem';
+  const showReview = step === 'review' || step === 'submitting' || step === 'dismissing';
   const leaveKey: I18nKey =
     step === 'preparing' || step === 'ready' ? 'avatarSetup.back' : 'avatarSetup.notNow';
 
@@ -604,7 +681,7 @@ export function AvatarPhotoSetupScreen({ navigation, route }: Props) {
                 />
               ) : null}
 
-              {step === 'review' || step === 'submitting' ? (
+              {showReview ? (
                 <View style={{ gap: 14 }}>
                   <Text
                     nativeID="avatar-setup-review-title"
@@ -632,7 +709,19 @@ export function AvatarPhotoSetupScreen({ navigation, route }: Props) {
                       }}
                       resizeMode="cover"
                     />
-                  ) : null}
+                  ) : (
+                    // `preview_url` is nullable in the frozen shape, so "the
+                    // photo shown is the photo authorized" can degrade to "no
+                    // photo shown". Said out loud rather than left as a title
+                    // pointing at nothing — the consent is still against a named
+                    // asset, and the user is told which fact is missing.
+                    <Text
+                      nativeID="avatar-setup-preview-missing"
+                      style={{ ...type.footnote, color: T.ink3, textAlign: 'center', lineHeight: 19 }}
+                    >
+                      {t.t('avatarSetup.previewUnavailable')}
+                    </Text>
+                  )}
                   <ConsentClauses t={t} />
                 </View>
               ) : null}
@@ -693,29 +782,52 @@ export function AvatarPhotoSetupScreen({ navigation, route }: Props) {
                   <PrimaryButton
                     label={t.t('avatarSetup.album')}
                     onPress={() => void pick('album')}
-                    disabled={busy}
+                    busy={opening}
+                    disabled={busy || opening}
                   />
                   <SecondaryButton
                     label={t.t('avatarSetup.camera')}
                     onPress={() => void pick('camera')}
-                    disabled={busy}
+                    disabled={busy || opening}
                   />
+                  {opening ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <ActivityIndicator color={colors.accent} />
+                      <Text
+                        nativeID="avatar-setup-opening"
+                        accessibilityRole="alert"
+                        style={{ ...type.footnote, color: T.ink3 }}
+                      >
+                        {t.t('avatarSetup.opening')}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
               ) : null}
 
-              {step === 'review' || step === 'submitting' ? (
+              {showReview ? (
                 <View style={{ gap: 10 }}>
                   <PrimaryButton
-                    label={t.t(busy ? 'avatarSetup.submitting' : 'avatarConsent.accept')}
+                    label={t.t(step === 'submitting' ? 'avatarSetup.submitting' : 'avatarConsent.accept')}
                     onPress={() => void consentAndPrepare()}
                     busy={busy}
                     disabled={busy}
                   />
                   <SecondaryButton
-                    label={t.t('avatarSetup.another')}
-                    onPress={() => apply(chooseAnotherPhoto())}
+                    label={t.t(step === 'dismissing' ? 'avatarSetup.dismissing' : 'avatarSetup.another')}
+                    onPress={() => void dismissCandidate()}
                     disabled={busy}
                   />
+                  {/* The permanence is disclosed BEFORE the tap, not discovered
+                      after it: `accept=false` dismisses this candidate for good
+                      (§4.2), and that is the price of being able to offer a
+                      different photo at all. */}
+                  <Text
+                    nativeID="avatar-setup-another-hint"
+                    style={{ ...type.caption, color: T.ink3, lineHeight: 17 }}
+                  >
+                    {t.t('avatarSetup.anotherHint')}
+                  </Text>
                 </View>
               ) : null}
             </>

@@ -23,11 +23,13 @@ import {
   AVATAR_SETUP_POLL_ATTEMPTS,
   AVATAR_SETUP_POLL_INTERVAL_MS,
   SOURCE_C_SOURCE_TYPE,
-  chooseAnotherPhoto,
+  candidateDismissed,
   consentFailed,
   consentRecorded,
   consentSubmitted,
   detectionPolled,
+  dismissFailed,
+  dismissSubmitted,
   initialAvatarSetupState,
   nextSetupPollDelayMs,
   photoPickCancelled,
@@ -44,7 +46,10 @@ import {
   setupUnavailable,
   uploadFailed,
 } from '../src/screens/avatar/avatarPhotoSetup.ts';
-import { AVATAR_CONSENT_COPY_KEYS } from '../src/i18n/avatarConsentCopy.ts';
+import {
+  AVATAR_CONSENT_CLAUSE_KEYS,
+  AVATAR_CONSENT_COPY_KEYS,
+} from '../src/i18n/avatarConsentCopy.ts';
 import { DECISION_VISUAL_NEEDS } from '../src/api/purchaseDecisionMapping.ts';
 import { V3_AVATAR_PROMPT_CONTEXTS, V3_AVATAR_SOURCES } from '../src/utils/v3AnalyticsEvents.ts';
 import { zhCN } from '../src/i18n/zh-CN.ts';
@@ -74,6 +79,13 @@ const candidateProfile = (sourceType = 'user_upload') =>
       preview_url: 'https://example.test/signed/candidate.jpg?sig=x',
     },
   });
+
+/** What the screen actually renders and calls, read from its source rather than
+ *  restated, so these assertions are about what ships. */
+const SCREEN_SOURCE = readFileSync(
+  new URL('../src/screens/avatar/AvatarPhotoSetupScreen.tsx', import.meta.url),
+  'utf8',
+);
 
 // --- Registration and preparation shapes (frozen §4.2) -------------------------
 console.log('§4.2 source-C surfaces');
@@ -515,22 +527,112 @@ check('the post-conflict read is decided by the frozen status, never by a guess'
 // --- Choosing another photo ----------------------------------------------------
 console.log('choose another photo');
 
-check('another photo resets to the intro and drops the previous candidate', () => {
-  const fresh = chooseAnotherPhoto();
+// The control that must dismiss before it can offer. Round 2 shipped it as a
+// local reset, which could not work: `_suppression` returns
+// `CANDIDATE_ALREADY_OFFERED` for ANY trigger while a candidate is on offer, so
+// photo B was uploaded, never assessed, and the poll re-rendered photo A.
+
+check('a candidate profile has no start that reaches the picker', () => {
+  // The invariant behind the whole fix, stated at the only place that decides
+  // it: while the profile is `candidate` the setup may CONSENT, never register.
+  // `offer_candidate` moves only `none → candidate`, so any other start would
+  // upload a photo the server can never offer.
+  assert.equal(avatarSetupStart(toAvatarProfile(candidateProfile())), 'consent_existing_candidate');
+  const opened = review;
+  assert.equal(opened.step, 'review');
+  // `intro` — the only step that renders the album/camera pair — is unreachable
+  // from a candidate profile except through a dismissal.
+  for (const status of ['candidate', 'preparing', 'ready', 'refresh_recommended', 'disabled']) {
+    const start = avatarSetupStart(toAvatarProfile(profile({ status })));
+    assert.notEqual(initialAvatarSetupState(start, null).step, 'intro', status);
+  }
+  assert.equal(initialAvatarSetupState(avatarSetupStart(toAvatarProfile(profile())), null).step, 'intro');
+});
+
+check('choosing another photo goes through a dismissal, not a reset', () => {
+  const reviewing = review;
+  const dismissing = dismissSubmitted(reviewing);
+  assert.equal(dismissing.step, 'dismissing');
+  // The photo stays in state while its dismissal is in flight, so the screen can
+  // keep showing what is being given up.
+  assert.equal(dismissing.candidate?.sourceAssetId, review.candidate?.sourceAssetId);
+  assert.equal(dismissing.problem, null);
+});
+
+check('once the dismissal lands, the intro is honest again', () => {
+  const fresh = candidateDismissed();
   assert.deepEqual(fresh, intro);
   assert.equal(fresh.candidate, null);
   assert.equal(fresh.consentRecorded, false);
 });
 
+check('a failed dismissal says so and does NOT drop the user at the picker', () => {
+  const reviewing = review;
+  const failed = dismissFailed(dismissSubmitted(reviewing));
+  assert.equal(failed.step, 'problem');
+  assert.equal(failed.problem, 'dismiss_failed');
+  // Keeping the candidate is what lets the retry re-target the same asset.
+  assert.equal(failed.candidate?.sourceAssetId, review.candidate?.sourceAssetId);
+});
+
+check('the retry for a failed dismissal is the dismissal — never `pick`', () => {
+  const failed = dismissFailed(
+    dismissSubmitted(review),
+  );
+  // `pick` here would be the original bug wearing a retry label: the candidate
+  // is still on offer, so the new photo would be suppressed and never surfaced.
+  assert.equal(retryTarget(failed), 'dismiss');
+});
+
+check('the screen declines the DISPLAYED asset, and posts no consent version', () => {
+  // §4.2 forbids `consent_version` on a decline (`4001`), and `buildConsentBody`
+  // is what drops it — asserted in avatarCandidatePrompt.test.ts. What is
+  // asserted here is that this screen decides against the candidate it is
+  // showing rather than any other id.
+  assert.match(
+    SCREEN_SOURCE,
+    /decideAvatarConsent\(candidate\.sourceAssetId,\s*false,/,
+    'the dismissal must name the displayed candidate',
+  );
+  assert.match(
+    SCREEN_SOURCE,
+    /onPress=\{\(\) => void dismissCandidate\(\)\}/,
+    'the "another photo" control must run the dismissal, not a local reset',
+  );
+});
+
+check('a lost dismissal answer is settled by the PROFILE, not the status code', () => {
+  // A decided asset answers 4091 forever and `toAvatarConsentErrorState` reads
+  // that as non-retryable, so a code-only reading would dead-end on a dismissal
+  // that already succeeded. The screen re-reads and compares the asset id.
+  assert.match(SCREEN_SOURCE, /settleDismissalFromProfile/);
+  assert.match(SCREEN_SOURCE, /profile\.candidate\?\.sourceAssetId === dismissedAssetId/);
+});
+
+check('the picker is not tappable before the opening profile read answers', () => {
+  // `pick()` bails on a null state; without this the bail is silent and the tap
+  // is simply lost. The intro copy still renders from the first frame, so
+  // acceptance 4 is untouched.
+  assert.match(SCREEN_SOURCE, /const opening = enableV3Avatar && state === null;/);
+  assert.match(SCREEN_SOURCE, /disabled=\{busy \|\| opening\}/);
+});
+
+check('a candidate with no preview URL says so instead of showing a bare title', () => {
+  assert.match(SCREEN_SOURCE, /avatarSetup\.previewUnavailable/);
+  assert.ok('avatarSetup.previewUnavailable' in zhCN);
+  assert.ok('avatarSetup.previewUnavailable' in enUS);
+});
+
+check('the permanence of a dismissal is disclosed before the tap', () => {
+  // "accept=false dismisses that candidate permanently" (§4.2) is a fact the
+  // user has to be told BEFORE choosing, not discover afterwards.
+  assert.match(SCREEN_SOURCE, /avatarSetup\.anotherHint/);
+  assert.match(zhCN['avatarSetup.anotherHint'], /放弃/);
+  assert.match(enUS['avatarSetup.anotherHint'], /for good|permanently/i);
+});
+
 // --- Copy: one consent version, one meaning -----------------------------------
 console.log('copy');
-
-/** What the screen actually renders, read from its source rather than restated,
- *  so these assertions are about what ships. */
-const SCREEN_SOURCE = readFileSync(
-  new URL('../src/screens/avatar/AvatarPhotoSetupScreen.tsx', import.meta.url),
-  'utf8',
-);
 
 check('the setup screen renders the §15 clauses from V3-014\'s OWN keys', () => {
   // The recorded `consent_version` names exactly `AVATAR_CONSENT_COPY_KEYS`. If
@@ -540,6 +642,34 @@ check('the setup screen renders the §15 clauses from V3-014\'s OWN keys', () =>
   for (const key of ['avatarConsent.purpose', 'avatarConsent.thirdParty', 'avatarConsent.control']) {
     assert.ok(AVATAR_CONSENT_COPY_KEYS.includes(key as never), `${key} must be part of the version`);
     assert.ok(SCREEN_SOURCE.includes(`t('${key}')`), `${key} must be rendered by the setup screen`);
+  }
+});
+
+check('the version’s CLAUSE subset is exactly what both surfaces render verbatim', () => {
+  // V3-015 made one `consent_version` cover two surfaces. The three §15 clauses
+  // are identical on both (asserted above and in avatarCandidatePrompt.test.ts);
+  // the chrome around them is not — this screen renders `avatarSetup.reviewTitle`
+  // / `.another` where the sheet renders `avatarConsent.title` / `.decline`,
+  // because "choose another photo" is a different action from "decline". The
+  // subset makes that split explicit instead of leaving one version string to
+  // silently stand for two different framings. Which of the two readings ships
+  // is V3_SPEC §4.3's human copy decision, recorded in feature_list.json.
+  assert.deepEqual(
+    [...AVATAR_CONSENT_CLAUSE_KEYS],
+    ['avatarConsent.purpose', 'avatarConsent.thirdParty', 'avatarConsent.control'],
+  );
+  for (const key of AVATAR_CONSENT_CLAUSE_KEYS) {
+    assert.ok((AVATAR_CONSENT_COPY_KEYS as readonly string[]).includes(key), key);
+    assert.ok(SCREEN_SOURCE.includes(`t('${key}')`), `${key} must be rendered here too`);
+  }
+  // The two keys the surfaces genuinely differ on — named, so a future edit that
+  // unified them would have to change this line deliberately.
+  for (const key of ['avatarConsent.title', 'avatarConsent.decline']) {
+    assert.equal(
+      SCREEN_SOURCE.includes(`t('${key}')`),
+      false,
+      `${key} is the sheet's chrome; this screen has its own`,
+    );
   }
 });
 

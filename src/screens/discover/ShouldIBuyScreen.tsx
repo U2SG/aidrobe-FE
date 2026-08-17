@@ -351,14 +351,38 @@ export function ShouldIBuyScreen({ navigation }: Props) {
   // existing-item alternative rather than for good. See the focus effect below.
   const flowIdRef = useRef<string | null>(null);
   const handedOffRef = useRef(false);
+  /** Did this focus session resume a suspended attempt? Only then may the flow
+   *  be re-asserted — see `ensureResumedFlow`. */
+  const resumedFlowRef = useRef(false);
+
+  /**
+   * V3-015 — the INBOUND half of the race the setup screen closes outbound.
+   *
+   * React Navigation does not guarantee that the blurring screen's cleanup runs
+   * before the focusing screen's effect, so the hand-off target's `endV3Flow`
+   * can land AFTER this screen re-adopted on focus — clearing the id from under
+   * a card that is fully interactive again. The outbound direction was fixed by
+   * re-asserting immediately before anything that must carry the flow
+   * (`AvatarPhotoSetupScreen.ensureFlow`); this is the same move on the way
+   * back, so the ordering stops mattering in both directions instead of being
+   * relied upon in one.
+   *
+   * Deliberately scoped to a RESUMED attempt: re-adopting on any emit would
+   * resurrect a stale id after an unrelated tab switch, which is the leak the
+   * blur closer exists to prevent. Re-asserting the same id is idempotent.
+   */
+  const ensureResumedFlow = useCallback(() => {
+    if (resumedFlowRef.current && flowIdRef.current) adoptV3Flow(flowIdRef.current);
+  }, []);
 
   const emit = useCallback(
     <E extends V3FeOwnedEvent>(event: E, payload: V3EventPayloads[E]) => {
+      ensureResumedFlow();
       // No identity yet ⇒ no event. An orphaned envelope is worse than a gap.
       const context = eventContext();
       if (context) trackV3(event, payload, context);
     },
-    [eventContext],
+    [ensureResumedFlow, eventContext],
   );
 
   // One flow = one "should I buy this" attempt, with exactly ONE opener
@@ -414,7 +438,12 @@ export function ShouldIBuyScreen({ navigation }: Props) {
   // one-opener/one-closer invariant is intact.
   useFocusEffect(
     useCallback(() => {
-      if (handedOffRef.current && flowIdRef.current) adoptV3Flow(flowIdRef.current);
+      if (handedOffRef.current && flowIdRef.current) {
+        adoptV3Flow(flowIdRef.current);
+        // Arms `ensureResumedFlow` for the rest of this focus session, because
+        // the hand-off target's cleanup may still be about to clear the id.
+        resumedFlowRef.current = true;
+      }
       // Returning from the setup screen: the profile has very likely moved
       // (`preparing`, or `ready` if it was already prepared), and the entry must
       // reflect that instead of inviting the user back into a flow they just
@@ -423,7 +452,10 @@ export function ShouldIBuyScreen({ navigation }: Props) {
       // only originate from a card that was rendered.
       if (handedOffRef.current) void probeAvatar();
       handedOffRef.current = false;
-      return endV3Flow;
+      return () => {
+        resumedFlowRef.current = false;
+        endV3Flow();
+      };
     }, [probeAvatar]),
   );
 

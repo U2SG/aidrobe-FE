@@ -850,11 +850,17 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'avatarSetup.camera': 'Take a photo',
   'avatarSetup.notNow': 'Not now',
   'avatarSetup.keepDecision': 'Skipping this leaves your purchase judgment exactly as it is.',
+  'avatarSetup.opening': 'Getting things ready…',
   'avatarSetup.uploading': 'Uploading this photo…',
   'avatarSetup.detecting': 'Checking whether this photo can be used…',
   'avatarSetup.pickedAlt': 'The photo you just chose',
   'avatarSetup.reviewTitle': 'Use this photo as your appearance reference?',
+  'avatarSetup.previewUnavailable':
+    "This photo can't be shown right now. You can still choose another one.",
   'avatarSetup.another': 'Choose another photo',
+  'avatarSetup.anotherHint':
+    'Choosing another photo gives this one up for good; you can take or pick a new one afterwards.',
+  'avatarSetup.dismissing': 'Giving up this photo…',
   'avatarSetup.submitting': 'Saving…',
   'avatarSetup.preparingTitle': 'Preparing your appearance reference',
   'avatarSetup.preparingBody':
@@ -867,6 +873,8 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'avatarSetup.problem.upload': "This photo didn't upload.",
   'avatarSetup.problem.photo': "This photo can't be used as a reference — try another one.",
   'avatarSetup.problem.consent': "Couldn't save your choice.",
+  'avatarSetup.problem.dismiss':
+    "Couldn't give up this photo, so a different one can't be offered yet.",
   'avatarSetup.problem.preparation': "Preparation couldn't start. Your choice has been saved.",
   'avatarSetup.problem.unavailable':
     'Appearance references are unavailable right now; your purchase judgment still stands.',

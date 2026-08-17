@@ -11,9 +11,13 @@
 //
 //     intro ──pick──▶ uploading ──register──▶ detecting ──candidate──▶ review
 //       ▲                                                                │
-//       └────────────── another photo ◀───────────────────────────── consent
+//       └──── dismissing ◀── another photo ◀──────────────────────── consent
 //                                                                        │
 //                                                          preparing / ready
+//
+// `dismissing` is a real backend step, not a local reset. See
+// `dismissSubmitted` — the whole reason it exists is that the server will not
+// offer a second candidate while the first is still on the table.
 //
 // `review` is not ceremony. Registration is explicitly NOT consent (contract
 // §4.2), and the asset the server offers is *its* newest qualified undecided
@@ -62,6 +66,10 @@ export type AvatarSetupStep =
   /** A candidate's own photo is on screen and consent is offered against it. */
   | 'review'
   | 'submitting'
+  /** The displayed candidate is being dismissed so a different photo can be
+   *  offered. Kept distinct from `submitting` because it is the opposite
+   *  answer, and the user must never read "正在提交授权" while we decline. */
+  | 'dismissing'
   /** Terminal: consent recorded and a preparation is running. */
   | 'preparing'
   /** Terminal: a usable reference already exists. */
@@ -76,6 +84,10 @@ export type AvatarSetupProblem =
    *  Stated as "not this photo", never as "you cannot do this". */
   | 'photo_unusable'
   | 'consent_failed'
+  /** The dismissal that must precede a different photo did not land. Stated
+   *  rather than swallowed: while the candidate is still on offer, registering
+   *  another photo is a request the backend will assess and never surface. */
+  | 'dismiss_failed'
   /** Consent IS recorded; only the enqueue failed. Retry resumes at prepare. */
   | 'preparation_failed'
   /** 503 with the flag off, 404, or a conflict a profile read could not settle. */
@@ -327,17 +339,57 @@ export function preparationFailed(
   };
 }
 
+// --- Choosing a different photo ------------------------------------------------
+
 /**
- * Back to the intro to choose a different photo.
+ * "Choose another photo" starts by DISMISSING the one on screen, and it has to.
  *
- * Nothing is sent. The candidate on file is left exactly as it was —
- * `accept=false` would dismiss that photo *permanently* (§4.2), which is a
- * heavier answer than "not this one" and would destroy material the user may
- * still want. Walking away from the screen has the same shape: this device says
- * nothing about that asset, and the server keeps it consentable.
+ * The first version of this control reset local state and sent nothing, on the
+ * reasoning that `accept=false` is permanent (§4.2) and should not destroy
+ * material the user might still want. That reasoning was wrong about what the
+ * backend does with the next photo, and the result was a control that could
+ * never do what it says — deterministically, not as an edge case:
+ *
+ * 1. `review` is only reachable while the profile is `candidate`.
+ * 2. The upload registers fine (`enqueue_candidate_detection` does no
+ *    profile-status suppression), so the client is told `enqueued` and waits.
+ * 3. The worker then reads `_suppression`, which returns
+ *    `CANDIDATE_ALREADY_OFFERED` for *any* trigger while a candidate is on
+ *    offer, so photo B is never assessed and no asset row is created.
+ * 4. The poll re-reads the profile, finds the SAME `candidate`, and re-renders
+ *    photo A under "use this photo?".
+ *
+ * So the user picked a different photo, waited, and got the original back, with
+ * no explanation — after a presign and a full-body photo upload that could
+ * never lead anywhere. The material being protected was the photo the user had
+ * just declined, and keeping it is exactly what made every other photo
+ * unofferable.
+ *
+ * `accept=false` is the frozen contract's own word for this: it dismisses that
+ * candidate and moves `candidate → none` (`AvatarLifecycle.record_consent`),
+ * which is the only state a new photo may be registered from. The permanence is
+ * disclosed in the copy next to the control rather than avoided.
  */
-export function chooseAnotherPhoto(): AvatarSetupState {
+export function dismissSubmitted(state: AvatarSetupState): AvatarSetupState {
+  return { ...state, step: 'dismissing', problem: null };
+}
+
+/** The dismissal landed: the profile is back to offering nothing, so the intro
+ *  (and the picker) is honest again. */
+export function candidateDismissed(): AvatarSetupState {
   return { ...BASE };
+}
+
+/**
+ * The dismissal did not land, and the profile still offers the same candidate.
+ *
+ * Said out loud with a retry rather than dropping the user at the intro: at the
+ * intro the picker would upload a photo the server will never offer, which is
+ * the dead end this whole path exists to remove. The candidate is kept in state
+ * so the retry re-targets the same asset.
+ */
+export function dismissFailed(state: AvatarSetupState): AvatarSetupState {
+  return { ...state, step: 'problem', problem: 'dismiss_failed' };
 }
 
 // --- Recovery ------------------------------------------------------------------
@@ -350,13 +402,18 @@ export function chooseAnotherPhoto(): AvatarSetupState {
  * would fail forever on a request the user already completed. `null` means the
  * state offers no retry and only a way back.
  */
-export type AvatarSetupRetry = 'pick' | 'upload' | 'consent' | 'prepare' | null;
+export type AvatarSetupRetry = 'pick' | 'upload' | 'consent' | 'prepare' | 'dismiss' | null;
 
 export function retryTarget(state: AvatarSetupState): AvatarSetupRetry {
   switch (state.problem) {
     case 'permission_denied':
     case 'photo_unusable':
       return 'pick';
+    case 'dismiss_failed':
+      // Never `pick`: the candidate is still on offer, so a new photo would be
+      // assessed and then suppressed. The only move that unblocks the picker is
+      // the dismissal itself.
+      return 'dismiss';
     case 'upload_failed':
       // The picked file is still on disk, so the cheap retry is the upload
       // itself; only a lost URI sends the user back to the picker.

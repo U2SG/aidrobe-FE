@@ -55,3 +55,34 @@ export const AVATAR_CONSENT_COPY_KEYS = [
   'avatarConsent.retry',
   'avatarConsent.previewAlt',
 ] as const;
+
+/**
+ * The three §15 authorization clauses — the part of the version that is
+ * IDENTICAL on every surface that takes this consent.
+ *
+ * ## Why this subset exists (V3-015), and what the §4.3 gate has to decide
+ *
+ * One `consent_version` now covers two surfaces: V3-014's passive candidate
+ * sheet and V3-015's on-demand setup screen. They render these three clauses
+ * from the same keys, verbatim — that is the substantive text the user
+ * authorizes, and a test on each surface pins it.
+ *
+ * They do NOT share their chrome. The sheet renders `avatarConsent.title` /
+ * `.decline`; the setup screen renders `avatarSetup.reviewTitle` and
+ * `avatarSetup.another` (+ `.anotherHint`), because "choose another photo"
+ * is a different action from "decline", even though both post `accept=false`.
+ * So a stored version string stands for identical clause text plus
+ * surface-specific framing.
+ *
+ * That is a deliberate call, not an oversight, and it is exactly the kind of
+ * thing V3_SPEC §4.3's human copy approval exists to settle: either the version
+ * is declared to name the clauses only (this subset), or each surface gets its
+ * own version string. Recorded here rather than in the frozen contract because
+ * nothing crosses the FE/BE boundary — the BE stores whatever string it is
+ * given — and flagged in `feature_list.json` so the gate sees it.
+ */
+export const AVATAR_CONSENT_CLAUSE_KEYS = [
+  'avatarConsent.purpose',
+  'avatarConsent.thirdParty',
+  'avatarConsent.control',
+] as const;

@@ -849,11 +849,22 @@ export const zhCN = {
   'avatarSetup.camera': '拍一张',
   'avatarSetup.notNow': '暂时不用',
   'avatarSetup.keepDecision': '不设置也不影响这条购买判断。',
+  // Shown while the opening profile read is still in flight, next to a picker
+  // that is deliberately not usable yet — a tap there could only be dropped.
+  'avatarSetup.opening': '正在准备…',
   'avatarSetup.uploading': '正在上传这张照片…',
   'avatarSetup.detecting': '正在看这张照片能不能用…',
   'avatarSetup.pickedAlt': '刚选择的照片',
   'avatarSetup.reviewTitle': '用这张照片作为形象参考？',
+  // The frozen shape allows a candidate with no preview URL. Then the title
+  // would point at nothing, so the missing part is named instead.
+  'avatarSetup.previewUnavailable': '这张照片暂时显示不出来，你仍然可以换一张。',
   'avatarSetup.another': '换一张照片',
+  // Discloses what "another photo" costs BEFORE the tap: the server will not
+  // offer a second candidate while this one is on the table, so choosing another
+  // means declining this one, and a decline is permanent (§4.2).
+  'avatarSetup.anotherHint': '换一张会放弃当前这张照片，之后可以重新拍或重新选。',
+  'avatarSetup.dismissing': '正在放弃这张照片…',
   'avatarSetup.submitting': '正在保存…',
   // §9.5: a calm state, no countdown and no percentage we cannot keep.
   'avatarSetup.preparingTitle': '正在准备你的形象参考',
@@ -865,6 +876,9 @@ export const zhCN = {
   'avatarSetup.problem.upload': '这张照片没有上传成功。',
   'avatarSetup.problem.photo': '这张照片暂时不能作为形象参考，换一张再试试。',
   'avatarSetup.problem.consent': '没能保存你的选择。',
+  // Never "换一张再试试": while this candidate is still on offer, a new photo
+  // would be uploaded and then silently never surfaced.
+  'avatarSetup.problem.dismiss': '没能放弃这张照片，所以暂时还不能换新的。',
   'avatarSetup.problem.preparation': '这次没能开始准备，你的选择已经保存。',
   'avatarSetup.problem.unavailable': '形象参考现在不可用，这条购买判断仍然有效。',
   // The revoked case: §4.1 lists a re-enable edge but P0 has no reachable path
