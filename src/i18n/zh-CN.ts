@@ -366,6 +366,12 @@ export const zhCN = {
   'should_i_buy.error.rateLimited': '操作太频繁，稍等片刻再试。',
   'should_i_buy.error.serverError': '服务暂时不可用，可以重试一次。',
   'should_i_buy.error.network': '网络异常，请检查连接后重试。',
+  // V3-015 — the on-demand visual entry (§5.5 Avatar None). The label is §5.5's
+  // own wording; the caption pre-discloses that a photo is involved so the tap is
+  // not a surprise, while the full explanation still waits until after it (§5.5
+  // asks once the user shows visual intent, not before).
+  'should_i_buy.preview.entry': '看看它会不会被你穿起来',
+  'should_i_buy.preview.entryHint': '需要一张清晰全身照，只设置一次',
   // --- Discover empty states ----------------------------------------------
   'discover.inspirations.empty.title': '还没有风格灵感',
   'discover.inspirations.empty.subtitle':
@@ -823,6 +829,65 @@ export const zhCN = {
   // a transient failure notice is not part of it. Shown only when the accept
   // POST fails unretryably (503/404/409), never on decline.
   'avatarConsent.unavailable': '没能设为形象参考，这张照片暂时不可用。',
+
+  // --- V3-015: on-demand photo setup (V3_SPEC §5.5 / §7.4 / §9.4) -----------
+  // Chrome for the setup screen. The three §15 AUTHORIZATION CLAUSES are NOT
+  // duplicated here — the screen renders `avatarConsent.purpose` /
+  // `.thirdParty` / `.control` verbatim, because the same authorization must
+  // mean the same thing under the same `AVATAR_CONSENT_COPY_VERSION`; a second
+  // wording would make one recorded version stand for two different texts.
+  // Same open human gate applies (production copy unapproved, flag off).
+  'avatarSetup.title': '看上身效果',
+  // §5.5's own wording for the moment the user asks for a visual.
+  'avatarSetup.lead': '看上身效果需要一张清晰全身照。只需设置一次，以后可以直接使用。',
+  // §7.4's first-phase minimums, stated as guidance rather than requirements —
+  // and §15 forbids any comment on the body itself, so this describes the FRAME.
+  'avatarSetup.poseHint': '单人、正面或轻微侧面、身体大部分在画面里、光线清晰就可以。',
+  // Acceptance 2, said out loud where the user decides.
+  'avatarSetup.oneShotIsEnough': '一张就够了，不需要三围、体重，也不需要转身视频。',
+  'avatarSetup.album': '从相册选择',
+  'avatarSetup.camera': '拍一张',
+  'avatarSetup.notNow': '暂时不用',
+  'avatarSetup.keepDecision': '不设置也不影响这条购买判断。',
+  // Shown while the opening profile read is still in flight, next to a picker
+  // that is deliberately not usable yet — a tap there could only be dropped.
+  'avatarSetup.opening': '正在准备…',
+  'avatarSetup.uploading': '正在上传这张照片…',
+  'avatarSetup.detecting': '正在看这张照片能不能用…',
+  'avatarSetup.pickedAlt': '刚选择的照片',
+  'avatarSetup.reviewTitle': '用这张照片作为形象参考？',
+  // The frozen shape allows a candidate with no preview URL. Then the title
+  // would point at nothing, so the missing part is named instead.
+  'avatarSetup.previewUnavailable': '这张照片暂时显示不出来，你仍然可以换一张。',
+  'avatarSetup.another': '换一张照片',
+  // Discloses what "another photo" costs BEFORE the tap: the server will not
+  // offer a second candidate while this one is on the table, so choosing another
+  // means declining this one, and a decline is permanent (§4.2).
+  'avatarSetup.anotherHint': '换一张会放弃当前这张照片，之后可以重新拍或重新选。',
+  'avatarSetup.dismissing': '正在放弃这张照片…',
+  'avatarSetup.submitting': '正在保存…',
+  // §9.5: a calm state, no countdown and no percentage we cannot keep.
+  'avatarSetup.preparingTitle': '正在准备你的形象参考',
+  'avatarSetup.preparingBody': '可以离开这个页面，准备好之后不用再上传照片。',
+  'avatarSetup.readyTitle': '形象参考已就绪',
+  'avatarSetup.readyBody': '以后看上身效果时会直接使用它。',
+  'avatarSetup.back': '回到购买判断',
+  'avatarSetup.problem.permission': '还没有拿到相册或相机权限。在系统设置里打开后可以再试一次。',
+  'avatarSetup.problem.upload': '这张照片没有上传成功。',
+  'avatarSetup.problem.photo': '这张照片暂时不能作为形象参考，换一张再试试。',
+  'avatarSetup.problem.consent': '没能保存你的选择。',
+  // Names BOTH moves that are on screen, because both are still legal: the
+  // profile was re-read and this candidate is still on offer, so it can be
+  // accepted — and the dismissal can be tried again. Never "换一张再试试" alone:
+  // while the candidate stands, a NEW photo would be uploaded and then silently
+  // never surfaced.
+  'avatarSetup.problem.dismiss': '没能放弃这张照片。可以再试一次，或者就用这张。',
+  'avatarSetup.problem.preparation': '这次没能开始准备，你的选择已经保存。',
+  'avatarSetup.problem.unavailable': '形象参考现在不可用，这条购买判断仍然有效。',
+  // The revoked case: §4.1 lists a re-enable edge but P0 has no reachable path
+  // to it (see `avatarSetupStart`), so this says so instead of offering a retry
+  // that cannot succeed.
+  'avatarSetup.problem.revoked': '形象参考已停用，目前还不能重新开启。',
 } as const;
 
 export type I18nKey = keyof typeof zhCN;

@@ -24,7 +24,24 @@ export async function pickAndUploadImage(filePrefix = 'upload'): Promise<PickedU
   const result = await ImagePicker.launchImageLibraryAsync({ quality: 1, mediaTypes: ['images'] });
   if (result.canceled || !result.assets[0]) return null;
 
-  const compressed = await compressImage(result.assets[0].uri);
+  return uploadLocalImage(result.assets[0].uri, filePrefix);
+}
+
+/**
+ * Compress and upload one already-chosen local image; returns the same triple
+ * as `pickAndUploadImage`.
+ *
+ * Split out for V3-015, whose picker is a separate port (album *and* camera,
+ * with denial and cancellation as return values — `utils/personPhotoPicker.ts`).
+ * The alternative was a second copy of the compress + presign + PUT sequence,
+ * i.e. a second place for the presigned-host rewrite this repo's CLAUDE.md warns
+ * about to be forgotten. Behavior of the existing caller is unchanged.
+ */
+export async function uploadLocalImage(
+  uri: string,
+  filePrefix = 'upload',
+): Promise<PickedUpload> {
+  const compressed = await compressImage(uri);
   const fileName = `${filePrefix}-${Date.now()}.jpg`;
   const presign = await createPresignedUpload({
     fileName,

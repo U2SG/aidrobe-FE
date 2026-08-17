@@ -142,6 +142,16 @@ export type DiscoverStackParamList = {
   // promises an outfit delivers one instead of an empty composer. Only the
   // Discover stack declares it — ShouldIBuy, its only caller, lives here.
   AskAidrobe: { focusedItemId?: string; scope?: 'today'; autoAsk?: string } | undefined;
+  // V3-015 — on-demand full-body photo setup (§9.4), pushed from the decision
+  // card so `goBack` returns to that same card with its decision intact. No new
+  // tab and no avatar area: one more screen on the existing stack, reachable only
+  // from the visual entry that opens it.
+  //
+  // `flowId` carries the decision attempt's correlation id, because the setup is
+  // part of that attempt: without it the avatar prompt cannot be joined to the
+  // flow, and kill criterion 4 (does asking for a photo cost decisions?) is not
+  // computable. Optional so a future entrance outside a flow still compiles.
+  AvatarPhotoSetup: { flowId?: string } | undefined;
 };
 
 export type MainTabsParamList = {

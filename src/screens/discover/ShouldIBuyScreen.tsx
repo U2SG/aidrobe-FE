@@ -4,6 +4,8 @@ import { useMutation } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
+import { getAvatarProfile } from '@/api/avatarProfile';
+import { avatarSetupStart, type AvatarSetupStart } from '@/api/avatarProfileMapping';
 import type {
   DecisionEndpointContext,
   DecisionErrorState,
@@ -18,6 +20,8 @@ import {
   getPurchaseCandidate,
 } from '@/api/purchaseDecisions';
 import { adoptV3Flow, beginV3Flow, endV3Flow } from '@/api/v3Flow';
+import { enableV3Avatar } from '@/lib/featureFlags';
+import { previewSetupEntryVisible } from '@/screens/avatar/avatarPhotoSetup';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { ImageThumb } from '@/components/ui/ImageThumb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
@@ -234,6 +238,53 @@ function NextActions({
   );
 }
 
+/**
+ * V3-015 — §5.5's "Avatar None" entry: the decision is already complete, and
+ * this is the quiet way to ask for a visual on top of it.
+ *
+ * Deliberately the least emphasized block on the card. §5.4 layer 4 is
+ * CONDITIONAL and §9.2 says the preview area must not take the page over, so
+ * this is a bordered row with a caption — not a filled button, which would put a
+ * second emphasis beside the judgment and break V3-009 acceptance 2.
+ *
+ * It renders only when `previewSetupEntryVisible` says so, i.e. when the
+ * decision itself says a visual would help and the profile is in a state this
+ * flow can actually serve. Everything else — flag off, probe failed, avatar
+ * ready, avatar revoked — renders nothing at all rather than a disabled or
+ * explanatory placeholder (contract §2 rollback rule 2, low-density rule).
+ */
+function VisualSetupEntry({ onPress, t }: { onPress: () => void; t: UseT }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={t.t('should_i_buy.preview.entry')}
+      style={{
+        minHeight: 44,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderRadius: radius.md,
+        borderWidth: 1,
+        borderColor: T.divider,
+      }}
+    >
+      <SystemIcon name="camera" size={16} color={T.ink3} strokeWidth={1.8} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ ...type.callout, color: T.ink2 }}>{t.t('should_i_buy.preview.entry')}</Text>
+        {/* Says a photo is involved before the tap, so opening a setup screen is
+            not a surprise; the full explanation still waits until after it, which
+            is where §5.5 puts it. */}
+        <Text style={{ ...type.caption, color: T.ink3, lineHeight: 16 }}>
+          {t.t('should_i_buy.preview.entryHint')}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
 /** Every known error state renders a message and either an explicit retry or a
  * way back — never a dead end and never a silent failure (V3-008 acceptance 3
  * consumed here; §3.6). */
@@ -292,18 +343,46 @@ export function ShouldIBuyScreen({ navigation }: Props) {
   const [result, setResult] = useState<DecisionResult | null>(null);
   const [errorState, setErrorState] = useState<DecisionErrorState | null>(null);
   const [chosenAction, setChosenAction] = useState<RenderedAction | null>(null);
+  // V3-015 — what the avatar profile says the visual entry may offer, or null
+  // while unknown (never probed, probe failed, or the flag is off). Null renders
+  // no entry: an optional V3 surface self-hides rather than explaining itself.
+  const [avatarStart, setAvatarStart] = useState<AvatarSetupStart | null>(null);
   // The current attempt's flow id, and whether we left the screen for the
   // existing-item alternative rather than for good. See the focus effect below.
   const flowIdRef = useRef<string | null>(null);
   const handedOffRef = useRef(false);
+  /** Did this focus session resume a suspended attempt? Only then may the flow
+   *  be re-asserted — see `ensureResumedFlow`. */
+  const resumedFlowRef = useRef(false);
+
+  /**
+   * V3-015 — the INBOUND half of the race the setup screen closes outbound.
+   *
+   * React Navigation does not guarantee that the blurring screen's cleanup runs
+   * before the focusing screen's effect, so the hand-off target's `endV3Flow`
+   * can land AFTER this screen re-adopted on focus — clearing the id from under
+   * a card that is fully interactive again. The outbound direction was fixed by
+   * re-asserting immediately before anything that must carry the flow
+   * (`AvatarPhotoSetupScreen.ensureFlow`); this is the same move on the way
+   * back, so the ordering stops mattering in both directions instead of being
+   * relied upon in one.
+   *
+   * Deliberately scoped to a RESUMED attempt: re-adopting on any emit would
+   * resurrect a stale id after an unrelated tab switch, which is the leak the
+   * blur closer exists to prevent. Re-asserting the same id is idempotent.
+   */
+  const ensureResumedFlow = useCallback(() => {
+    if (resumedFlowRef.current && flowIdRef.current) adoptV3Flow(flowIdRef.current);
+  }, []);
 
   const emit = useCallback(
     <E extends V3FeOwnedEvent>(event: E, payload: V3EventPayloads[E]) => {
+      ensureResumedFlow();
       // No identity yet ⇒ no event. An orphaned envelope is worse than a gap.
       const context = eventContext();
       if (context) trackV3(event, payload, context);
     },
-    [eventContext],
+    [ensureResumedFlow, eventContext],
   );
 
   // One flow = one "should I buy this" attempt, with exactly ONE opener
@@ -325,12 +404,59 @@ export function ShouldIBuyScreen({ navigation }: Props) {
   // return — but ONLY when we handed off. Re-adopting on every focus would
   // resurrect a stale id after an unrelated ten-minute tab switch and stamp it
   // onto fresh requests, which is the leak the blur closer exists to prevent.
+  /**
+   * V3-015 — what, if anything, the visual entry may offer.
+   *
+   * Probed only once a decision is on screen, because §5.5 is explicit that the
+   * complete purchase judgment comes first and the visual question comes after
+   * it; probing at mount would spend a request on a screen that may never show a
+   * decision at all. Silent by construction: any failure — 503 with the flag
+   * off, network, 404 — leaves `avatarStart` null and the entry simply absent
+   * (contract §2 rollback rule 2). The user asked for a purchase judgment, not
+   * for this, so its failure must not appear anywhere on their screen.
+   */
+  const probeAvatar = useCallback(async () => {
+    if (!enableV3Avatar) return;
+    try {
+      setAvatarStart(avatarSetupStart(await getAvatarProfile()));
+    } catch {
+      setAvatarStart(null);
+    }
+  }, []);
+
+  // THE DEPENDENCY LIST IS LOAD-BEARING, AND `result` MUST NOT BE IN IT.
+  //
+  // `useFocusEffect` keys its inner `useEffect` on this callback's identity, so a
+  // dependency that changes mid-visit runs the effect's CLEANUP — which is
+  // `endV3Flow`. V3-015 first added `result` here (to skip a pointless probe) and
+  // that silently killed the flow the moment a decision arrived: the card was
+  // still interactive, `v3_decision_action` declares `flow_id: required`, and
+  // `trackV3` throws in a dev build and drops the event in production. The probe
+  // that caught it is `.agent-artifacts/v3-015/decision-action-flow-probe.mjs`,
+  // run against the broken tree before the fix. `probeAvatar` is stable
+  // (`useCallback(…, [])`), so this list never changes and V3-009/V3-010's
+  // one-opener/one-closer invariant is intact.
   useFocusEffect(
     useCallback(() => {
-      if (handedOffRef.current && flowIdRef.current) adoptV3Flow(flowIdRef.current);
+      if (handedOffRef.current && flowIdRef.current) {
+        adoptV3Flow(flowIdRef.current);
+        // Arms `ensureResumedFlow` for the rest of this focus session, because
+        // the hand-off target's cleanup may still be about to clear the id.
+        resumedFlowRef.current = true;
+      }
+      // Returning from the setup screen: the profile has very likely moved
+      // (`preparing`, or `ready` if it was already prepared), and the entry must
+      // reflect that instead of inviting the user back into a flow they just
+      // completed. Re-probed only on a hand-off return, for the same reason the
+      // flow is only re-adopted then — and unconditionally, because a hand-off can
+      // only originate from a card that was rendered.
+      if (handedOffRef.current) void probeAvatar();
       handedOffRef.current = false;
-      return endV3Flow;
-    }, []),
+      return () => {
+        resumedFlowRef.current = false;
+        endV3Flow();
+      };
+    }, [probeAvatar]),
   );
 
   const runDecision = useCallback(async (): Promise<DecisionResult> => {
@@ -386,6 +512,9 @@ export function ShouldIBuyScreen({ navigation }: Props) {
       // A skewed unknown decision still renders (server copy) but is never
       // emitted — the frozen enum would reject it.
       if (value) emit('v3_decision_viewed', { decision: value });
+      // The decision is on screen and complete; only now is the visual question
+      // worth asking about (§5.5).
+      void probeAvatar();
     },
     onError: (error: unknown) => {
       // The flow deliberately stays OPEN: the attempt is not over while the
@@ -397,6 +526,21 @@ export function ShouldIBuyScreen({ navigation }: Props) {
   // Derived before the handlers that read it, so the reuse hand-off does not
   // depend on a binding declared further down the component.
   const card = result ? buildDecisionCard(result.decision) : null;
+
+  /**
+   * V3-015 — §5.5's "the user actively asks for a visual" moment.
+   *
+   * The hand-off is the V3-010 one: `handedOffRef` suspends this attempt's flow
+   * instead of ending it, so the setup screen re-adopts the SAME `flow_id` and
+   * its avatar prompt joins this decision on the V3-002 dashboard — without
+   * which kill criterion 4 ("does asking for a photo cost decisions?") cannot be
+   * computed at all. Nothing about the decision is unmounted, cleared or
+   * re-fetched: `goBack` returns to this card exactly as it is (acceptance 1).
+   */
+  const openVisualSetup = () => {
+    handedOffRef.current = true;
+    navigation.navigate('AvatarPhotoSetup', { flowId: flowIdRef.current ?? undefined });
+  };
 
   const onUpload = async () => {
     setUploading(true);
@@ -594,6 +738,19 @@ export function ShouldIBuyScreen({ navigation }: Props) {
             ) : null}
 
             {card.comparison ? <ClosetComparison comparison={card.comparison} t={t} /> : null}
+
+            {/* §5.4 layer 4 / §9.2's conditional preview area, in its place in
+                the layer order — and in V3-015 it holds the SETUP entry only:
+                generating the preview is V3-019/V3-020, so an entry for a user
+                who already has a reference would lead nowhere and is not
+                rendered (see `previewSetupEntryVisible`). */}
+            {avatarStart &&
+            previewSetupEntryVisible({
+              visualNeed: result.decision.visualNeed,
+              start: avatarStart,
+            }) ? (
+              <VisualSetupEntry onPress={openVisualSetup} t={t} />
+            ) : null}
 
             {/* §5.4 layer 5 — the boundary the product must never overstate. */}
             {card.boundaryNote ? (
