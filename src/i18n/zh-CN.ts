@@ -386,6 +386,23 @@ export const zhCN = {
   'should_i_buy.preview.notPossible': '这个候选暂时无法生成预演，可以继续查看搭配依据。',
   'should_i_buy.preview.requestFailed': '预演请求没有发出去。衣橱判断不受影响。',
   'should_i_buy.preview.readyAlt': '静态上身预演',
+  // V3-020 — the ready render's honest presentation. The caption names what
+  // the picture is (§5.4 layer 4: the candidate plus the user's OWN items,
+  // never a product-only try-on); the feedback row is the frozen three-verdict
+  // vocabulary (§6.1 / v3_preview_feedback — one list, two channels); the
+  // thanks line acknowledges the tap without claiming durable storage.
+  'should_i_buy.preview.readyCaption': '画面里是这件候选，和你衣橱里已有的搭配单品。',
+  'should_i_buy.preview.feedbackPrompt': '这张预演像你吗？',
+  'should_i_buy.preview.feedback.looksLikeMe': '基本像我',
+  'should_i_buy.preview.feedback.notLikeMe': '不太像我',
+  'should_i_buy.preview.feedback.garmentWrong': '衣物不对',
+  'should_i_buy.preview.feedbackThanks': '谢谢反馈',
+  // V3-020 — §5.4 layer 5's fixed sentence (V3_SPEC §14 verbatim), the
+  // client-side fallback for when a decision arrives without its
+  // server-rendered `boundary_note`. The card's layer-5 slot renders
+  // `boundaryNote ?? this`, so the boundary line is unconditional — a ready
+  // render can never sit on a page with no non-sizing language (§7).
+  'should_i_buy.boundaryFallback': '用于判断整体感觉；实际尺码、触感和精确垂坠仍需参考商品信息。',
   // --- Discover empty states ----------------------------------------------
   'discover.inspirations.empty.title': '还没有风格灵感',
   'discover.inspirations.empty.subtitle':
