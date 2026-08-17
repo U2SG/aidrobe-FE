@@ -876,9 +876,12 @@ export const zhCN = {
   'avatarSetup.problem.upload': '这张照片没有上传成功。',
   'avatarSetup.problem.photo': '这张照片暂时不能作为形象参考，换一张再试试。',
   'avatarSetup.problem.consent': '没能保存你的选择。',
-  // Never "换一张再试试": while this candidate is still on offer, a new photo
-  // would be uploaded and then silently never surfaced.
-  'avatarSetup.problem.dismiss': '没能放弃这张照片，所以暂时还不能换新的。',
+  // Names BOTH moves that are on screen, because both are still legal: the
+  // profile was re-read and this candidate is still on offer, so it can be
+  // accepted — and the dismissal can be tried again. Never "换一张再试试" alone:
+  // while the candidate stands, a NEW photo would be uploaded and then silently
+  // never surfaced.
+  'avatarSetup.problem.dismiss': '没能放弃这张照片。可以再试一次，或者就用这张。',
   'avatarSetup.problem.preparation': '这次没能开始准备，你的选择已经保存。',
   'avatarSetup.problem.unavailable': '形象参考现在不可用，这条购买判断仍然有效。',
   // The revoked case: §4.1 lists a re-enable edge but P0 has no reachable path

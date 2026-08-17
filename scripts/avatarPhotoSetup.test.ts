@@ -630,6 +630,22 @@ check('a failed dismissal still offers BOTH moves the server allows', () => {
   assert.equal(SCREEN_SOURCE.includes("recovery === 'dismiss'"), false);
 });
 
+check('…and the message names BOTH of those moves, not just the retry', () => {
+  // The first wording ("所以暂时还不能换新的") was written for the screen this
+  // state used to render — a message and a retry, nothing else. With the accept
+  // now beside it, that sentence would tell the user a control directly beneath
+  // it does not work. Copy and controls have to agree.
+  assert.match(zhCN['avatarSetup.problem.dismiss'], /再试一次/);
+  assert.match(zhCN['avatarSetup.problem.dismiss'], /就用这张/);
+  assert.match(enUS['avatarSetup.problem.dismiss'], /try again/i);
+  assert.match(enUS['avatarSetup.problem.dismiss'], /use this one/i);
+  // It is chrome, not authorization: it must stay outside the consent version.
+  assert.equal(
+    (AVATAR_CONSENT_COPY_KEYS as readonly string[]).includes('avatarSetup.problem.dismiss'),
+    false,
+  );
+});
+
 check('every path that renders a candidate also claims the prompt for it', () => {
   // §7.3 is one prompt per candidate ACROSS surfaces, and the passive sheet
   // reads the same ledger. A path that put a candidate on screen without

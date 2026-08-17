@@ -873,8 +873,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'avatarSetup.problem.upload': "This photo didn't upload.",
   'avatarSetup.problem.photo': "This photo can't be used as a reference — try another one.",
   'avatarSetup.problem.consent': "Couldn't save your choice.",
-  'avatarSetup.problem.dismiss':
-    "Couldn't give up this photo, so a different one can't be offered yet.",
+  'avatarSetup.problem.dismiss': "Couldn't give up this photo. Try again, or use this one.",
   'avatarSetup.problem.preparation': "Preparation couldn't start. Your choice has been saved.",
   'avatarSetup.problem.unavailable':
     'Appearance references are unavailable right now; your purchase judgment still stands.',
