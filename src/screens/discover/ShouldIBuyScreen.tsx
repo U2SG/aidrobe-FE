@@ -1,11 +1,33 @@
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation } from '@tanstack/react-query';
-import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { getAvatarProfile } from '@/api/avatarProfile';
-import { avatarSetupStart, type AvatarSetupStart } from '@/api/avatarProfileMapping';
+import {
+  avatarSetupStart,
+  type AvatarSetupStart,
+  type AvatarStatus,
+} from '@/api/avatarProfileMapping';
+import { getOutfitVisualAsset } from '@/api/outfitVisual';
+import { requestVisualPreview } from '@/api/visualPreview';
+import {
+  DEFAULT_PREVIEW_CONCERN,
+  IDLE,
+  PREVIEW_POLL_INTERVAL_MS,
+  REQUESTING,
+  previewGenerateEntryVisible,
+  previewPollErrored,
+  previewPolled,
+  previewRequestAllowed,
+  previewRequested,
+  previewUnavailableCaptionKey,
+  previewViewedResult,
+  toPreviewUnavailableReason,
+  type PreviewHttpErrorLike,
+  type PreviewPhase,
+} from '@/api/visualPreviewMapping';
 import type {
   DecisionEndpointContext,
   DecisionErrorState,
@@ -20,12 +42,13 @@ import {
   getPurchaseCandidate,
 } from '@/api/purchaseDecisions';
 import { adoptV3Flow, beginV3Flow, endV3Flow } from '@/api/v3Flow';
-import { enableV3Avatar } from '@/lib/featureFlags';
+import { enableV3Avatar, enableV3StaticTryon } from '@/lib/featureFlags';
 import { previewSetupEntryVisible } from '@/screens/avatar/avatarPhotoSetup';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { ImageThumb } from '@/components/ui/ImageThumb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT, type UseT } from '@/hooks/useT';
+import type { I18nKey } from '@/i18n';
 import { useV3EventContext } from '@/hooks/useV3EventContext';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { V3EventPayloads } from '@/utils/v3AnalyticsEvents';
@@ -285,6 +308,208 @@ function VisualSetupEntry({ onPress, t }: { onPress: () => void; t: UseT }) {
   );
 }
 
+type EmitV3 = <E extends V3FeOwnedEvent>(event: E, payload: V3EventPayloads[E]) => void;
+
+/**
+ * V3-019 — §5.4 layer 4 for a user whose reference is already usable: the
+ * static preview lifecycle (ask → §9.5 status line → ready | fallback), in the
+ * same conditional slot V3-015's setup entry occupies for users without one.
+ *
+ * All decisions live in `visualPreviewMapping.ts`; this component runs the
+ * loop and renders the phase. The loop's shape:
+ *
+ * - The tap is the per-request ask (contract §6.1's `consent: true` — the
+ *   entry copy names the likeness use before the tap, so the value is
+ *   informed). `v3_preview_requested` fires here, on the user action, whatever
+ *   the POST later answers.
+ * - Polls ride the ungated M10 GET, silenced: an optional surface's blips must
+ *   never toast over the decision card (§3.6).
+ * - The loop stops on `ready`, on the collapsed no-result terminal (failed /
+ *   rejected / unknown status — one §9.5 copy, frozen §6.2 degradation rule),
+ *   on a refusal, or when the watch window is spent (`still_working`, which is
+ *   NOT a failure — §9.5's background path; checking again is free by §6.3's
+ *   cache key). Every one of these leaves the decision card fully intact: the
+ *   way forward from a preview that did not happen is the evidence already on
+ *   screen, never a retry treadmill (acceptance 4).
+ * - `runRef` fences the loop: unmount (or a remount under a new `key`, i.e. a
+ *   new decision) invalidates the run id, so a stale poll can neither write
+ *   state nor emit an event against the wrong decision.
+ *
+ * `v3_preview_viewed` fires once per settled lifecycle: `shown` for a render
+ * on screen, `fallback` when the user was returned to the decision evidence.
+ * `still_working` and quiet refusals emit nothing — no render outcome was
+ * viewed, and a guessed value would poison the preview-usefulness metric.
+ */
+function VisualPreviewSection({
+  decisionId,
+  avatarStatus,
+  emit,
+  t,
+}: {
+  decisionId: string;
+  avatarStatus: AvatarStatus;
+  emit: EmitV3;
+  t: UseT;
+}) {
+  const [phase, setPhase] = useState<PreviewPhase>(IDLE);
+  const runRef = useRef(0);
+  useEffect(
+    () => () => {
+      runRef.current += 1;
+    },
+    [],
+  );
+
+  const settle = (next: PreviewPhase) => {
+    setPhase(next);
+    const result = previewViewedResult(next);
+    if (result) emit('v3_preview_viewed', { result });
+  };
+
+  const start = async () => {
+    if (!previewRequestAllowed(phase)) return;
+    const run = ++runRef.current;
+    emit('v3_preview_requested', {
+      concern: DEFAULT_PREVIEW_CONCERN,
+      avatar_status: avatarStatus,
+    });
+    setPhase(REQUESTING);
+    let assetId: string;
+    try {
+      assetId = (await requestVisualPreview(decisionId, DEFAULT_PREVIEW_CONCERN)).assetId;
+    } catch (error) {
+      if (run !== runRef.current) return;
+      settle({
+        kind: 'unavailable',
+        reason: toPreviewUnavailableReason(error as PreviewHttpErrorLike),
+      });
+      return;
+    }
+    if (run !== runRef.current) return;
+    let current = previewRequested(assetId);
+    setPhase(current);
+    // First read immediately — a cache hit is already terminal and must not
+    // wait an interval to say so — then one read per interval.
+    while (current.kind === 'generating') {
+      let next: PreviewPhase;
+      try {
+        next = previewPolled(
+          current,
+          await getOutfitVisualAsset(assetId, { silentErrorToast: true }),
+        );
+      } catch {
+        next = previewPollErrored(current);
+      }
+      if (run !== runRef.current) return;
+      current = next;
+      if (current.kind !== 'generating') break;
+      setPhase(current);
+      await new Promise((resolve) => setTimeout(resolve, PREVIEW_POLL_INTERVAL_MS));
+      if (run !== runRef.current) return;
+    }
+    settle(current);
+  };
+
+  const entryRow = (labelKey: I18nKey, hintKey: I18nKey | null) => (
+    <Pressable
+      onPress={() => void start()}
+      accessibilityRole="button"
+      accessibilityLabel={t.t(labelKey)}
+      style={{
+        minHeight: 44,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderRadius: radius.md,
+        borderWidth: 1,
+        borderColor: T.divider,
+      }}
+    >
+      <SystemIcon name="photo" size={16} color={T.ink3} strokeWidth={1.8} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ ...type.callout, color: T.ink2 }}>{t.t(labelKey)}</Text>
+        {hintKey ? (
+          <Text style={{ ...type.caption, color: T.ink3, lineHeight: 16 }}>{t.t(hintKey)}</Text>
+        ) : null}
+      </View>
+    </Pressable>
+  );
+
+  if (phase.kind === 'idle') {
+    return entryRow('should_i_buy.preview.generate', 'should_i_buy.preview.generateHint');
+  }
+  if (phase.kind === 'requesting' || phase.kind === 'generating') {
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44 }}>
+        <ActivityIndicator size="small" color={T.ink3} />
+        <Text style={{ ...type.footnote, color: T.ink3, flex: 1 }}>
+          {t.t('should_i_buy.preview.generating')}
+        </Text>
+      </View>
+    );
+  }
+  if (phase.kind === 'ready') {
+    // Data layer, so sharp corners (no radius) — the render is evidence, not a
+    // control. 3:4 matches the §6.4 pipeline's canvas.
+    return (
+      <Image
+        source={{ uri: phase.imageUrl }}
+        accessibilityLabel={t.t('should_i_buy.preview.readyAlt')}
+        resizeMode="cover"
+        style={{ width: '100%', aspectRatio: 3 / 4, backgroundColor: T.bg }}
+      />
+    );
+  }
+  if (phase.kind === 'no_result') {
+    return (
+      <Text style={{ ...type.footnote, color: T.ink3, lineHeight: 18 }}>
+        {t.t('should_i_buy.preview.noResult')}
+      </Text>
+    );
+  }
+  if (phase.kind === 'still_working') {
+    return (
+      <View style={{ gap: 8 }}>
+        <Text style={{ ...type.footnote, color: T.ink3, lineHeight: 18 }}>
+          {t.t('should_i_buy.preview.stillWorking')}
+        </Text>
+        <Pressable
+          onPress={() => void start()}
+          accessibilityRole="button"
+          accessibilityLabel={t.t('should_i_buy.preview.checkAgain')}
+          style={{
+            minHeight: 44,
+            alignSelf: 'flex-start',
+            justifyContent: 'center',
+            paddingHorizontal: 14,
+            borderRadius: radius.md,
+            borderWidth: 1,
+            borderColor: T.divider,
+          }}
+        >
+          <Text style={{ ...type.footnote, fontWeight: '600', color: T.ink2 }}>
+            {t.t('should_i_buy.preview.checkAgain')}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+  // `unavailable` — a calm caption or, for the two quiet reasons, nothing at
+  // all (the mapping decides). A transient `error` keeps the entry on offer.
+  const captionKey = previewUnavailableCaptionKey(phase.reason);
+  if (captionKey === null) return null;
+  return (
+    <View style={{ gap: 8 }}>
+      <Text style={{ ...type.footnote, color: T.ink3, lineHeight: 18 }}>{t.t(captionKey)}</Text>
+      {phase.reason === 'error'
+        ? entryRow('should_i_buy.preview.generate', null)
+        : null}
+    </View>
+  );
+}
+
 /** Every known error state renders a message and either an explicit retry or a
  * way back — never a dead end and never a silent failure (V3-008 acceptance 3
  * consumed here; §3.6). */
@@ -346,7 +571,13 @@ export function ShouldIBuyScreen({ navigation }: Props) {
   // V3-015 — what the avatar profile says the visual entry may offer, or null
   // while unknown (never probed, probe failed, or the flag is off). Null renders
   // no entry: an optional V3 surface self-hides rather than explaining itself.
-  const [avatarStart, setAvatarStart] = useState<AvatarSetupStart | null>(null);
+  // V3-019 widened it to carry the raw status too: `v3_preview_requested`
+  // declares `avatar_status` (the frozen enum), and `already_ready` covers two
+  // statuses (`ready` / `refresh_recommended`) the event must tell apart.
+  const [avatarProbe, setAvatarProbe] = useState<{
+    start: AvatarSetupStart;
+    status: AvatarStatus;
+  } | null>(null);
   // The current attempt's flow id, and whether we left the screen for the
   // existing-item alternative rather than for good. See the focus effect below.
   const flowIdRef = useRef<string | null>(null);
@@ -411,16 +642,17 @@ export function ShouldIBuyScreen({ navigation }: Props) {
    * complete purchase judgment comes first and the visual question comes after
    * it; probing at mount would spend a request on a screen that may never show a
    * decision at all. Silent by construction: any failure — 503 with the flag
-   * off, network, 404 — leaves `avatarStart` null and the entry simply absent
+   * off, network, 404 — leaves `avatarProbe` null and the entry simply absent
    * (contract §2 rollback rule 2). The user asked for a purchase judgment, not
    * for this, so its failure must not appear anywhere on their screen.
    */
   const probeAvatar = useCallback(async () => {
     if (!enableV3Avatar) return;
     try {
-      setAvatarStart(avatarSetupStart(await getAvatarProfile()));
+      const profile = await getAvatarProfile();
+      setAvatarProbe({ start: avatarSetupStart(profile), status: profile.status });
     } catch {
-      setAvatarStart(null);
+      setAvatarProbe(null);
     }
   }, []);
 
@@ -740,16 +972,32 @@ export function ShouldIBuyScreen({ navigation }: Props) {
             {card.comparison ? <ClosetComparison comparison={card.comparison} t={t} /> : null}
 
             {/* §5.4 layer 4 / §9.2's conditional preview area, in its place in
-                the layer order — and in V3-015 it holds the SETUP entry only:
-                generating the preview is V3-019/V3-020, so an entry for a user
-                who already has a reference would lead nowhere and is not
-                rendered (see `previewSetupEntryVisible`). */}
-            {avatarStart &&
+                the layer order. Two disjoint occupants (see
+                `previewGenerateEntryVisible`): V3-015's SETUP entry for a user
+                without a usable reference, and V3-019's preview lifecycle for a
+                user with one. The FE flag gates only the second — with it off,
+                `already_ready` renders nothing, exactly V3-015's shipped
+                behavior. `key` remounts the lifecycle per decision, so one
+                decision's poll can never write its phase onto the next. */}
+            {avatarProbe &&
             previewSetupEntryVisible({
               visualNeed: result.decision.visualNeed,
-              start: avatarStart,
+              start: avatarProbe.start,
             }) ? (
               <VisualSetupEntry onPress={openVisualSetup} t={t} />
+            ) : avatarProbe &&
+              enableV3StaticTryon &&
+              previewGenerateEntryVisible({
+                visualNeed: result.decision.visualNeed,
+                start: avatarProbe.start,
+              }) ? (
+              <VisualPreviewSection
+                key={result.decision.id}
+                decisionId={result.decision.id}
+                avatarStatus={avatarProbe.status}
+                emit={emit}
+                t={t}
+              />
             ) : null}
 
             {/* §5.4 layer 5 — the boundary the product must never overstate. */}

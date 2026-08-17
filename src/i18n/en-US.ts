@@ -382,6 +382,23 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   // V3-015 — the on-demand visual entry (§5.5 Avatar None).
   'should_i_buy.preview.entry': 'See how it would look on you',
   'should_i_buy.preview.entryHint': 'Needs one clear full-body photo — set up once',
+  // V3-019 — see the zh-CN note: §9.5 lifecycle copy, one no-result line for
+  // failed and quality-rejected alike.
+  'should_i_buy.preview.generate': 'Preview this outfit with your reference',
+  'should_i_buy.preview.generateHint': 'One static preview, used only for this judgment',
+  'should_i_buy.preview.generating': 'Putting this together with your wardrobe…',
+  'should_i_buy.preview.noResult':
+    'No convincing preview came out this time. The wardrobe judgment still stands — the reasoning above is unaffected.',
+  'should_i_buy.preview.stillWorking':
+    'Still generating — check back in a moment. The wardrobe judgment is unaffected.',
+  'should_i_buy.preview.checkAgain': 'Check again',
+  'should_i_buy.preview.quotaExhausted':
+    'Today’s preview allowance is used up. The wardrobe judgment is unaffected.',
+  'should_i_buy.preview.notPossible':
+    'A preview can’t be generated for this candidate. The reasoning above still applies.',
+  'should_i_buy.preview.requestFailed':
+    'The preview request didn’t go through. The wardrobe judgment is unaffected.',
+  'should_i_buy.preview.readyAlt': 'Static try-on preview',
   // --- Discover empty states ----------------------------------------------
   'discover.inspirations.empty.title': 'No style inspiration yet',
   'discover.inspirations.empty.subtitle':

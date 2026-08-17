@@ -1422,6 +1422,11 @@ export interface OutfitVisualAsset {
   visualType: string | null;
   errorCode: string | null;
   errorMessage: string | null;
+  /** V3-019 — contract §6.2's two ADDITIVE nullable fields. `expiresAt` is
+   *  always null in P0 (the row has no retention clock); mapped rather than
+   *  dropped so a later BE that populates it needs no client release. */
+  createdAt: string | null;
+  expiresAt: string | null;
 }
 
 export interface ServerOutfitVisualAssetResponse {
@@ -1431,6 +1436,21 @@ export interface ServerOutfitVisualAssetResponse {
   visual_type?: string | null;
   error_code?: string | null;
   error_message?: string | null;
+  created_at?: string | null;
+  expires_at?: string | null;
+}
+
+/** V3-019 — the frozen §6.1 success pair. A cache hit returns the existing
+ *  asset with whatever status it already reached; a fresh request returns
+ *  `queued`. Both mean "poll the M10 GET". */
+export interface ServerVisualPreviewResponse {
+  asset_id: string;
+  generation_status: string;
+}
+
+export interface VisualPreviewCreated {
+  assetId: string;
+  generationStatus: string;
 }
 
 export interface WardrobeItemImage {
