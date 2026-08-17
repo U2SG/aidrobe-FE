@@ -609,6 +609,18 @@ check('a lost dismissal answer is settled by the PROFILE, not the status code', 
   assert.match(SCREEN_SOURCE, /profile\.candidate\?\.sourceAssetId === dismissedAssetId/);
 });
 
+check('every path that renders a candidate also claims the prompt for it', () => {
+  // §7.3 is one prompt per candidate ACROSS surfaces, and the passive sheet
+  // reads the same ledger. A path that put a candidate on screen without
+  // writing it would let that sheet ask again about the photo this screen is
+  // already asking about. Three paths render one: the opening read, the
+  // detection poll, and the post-dismissal settlement.
+  // The declaration reads `takeOwnershipOfCandidate = useCallback(`, so only
+  // call sites match this.
+  const claims = SCREEN_SOURCE.match(/takeOwnershipOfCandidate\(/g) ?? [];
+  assert.equal(claims.length, 3, `expected 3 call sites, saw ${claims.length}`);
+});
+
 check('the picker is not tappable before the opening profile read answers', () => {
   // `pick()` bails on a null state; without this the bail is silent and the tap
   // is simply lost. The intro copy still renders from the first frame, so

@@ -537,12 +537,16 @@ export function AvatarPhotoSetupScreen({ navigation, route }: Props) {
           apply(dismissFailed(fallback));
           return;
         }
-        apply(initialAvatarSetupState(avatarSetupStart(profile), profile.candidate));
+        const next = apply(initialAvatarSetupState(avatarSetupStart(profile), profile.candidate));
+        // Every path that puts a candidate on screen owns the prompt for it —
+        // otherwise the passive sheet could later ask about the very photo this
+        // screen is already asking about (§7.3, one prompt per candidate).
+        if (next.candidate) takeOwnershipOfCandidate(next.candidate.sourceAssetId);
       } catch {
         apply(dismissFailed(fallback));
       }
     },
-    [apply],
+    [apply, takeOwnershipOfCandidate],
   );
 
   /**
