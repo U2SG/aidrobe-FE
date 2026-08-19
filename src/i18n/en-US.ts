@@ -399,6 +399,19 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'should_i_buy.preview.requestFailed':
     'The preview request didn’t go through. The wardrobe judgment is unaffected.',
   'should_i_buy.preview.readyAlt': 'Static try-on preview',
+  // V3-020 — see the zh-CN note: honest ready presentation + frozen
+  // three-verdict feedback vocabulary.
+  'should_i_buy.preview.readyCaption': 'This is the candidate together with items you already own.',
+  'should_i_buy.preview.feedbackPrompt': 'Does this look like you?',
+  'should_i_buy.preview.feedback.looksLikeMe': 'Looks like me',
+  'should_i_buy.preview.feedback.notLikeMe': 'Not quite me',
+  'should_i_buy.preview.feedback.garmentWrong': 'The garment looks wrong',
+  'should_i_buy.preview.feedbackThanks': 'Thanks for the feedback',
+  // V3-020 — mirrors the server's en-US `boundary_note` copy verbatim
+  // (purchase_decision_rules.py), so the fallback and the server line can
+  // never disagree on what is being disclaimed.
+  'should_i_buy.boundaryFallback':
+    'This is about the overall look; actual size, feel and drape still come from the product details.',
   // --- Discover empty states ----------------------------------------------
   'discover.inspirations.empty.title': 'No style inspiration yet',
   'discover.inspirations.empty.subtitle':

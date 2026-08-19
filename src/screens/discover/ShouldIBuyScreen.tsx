@@ -11,7 +11,17 @@ import {
   type AvatarStatus,
 } from '@/api/avatarProfileMapping';
 import { getOutfitVisualAsset } from '@/api/outfitVisual';
-import { requestVisualPreview } from '@/api/visualPreview';
+import {
+  FEEDBACK_OPEN,
+  PREVIEW_BOUNDARY_FALLBACK_KEY,
+  PREVIEW_FEEDBACK_VERDICTS,
+  previewFeedbackAllowed,
+  previewFeedbackLabelKey,
+  previewFeedbackSent,
+  type PreviewFeedbackState,
+  type PreviewFeedbackVerdict,
+} from '@/api/previewFeedbackMapping';
+import { requestVisualPreview, sendVisualPreviewFeedback } from '@/api/visualPreview';
 import {
   DEFAULT_PREVIEW_CONCERN,
   IDLE,
@@ -451,15 +461,29 @@ function VisualPreviewSection({
     );
   }
   if (phase.kind === 'ready') {
-    // Data layer, so sharp corners (no radius) — the render is evidence, not a
-    // control. 3:4 matches the §6.4 pipeline's canvas.
+    // V3-020 — the honest ready presentation, top to bottom: the render (data
+    // layer, so sharp corners — evidence, not a control; 3:4 matches the §6.4
+    // pipeline's canvas), a caption naming WHAT the picture is (the candidate
+    // plus the user's own items — §5.4 layer 4 composes a full outfit, and the
+    // caption keeps that from reading as a product-only try-on), then the
+    // lightweight feedback row. The §5.4 layer-5 boundary sentence renders
+    // directly below this slot at the card level, unconditionally — see the
+    // layer-5 comment in the card. Judgment, reasons and actions all stay on
+    // screen around this block: the preview is one layer inside the decision
+    // card, never a page of its own (acceptance 4, §9.2).
     return (
-      <Image
-        source={{ uri: phase.imageUrl }}
-        accessibilityLabel={t.t('should_i_buy.preview.readyAlt')}
-        resizeMode="cover"
-        style={{ width: '100%', aspectRatio: 3 / 4, backgroundColor: T.bg }}
-      />
+      <View style={{ gap: 8 }}>
+        <Image
+          source={{ uri: phase.imageUrl }}
+          accessibilityLabel={t.t('should_i_buy.preview.readyAlt')}
+          resizeMode="cover"
+          style={{ width: '100%', aspectRatio: 3 / 4, backgroundColor: T.bg }}
+        />
+        <Text style={{ ...type.caption, color: T.ink3, lineHeight: 17 }}>
+          {t.t('should_i_buy.preview.readyCaption')}
+        </Text>
+        <PreviewFeedbackRow assetId={phase.assetId} emit={emit} t={t} />
+      </View>
     );
   }
   if (phase.kind === 'no_result') {
@@ -506,6 +530,86 @@ function VisualPreviewSection({
       {phase.reason === 'error'
         ? entryRow('should_i_buy.preview.generate', null)
         : null}
+    </View>
+  );
+}
+
+/**
+ * V3-020 — the lightweight fidelity ask under a ready render: one prompt line,
+ * the frozen three verdicts (§6.1 / `v3_preview_feedback` — one vocabulary,
+ * two channels), one tap. The tap fires the §6.1 record POST — the durable
+ * channel, implemented by V3-024, and the reason the thanks line below can
+ * claim anything at all — and emits the FE-owned analytics event, which has no
+ * registered dispatcher yet (see `previewFeedbackMapping.ts` for why that
+ * distinction is written down rather than blurred). Then the row settles: the
+ * chosen chip stays highlighted and a quiet thanks line replaces the prompt.
+ * Single-shot by design, for a product reason rather than a metric one — P0
+ * ships no undo affordance, so a second tap must not silently rewrite the
+ * answer (the server would accept it; `previewFeedbackMapping.ts` has the full
+ * argument). No toast in either direction: feedback is a learning signal, and
+ * both its loss and its success are too small to interrupt a purchase judgment
+ * for (§3.6).
+ */
+function PreviewFeedbackRow({
+  assetId,
+  emit,
+  t,
+}: {
+  assetId: string;
+  emit: EmitV3;
+  t: UseT;
+}) {
+  const [state, setState] = useState<PreviewFeedbackState>(FEEDBACK_OPEN);
+
+  const send = (verdict: PreviewFeedbackVerdict) => {
+    if (!previewFeedbackAllowed(state)) return;
+    setState(previewFeedbackSent(verdict));
+    emit('v3_preview_feedback', { verdict });
+    sendVisualPreviewFeedback(assetId, verdict);
+  };
+
+  const sentVerdict = state.kind === 'sent' ? state.verdict : null;
+
+  return (
+    <View style={{ gap: 8 }}>
+      <Text style={{ ...type.caption, color: T.ink3, lineHeight: 17 }}>
+        {t.t(sentVerdict ? 'should_i_buy.preview.feedbackThanks' : 'should_i_buy.preview.feedbackPrompt')}
+      </Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {PREVIEW_FEEDBACK_VERDICTS.map((verdict) => {
+          const chosen = sentVerdict === verdict;
+          const disabled = sentVerdict !== null;
+          return (
+            <Pressable
+              key={verdict}
+              onPress={() => send(verdict)}
+              disabled={disabled}
+              accessibilityRole="button"
+              accessibilityState={{ disabled, selected: chosen }}
+              accessibilityLabel={t.t(previewFeedbackLabelKey(verdict))}
+              style={{
+                minHeight: 44,
+                justifyContent: 'center',
+                paddingHorizontal: 14,
+                borderRadius: radius.md,
+                borderWidth: 1,
+                borderColor: chosen ? T.ink : T.divider,
+                opacity: disabled && !chosen ? 0.42 : 1,
+              }}
+            >
+              <Text
+                style={{
+                  ...type.footnote,
+                  fontWeight: chosen ? '600' : '400',
+                  color: chosen ? T.ink : T.ink2,
+                }}
+              >
+                {t.t(previewFeedbackLabelKey(verdict))}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -1000,10 +1104,16 @@ export function ShouldIBuyScreen({ navigation }: Props) {
               />
             ) : null}
 
-            {/* §5.4 layer 5 — the boundary the product must never overstate. */}
-            {card.boundaryNote ? (
-              <Text style={{ ...type.caption, color: T.ink3, lineHeight: 17 }}>{card.boundaryNote}</Text>
-            ) : null}
+            {/* §5.4 layer 5 — the boundary the product must never overstate.
+                V3-020 made the line unconditional: the server renders the same
+                sentence into every decision's `boundary_note`, but the wire
+                type allows null, and a ready render above this slot with no
+                boundary line is exactly the overstatement §7 forbids. So a
+                missing server note falls back to the client-side fixed copy
+                (V3_SPEC §14 verbatim) instead of rendering nothing. */}
+            <Text style={{ ...type.caption, color: T.ink3, lineHeight: 17 }}>
+              {card.boundaryNote ?? t.t(PREVIEW_BOUNDARY_FALLBACK_KEY)}
+            </Text>
 
             <NextActions actions={card.actions} chosen={chosenAction} onChoose={onChooseAction} t={t} />
           </View>
