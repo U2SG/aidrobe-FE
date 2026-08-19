@@ -370,11 +370,20 @@ export function SettingsScreen({ navigation }: Props) {
               by default, so `ProfileV2Screen` (which carries the same row) is not
               what a user sees; putting the entry only there would have made the
               controls unreachable in the shipped shell. Both rows are gated by
-              `enableV3Avatar` and both push the same screen. */}
+              `enableV3Avatar` and both push the same screen.
+
+              The supporting string is `entry.sub`, the same one `ProfileV2Screen`
+              uses, so the two shells describe the row identically. It is NOT
+              `avatarReference.status`: that key is the field LABEL 授权状态 on the
+              reference screen, and this `Row` puts `detail` in the right-aligned
+              VALUE slot, where a bare label reads as a value that failed to
+              load. Showing the real status here would mean fetching the avatar
+              profile to render a settings list — a network dependency, and a new
+              failure mode, for one line of description. */}
           {enableV3Avatar ? (
             <Row
               label={t('avatarReference.entry')}
-              detail={t('avatarReference.status')}
+              detail={t('avatarReference.entry.sub')}
               onPress={() => navigation.navigate('AvatarReference')}
             />
           ) : null}

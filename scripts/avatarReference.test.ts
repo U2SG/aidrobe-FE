@@ -478,6 +478,26 @@ check('both Profile surfaces carry the entry, and both gate it on the flag', () 
   }
 });
 
+check('both entry rows describe the row with the SAME supporting string', () => {
+  // The two shells use different `Row` components — `ProfileV2Screen` stacks a
+  // `subKey` under the label, `SettingsScreen` puts `detail` in a right-aligned
+  // value slot — so the same row can drift into saying two different things.
+  // `entry.sub` describes what the row leads to; `avatarReference.status` is the
+  // field LABEL 授权状态 from the reference screen, and in a value slot it reads
+  // as a value that failed to load. That was shipped once; this pins the fix.
+  assert.match(PROFILE_V2, /subKey="avatarReference\.entry\.sub"/);
+  assert.match(SETTINGS_V1, /detail=\{t\('avatarReference\.entry\.sub'\)\}/);
+  for (const [name, source] of [
+    ['ProfileV2Screen', PROFILE_V2],
+    ['SettingsScreen', SETTINGS_V1],
+  ] as const) {
+    assert.ok(
+      !source.includes("'avatarReference.status'"),
+      `${name} must not render a bare field label as the row's description`,
+    );
+  }
+});
+
 check('the entry sits in the privacy section of both surfaces', () => {
   // §15 puts these controls with the rest of the data controls, not beside a
   // profile photo where they would read as identity settings.
