@@ -15,6 +15,7 @@ import { DepartureTimeSheet } from '@/components/settings/DepartureTimeSheet';
 import { Button } from '@/components/ui/Button';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
+import { enableV3Avatar } from '@/lib/featureFlags';
 import {
   invalidateAfterChangeLanguage,
   invalidateAfterUpdateDepartureTime,
@@ -33,7 +34,7 @@ import { coordsValue, getCurrentCoords, isCoords, reverseGeocodeLabel } from '@/
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'Settings'>;
 
-export function SettingsScreen(_props: Props) {
+export function SettingsScreen({ navigation }: Props) {
   const { t } = useT();
   const showToast = useToastStore((state) => state.show);
   const clearAuth = useAuthStore((state) => state.clear);
@@ -364,6 +365,19 @@ export function SettingsScreen(_props: Props) {
         </Section>
 
         <Section title={t('settings.section.privacy')}>
+          {/* V3-021 — the §15 形象参考 controls, in the privacy section of the
+              Profile surface the DEFAULT build ships. `ENABLE_MVP_V2_UI` is off
+              by default, so `ProfileV2Screen` (which carries the same row) is not
+              what a user sees; putting the entry only there would have made the
+              controls unreachable in the shipped shell. Both rows are gated by
+              `enableV3Avatar` and both push the same screen. */}
+          {enableV3Avatar ? (
+            <Row
+              label={t('avatarReference.entry')}
+              detail={t('avatarReference.status')}
+              onPress={() => navigation.navigate('AvatarReference')}
+            />
+          ) : null}
           <Row
             label={t('settings.photoUse')}
             detail={t('settings.photoUse.detail')}

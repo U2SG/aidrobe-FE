@@ -100,6 +100,13 @@ export type SettingsStackParamList = {
   CreatePackingList: { durationDays?: number } | undefined;
   SenseCheck: undefined;
   WardrobeReport: { period?: string } | undefined;
+  // V3-021 — Profile's 形象参考 data controls (V3_SPEC §4.4 + §15). A settings
+  // sub-page, not a tab: the frozen scope exclusions forbid both a new top-level
+  // tab and an avatar identity page. `AvatarPhotoSetup` mounts here too because
+  // the re-enable after 停止用于生成 goes through V3-015's consent flow, and this
+  // stack is where the user is standing when they ask for it.
+  AvatarReference: undefined;
+  AvatarPhotoSetup: { flowId?: string } | undefined;
 };
 
 // Ask promoted to a primary tab in V2 (redesign brief v0.9 §3.1). Params mirror

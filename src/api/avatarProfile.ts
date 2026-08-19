@@ -11,19 +11,23 @@
 //
 // V3-015 adds the two source-C surfaces (`uploads`, `prepare`) on the same
 // terms: user-initiated, so their failures are rendered by the caller rather
-// than toasted. `replace` / `delete` remain V3-021's and are still absent.
+// than toasted. V3-021 adds the last two — `replace` and `delete` — for the §15
+// Profile controls, on the same terms again.
 
 import type { AxiosRequestConfig } from 'axios';
 
-import { apiGet, apiPost } from './client';
+import { apiDelete, apiGet, apiPost } from './client';
 import {
   buildConsentBody,
+  toAvatarDeletion,
   toAvatarPreparation,
   toAvatarProfile,
   toAvatarUploadRegistration,
+  type AvatarDeletion,
   type AvatarPreparation,
   type AvatarProfile,
   type AvatarUploadRegistration,
+  type ServerAvatarDeletion,
   type ServerAvatarPreparation,
   type ServerAvatarProfile,
   type ServerAvatarUploadRegistration,
@@ -101,4 +105,45 @@ export async function startAvatarPreparation(
     ...config,
   });
   return toAvatarPreparation(data);
+}
+
+/**
+ * V3-021 — 替换: prepare a new version and swap it in on success (§4.2).
+ *
+ * Only legal while a version exists to swap out, which is what
+ * `avatarReferenceControls` gates on. The swap happens inside the worker's
+ * `activate_version`, so a failed replacement leaves the live version alone —
+ * there is never a gap where a ready avatar disappears. Nothing here waits for
+ * that: the response reports the enqueue, and the screen says a new version is
+ * being prepared rather than claiming it is done.
+ */
+export async function replaceAvatarVersion(
+  config?: AxiosRequestConfig,
+): Promise<AvatarPreparation> {
+  const data = await apiPost<ServerAvatarPreparation>('/v1/avatar-profile/replace', {}, undefined, {
+    ...SILENT,
+    ...config,
+  });
+  return toAvatarPreparation(data);
+}
+
+/**
+ * V3-021 — the two destructive §15 Profile controls, which are one endpoint.
+ *
+ * `purgeDerived=false` is 停止用于生成 and `true` is 删除形象参考及派生结果; the
+ * frozen §4.2 parameter has no default precisely because the caller must decide,
+ * and these are the two decisions. It rides in the URL rather than in an axios
+ * `params` bag because `apiDelete` takes no params argument — and because an
+ * omitted required parameter is a 422 about somebody's photos, which is the one
+ * failure mode worth making impossible to reach by accident.
+ */
+export async function deleteAvatarProfile(
+  purgeDerived: boolean,
+  config?: AxiosRequestConfig,
+): Promise<AvatarDeletion> {
+  const data = await apiDelete<ServerAvatarDeletion>(
+    `/v1/avatar-profile?purge_derived=${purgeDerived ? 'true' : 'false'}`,
+    { ...SILENT, ...config },
+  );
+  return toAvatarDeletion(data);
 }

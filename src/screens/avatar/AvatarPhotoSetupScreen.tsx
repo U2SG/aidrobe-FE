@@ -99,7 +99,6 @@ const PROBLEM_COPY: Record<AvatarSetupProblem, I18nKey> = {
   dismiss_failed: 'avatarSetup.problem.dismiss',
   preparation_failed: 'avatarSetup.problem.preparation',
   unavailable: 'avatarSetup.problem.unavailable',
-  revoked: 'avatarSetup.problem.revoked',
 };
 
 function PrimaryButton({

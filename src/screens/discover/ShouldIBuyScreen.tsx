@@ -682,6 +682,10 @@ export function ShouldIBuyScreen({ navigation }: Props) {
     start: AvatarSetupStart;
     status: AvatarStatus;
   } | null>(null);
+  /** Has the avatar been probed at all this mount? Mirrors `avatarProbe` into a
+   *  ref so the focus effect can read it without taking a dependency on it —
+   *  V3-021's reason for needing it is at the read site. */
+  const probedRef = useRef(false);
   // The current attempt's flow id, and whether we left the screen for the
   // existing-item alternative rather than for good. See the focus effect below.
   const flowIdRef = useRef<string | null>(null);
@@ -754,8 +758,13 @@ export function ShouldIBuyScreen({ navigation }: Props) {
     if (!enableV3Avatar) return;
     try {
       const profile = await getAvatarProfile();
+      probedRef.current = true;
       setAvatarProbe({ start: avatarSetupStart(profile), status: profile.status });
     } catch {
+      // A failed re-probe clears the entry rather than keeping the last good
+      // answer: after V3-021 the previous answer may describe a reference the
+      // user has since deleted, and "no entry" is the safe direction here (the
+      // whole surface is optional — contract §2 rollback rule 2).
       setAvatarProbe(null);
     }
   }, []);
@@ -786,7 +795,18 @@ export function ShouldIBuyScreen({ navigation }: Props) {
       // completed. Re-probed only on a hand-off return, for the same reason the
       // flow is only re-adopted then — and unconditionally, because a hand-off can
       // only originate from a card that was rendered.
-      if (handedOffRef.current) void probeAvatar();
+      //
+      // V3-021 adds the second half of that: acceptance 2 is "delete/revoke
+      // changes FE availability immediately", and Profile's controls live in a
+      // DIFFERENT, persistent tab — so a reference deleted there otherwise leaves
+      // this card holding the probe it took before, with the visual entry still
+      // promising a reference exists. Re-probed on focus once we have probed at
+      // all, i.e. once a decision has been rendered, so a screen that never
+      // showed one still spends nothing. `probedRef`, not `avatarProbe`: reading
+      // the state here would capture a stale value, and putting it in the
+      // dependency list would run the effect's CLEANUP mid-visit — the exact
+      // defect V3-015 shipped and had to write a probe to find.
+      if (handedOffRef.current || probedRef.current) void probeAvatar();
       handedOffRef.current = false;
       return () => {
         resumedFlowRef.current = false;
@@ -1087,6 +1107,9 @@ export function ShouldIBuyScreen({ navigation }: Props) {
             previewSetupEntryVisible({
               visualNeed: result.decision.visualNeed,
               start: avatarProbe.start,
+              // V3-021: a revoked profile opens the setup screen (Profile's stop
+              // control must be reversible) but is never re-invited from here.
+              status: avatarProbe.status,
             }) ? (
               <VisualSetupEntry onPress={openVisualSetup} t={t} />
             ) : avatarProbe &&
