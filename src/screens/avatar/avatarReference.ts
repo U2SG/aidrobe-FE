@@ -98,11 +98,21 @@ export function initialAvatarReferenceState(): AvatarReferenceState {
   return { ...BASE };
 }
 
+/**
+ * A profile read landed.
+ *
+ * `outcome` is CLEARED, because it is a report about the action the user just
+ * took and a fresh read supersedes it. Without this, the line survived the
+ * focus re-read: leave for 重新设置, come back, and the screen showed
+ * 「已停止用于生成」 above a profile that had since moved to `preparing`. The
+ * report is deliberately not cleared by the deletion itself — that is the whole
+ * point of `deletionSettled` — so this is the only place it can go.
+ */
 export function profileLoaded(
   state: AvatarReferenceState,
   profile: AvatarProfile,
 ): AvatarReferenceState {
-  return { ...state, step: 'shown', problem: null, pending: null, profile };
+  return { ...state, step: 'shown', problem: null, pending: null, outcome: null, profile };
 }
 
 /**

@@ -18,6 +18,7 @@ import { enableV3Avatar } from '@/lib/featureFlags';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { SettingsStackParamList } from '@/types/navigation';
 import {
+  AVATAR_REFERENCE_CONFIRMS,
   controlAsked,
   controlCancelled,
   controlConfirmed,
@@ -274,31 +275,33 @@ export function AvatarReferenceScreen({ navigation }: Props) {
     }
   }, []);
 
+  // The request is fired BESIDE the state update, never inside the updater. A
+  // `setState` updater must be pure — React is free to call it more than once
+  // for one dispatch (StrictMode does exactly that in development), and a
+  // side effect in there would send two DELETEs for one tap. This app does not
+  // mount `StrictMode` today, which is precisely why the shape has to be right
+  // rather than incidentally safe.
   const onControl = useCallback(
     (control: AvatarReferenceControl) => {
       if (control === 'set_up_again') {
         // The frozen `disabled → preparing` path: a new photo and a new consent,
         // through the surface that already owns both (V3-015).
-        setState((current) => controlCancelled(current));
+        setState(controlCancelled);
         navigation.navigate('AvatarPhotoSetup');
         return;
       }
-      setState((current) => {
-        const next = controlAsked(current, control);
-        if (next.step === 'working') void runControl(control);
-        return next;
-      });
+      setState((current) => controlAsked(current, control));
+      if (!AVATAR_REFERENCE_CONFIRMS.includes(control)) void runControl(control);
     },
     [navigation, runControl],
   );
 
   const onConfirm = useCallback(() => {
-    setState((current) => {
-      if (current.pending === null) return current;
-      void runControl(current.pending);
-      return controlConfirmed(current);
-    });
-  }, [runControl]);
+    const control = state.pending;
+    if (control === null) return;
+    setState(controlConfirmed);
+    void runControl(control);
+  }, [runControl, state.pending]);
 
   const retry = referenceRetryTarget(state);
   const onRetry = useCallback(() => {
@@ -308,7 +311,7 @@ export function AvatarReferenceScreen({ navigation }: Props) {
       return;
     }
     if (retry) {
-      setState((current) => controlConfirmed(current));
+      setState(controlConfirmed);
       void runControl(retry);
     }
   }, [read, retry, runControl]);

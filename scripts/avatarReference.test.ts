@@ -275,6 +275,31 @@ for (const [label, purged, outcome] of [
   });
 }
 
+check('a fresh read clears the outcome line — it reports the LAST action, not any', () => {
+  // Otherwise the report survived the focus re-read: leave for 重新设置, come
+  // back, and the screen showed 「已停止用于生成」 above a profile that had since
+  // moved to `preparing`. The deletion deliberately does NOT clear it (that is
+  // what makes acceptance 2 immediate), so `profileLoaded` is the only place it
+  // can go.
+  const settled = deletionSettled(shown, { status: 'disabled', purgedDerived: false });
+  assert.equal(settled.outcome, 'stopped');
+  const reread = profileLoaded(settled, toAvatarProfile(server({ status: 'preparing' })));
+  assert.equal(reread.outcome, null);
+  assert.equal(reread.profile?.status, 'preparing');
+});
+
+check('the screen fires its request BESIDE the state update, never inside it', () => {
+  // A `setState` updater must be pure — React may call it more than once per
+  // dispatch (StrictMode does, in development) — and a side effect in there would
+  // send two DELETEs for one tap. This app mounts no StrictMode today, which is
+  // exactly why the shape has to be right rather than incidentally safe.
+  assert.ok(
+    !/setState\(\(current\) => \{[^}]*runControl/s.test(SCREEN),
+    'runControl must not be called from inside a setState updater',
+  );
+  assert.match(SCREEN, /setState\(\(current\) => controlAsked\(current, control\)\);\s+if \(!AVATAR_REFERENCE_CONFIRMS/);
+});
+
 check('the consent record survives a deletion — it is the audit trail', () => {
   // Contract §4.3: the material goes, the record of what the user agreed to
   // stays. It names no object and carries no URL.
