@@ -13,6 +13,7 @@ import { OptionPickerSheet } from '@/components/ui/OptionPickerSheet';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
 import type { I18nKey } from '@/i18n';
+import { enableV3Avatar } from '@/lib/featureFlags';
 import {
   invalidateAfterChangeLanguage,
   invalidateAfterUpdateDepartureTime,
@@ -446,6 +447,20 @@ export function ProfileV2Screen({ navigation }: Props) {
 
       {/* Section: 隐私与数据 */}
       <Section title={t('profile.section.privacy')}>
+        {/* V3-021 — V3_SPEC §4.4/§15 put the 形象参考 data controls in Profile.
+            One row into a settings sub-page: person photos are the most sensitive
+            asset here, and §15 requires view / replace / stop / delete to be
+            reachable without turning Avatar into a product area of its own.
+            Absent entirely when `ENABLE_V3_AVATAR` is off — there is nothing to
+            control, and a disabled row would advertise a feature that is not in
+            this build. */}
+        {enableV3Avatar ? (
+          <Row
+            labelKey="avatarReference.entry"
+            subKey="avatarReference.entry.sub"
+            onPress={() => navigation.navigate('AvatarReference')}
+          />
+        ) : null}
         <Row
           labelKey="profile.row.dataTrust"
           subKey="profile.row.dataTrust.sub"

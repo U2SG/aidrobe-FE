@@ -90,11 +90,16 @@ export type AvatarSetupProblem =
   | 'dismiss_failed'
   /** Consent IS recorded; only the enqueue failed. Retry resumes at prepare. */
   | 'preparation_failed'
-  /** 503 with the flag off, 404, or a conflict a profile read could not settle. */
-  | 'unavailable'
-  /** The reference was switched off, and P0 has no reachable path to re-enable
-   *  it (see `avatarSetupStart`). Said plainly rather than dressed as a retry. */
-  | 'revoked';
+  /** 503 with the flag off, 404, a conflict a profile read could not settle, or a
+   *  candidate this build cannot name (see `avatarSetupStart`'s `blocked`).
+   *
+   *  V3-021 removed the sibling `revoked` kind. It said "the reference is
+   *  switched off and cannot be re-enabled", which was true while the frozen
+   *  `disabled → preparing` edge had no path; the widened `candidate` block gave
+   *  it one, so a `disabled` profile now starts at `new_photo` and never reaches
+   *  a problem state. Keeping the copy would have left the screen able to tell a
+   *  user something the product no longer does. */
+  | 'unavailable';
 
 export interface AvatarSetupState {
   step: AvatarSetupStep;
@@ -128,8 +133,12 @@ const BASE: AvatarSetupState = {
  * Where the screen opens, from the profile it just read.
  *
  * `already_preparing` / `already_ready` are terminal rather than errors: the
- * user asked for a reference and one is either coming or here. `blocked` is the
- * revoked case — honest, and specifically not "we could not use this photo".
+ * user asked for a reference and one is either coming or here.
+ *
+ * `blocked` is now only the candidate this build cannot name (V3-021 moved
+ * `disabled` to `new_photo`), so it opens at `unavailable` — the state this build
+ * cannot serve — rather than at the old `revoked` copy, which would have told a
+ * user their reference was switched off when it is not.
  */
 export function initialAvatarSetupState(
   start: AvatarSetupStart,
@@ -145,7 +154,7 @@ export function initialAvatarSetupState(
     case 'already_ready':
       return { ...BASE, step: 'ready' };
     case 'blocked':
-      return { ...BASE, step: 'problem', problem: 'revoked' };
+      return { ...BASE, step: 'problem', problem: 'unavailable' };
   }
 }
 
@@ -169,12 +178,23 @@ export function setupUnavailable(state: AvatarSetupState): AvatarSetupState {
  *   `already_ready` shows nothing *yet*: generating the preview is V3-019/V3-020,
  *   and until it exists an entry there would open a screen that says "you are
  *   already set up" — true, useless, and the dead end §3.6 forbids.
+ *
+ * **`status` is a THIRD gate, and it is why this cannot be derived from `start`
+ * alone (V3-021).** A revoked profile now opens the setup screen at `new_photo`,
+ * because Profile's 停止用于生成 control must not be a one-way door. Inviting
+ * that user back from a purchase decision is a different act: they did not
+ * decline one photo, they switched the feature off, and re-asking is exactly the
+ * 反复提醒 V3_SPEC §7.3 forbids. So the screen stays reachable and the
+ * invitation does not: the way back is Profile, which the user opens themselves.
+ * Conflating the two questions is what made one value serve both.
  */
 export function previewSetupEntryVisible(args: {
   visualNeed: DecisionVisualNeed;
   start: AvatarSetupStart;
+  status: AvatarStatus;
 }): boolean {
   if (args.visualNeed === 'none') return false;
+  if (args.status === 'disabled') return false;
   return args.start === 'new_photo' || args.start === 'consent_existing_candidate';
 }
 

@@ -75,11 +75,49 @@ export interface AvatarCandidate {
   previewUrl: string | null;
 }
 
+/**
+ * The live reference — V3-021, for §15's 查看当前形象参考 and §4.4's 当前版本.
+ *
+ * V3-014 kept only `hasActiveVersion` because a boolean was all a prompt gate
+ * needed, and carrying a person's likeness through a shape nothing rendered
+ * would have been strictly worse. Profile has to show it, so the fields arrive
+ * with the surface that displays them and not before.
+ */
+export interface AvatarActiveVersion {
+  id: string;
+  /** ISO timestamp, or null if the server sent one this build cannot read. */
+  createdAt: string | null;
+  /** Short-lived signed URL (contract §3, V3_SPEC §13.5). Render it inside the
+   *  pass that read it; never put it in storage, a log or a cache key. */
+  canonicalFrontUrl: string | null;
+}
+
 export interface AvatarProfile {
   status: AvatarStatus;
+  /**
+   * Did the server name a status this build knows?
+   *
+   * V3-021 needs this and earlier features did not, because the two things
+   * `status === 'disabled'` can mean stopped being equivalent. The frozen §3 skew
+   * rule collapses an unrecognized status to `disabled` so that avatar surfaces
+   * HIDE — and while `disabled` was a dead end that was the whole story. Now
+   * `disabled` is the state Profile offers to re-enable, so a collapsed unknown
+   * would inherit an invitation to upload a person photo on the strength of a
+   * string this build cannot interpret: exactly what the skew rule exists to
+   * prevent, arrived at from the other direction.
+   *
+   * So the collapse still happens (nothing downstream has to know the vocabulary
+   * grew) and the fact that it happened is no longer lost.
+   */
+  statusIsKnown: boolean;
   candidate: AvatarCandidate | null;
   consentVersion: string | null;
   consentedAt: string | null;
+  /** Populated only for ready/refresh_recommended (frozen §4.2). */
+  activeVersion: AvatarActiveVersion | null;
+  /** Kept as its own field rather than derived at every call site: it is the
+   *  gate V3-014's prompt host and V3-021's controls both read, and
+   *  `activeVersion != null` repeated in two modules is two chances to disagree. */
   hasActiveVersion: boolean;
 }
 
@@ -112,8 +150,17 @@ export function toAvatarProfile(server: ServerAvatarProfile): AvatarProfile {
   // to POST consent for it — so it is dropped rather than rendered as a
   // half-usable prompt the user cannot answer.
   const sourceAssetId = raw ? strOrNull(raw.source_asset_id) : null;
+  const version = server.active_version ?? null;
+  // Same rule as the candidate: a version with no id is not addressable, so it is
+  // dropped rather than rendered as a reference nobody can talk about. The URL is
+  // allowed to be null (signing can fail) — the screen then says there is no
+  // reference to show instead of rendering an empty frame.
+  const versionId = version ? strOrNull(version.id) : null;
   return {
     status: toAvatarStatus(server.status),
+    statusIsKnown:
+      typeof server.status === 'string' &&
+      (AVATAR_STATUSES as readonly string[]).includes(server.status),
     candidate:
       raw && sourceAssetId
         ? {
@@ -124,6 +171,14 @@ export function toAvatarProfile(server: ServerAvatarProfile): AvatarProfile {
         : null,
     consentVersion: server.consent ? strOrNull(server.consent.version) : null,
     consentedAt: server.consent ? strOrNull(server.consent.consented_at) : null,
+    activeVersion:
+      version && versionId
+        ? {
+            id: versionId,
+            createdAt: strOrNull(version.created_at),
+            canonicalFrontUrl: strOrNull(version.canonical_front_url),
+          }
+        : null,
     hasActiveVersion: server.active_version != null,
   };
 }
@@ -253,13 +308,19 @@ export function toAvatarPreparation(server: ServerAvatarPreparation): AvatarPrep
  *   more, for exactly the same reason. This is also the path back for the case
  *   V3-014 recorded: a decline whose POST was lost leaves the candidate
  *   consentable, and §7.3 allows re-explaining when the user asks for a preview.
- * - **`disabled` is `blocked`, not a setup opportunity.** Contract §4.1 lists
- *   `disabled → preparing` ("user re-enables via new consent"), but V3-013
- *   recorded that edge as having no reachable path: `offer_candidate` will not
- *   move a disabled profile, so no candidate can ever be offered to consent
- *   against. Re-enabling needs a new §4.1 edge or an amended response shape —
- *   a V3-001 contract decision. Until then this surface says so instead of
- *   uploading a photo that provably cannot become an avatar.
+ * - **`disabled` is `new_photo` (V3-021), and it used to be `blocked`.** Contract
+ *   §4.1 lists `disabled → preparing` ("user re-enables via new consent"), and
+ *   V3-013/V3-014 recorded that edge as having no reachable path: the profile
+ *   stays `disabled` through a new assessment (`offer_candidate` only moves
+ *   `none`, because moving would erase the revocation timestamp), so the
+ *   qualified material existed while `GET /v1/avatar-profile` reported
+ *   `candidate: null` and no client could learn its id. V3-021's widened
+ *   `candidate` block reports material for every status except `preparing`, so
+ *   the sequence register → poll → consent → prepare now completes from
+ *   `disabled` — which is what stops Profile's 停止用于生成 control being a
+ *   one-way door. The step order is IDENTICAL to a first-time setup, and that is
+ *   why this is the same start value rather than a sixth one: both delete their
+ *   source photo, so both re-enter through a new photo and a new consent.
  * - **`ready`/`refresh_recommended` are `already_ready`.** Consenting to fresh
  *   material while a version is live is the `replace` flow (V3-021), which
  *   `record_consent` deliberately keeps at `ready` so a working avatar is never
@@ -273,7 +334,10 @@ export type AvatarSetupStart =
   | 'blocked';
 
 export function avatarSetupStart(profile: AvatarProfile): AvatarSetupStart {
-  if (profile.status === 'none') return 'new_photo';
+  // A status this build cannot read is `blocked` even though it collapsed to
+  // `disabled`, which is now a startable state. See `statusIsKnown`.
+  if (!profile.statusIsKnown) return 'blocked';
+  if (profile.status === 'none' || profile.status === 'disabled') return 'new_photo';
   if (profile.status === 'preparing') return 'already_preparing';
   if (profile.status === 'ready' || profile.status === 'refresh_recommended') {
     return 'already_ready';
@@ -325,6 +389,105 @@ export function preparationConflictOutcome(
   if (profile.status === 'preparing') return 'preparing';
   if (profile.status === 'ready' || profile.status === 'refresh_recommended') return 'ready';
   return 'unresolved';
+}
+
+// --- V3-021: the four §15 Profile controls ----------------------------------
+
+export interface ServerAvatarDeletion {
+  status: string;
+  purge_derived: boolean;
+  scheduled_object_count: number;
+  purge_job_id?: string | null;
+}
+
+export interface AvatarDeletion {
+  /** Frozen §4.2: always `disabled`. Read rather than assumed, so the screen
+   *  renders what the server said instead of what we expected it to say. */
+  status: AvatarStatus;
+  /** Which control this was — echoed by the server, so a mismatch is visible. */
+  purgedDerived: boolean;
+}
+
+/** `purge_job_id` and `scheduled_object_count` are deliberately dropped. A job
+ *  id has no client surface, and an object count is an implementation detail of
+ *  the sweep that would read as a promise about *how much* was removed — the
+ *  §15 controls promise *what* is removed, and the count varies with how many
+ *  canonical renders a version happened to have. */
+export function toAvatarDeletion(server: ServerAvatarDeletion): AvatarDeletion {
+  return {
+    status: toAvatarStatus(server.status),
+    purgedDerived: server.purge_derived === true,
+  };
+}
+
+/**
+ * Which of V3_SPEC §15's Profile controls this profile may offer, and why each
+ * bound is the backend's rather than a preference.
+ *
+ * Every control here maps to a call the BE will accept in this state. That is the
+ * whole point of computing it in one pure place: a control the API refuses is the
+ * dead end §3.6 forbids, and it would be refused *after* the user tapped a
+ * destructive-sounding button.
+ *
+ * - **`showsReference`** — §15's 查看当前形象参考. Keyed on the signed URL rather
+ *   than on `hasActiveVersion`, because those can differ: `resolve_render_url`
+ *   swallows a signing failure and returns null, and a "view" control that
+ *   renders an empty frame is worse than one that says there is nothing to show.
+ * - **`replace`** — `POST /v1/avatar-profile/replace` refuses without a version
+ *   to swap out (`WRONG_PROFILE_STATE`), so it is offered only when one exists.
+ *   The variant says where the new material comes from: `consent_offered_photo`
+ *   when V3-021's widened `candidate` block is already carrying a qualified photo
+ *   (consent it, then replace), otherwise `new_photo` (the §7.1 source-C flow).
+ *   Never a bare "regenerate": re-preparing the SAME photo through the same
+ *   pipeline composes `prepare`'s existing idempotency key, so it would return
+ *   the completed job and change nothing — a button that reports success and
+ *   does nothing.
+ * - **`stopGeneration`** — 停止用于生成, `DELETE ?purge_derived=false`. Offered
+ *   only when there is generation to stop: a live version, or a preparation on
+ *   its way to one. Not for `candidate`, where nothing has been authorized yet
+ *   and `delete` is the honest control for making the photo go away.
+ * - **`deleteEverything`** — 删除形象参考及派生结果, `DELETE
+ *   ?purge_derived=true`. Offered whenever a profile row exists (the endpoint
+ *   answers 404 for `none`), INCLUDING `disabled` — that is the only way to
+ *   remove the previews a previous 停止用于生成 deliberately kept, and
+ *   `delete_avatar` is idempotent, so the second call sweeps exactly the objects
+ *   the first one left.
+ * - **`setUpAgain`** — the frozen `disabled → preparing` re-enable. Offered on
+ *   `disabled` only, and only here: this screen is one the user opened, so it is
+ *   not the 反复提醒 §7.3 forbids (see `previewSetupEntryVisible`, which stays
+ *   silent for the same status for the opposite reason).
+ *
+ * `none` offers nothing at all, deliberately. Acquisition stays contextual
+ * (§7.1/§3.4 — no mandatory onboarding, no new acquisition surface), so a profile
+ * that never existed gets the state line and no call to action.
+ */
+export interface AvatarReferenceControls {
+  showsReference: boolean;
+  replace: 'new_photo' | 'consent_offered_photo' | null;
+  stopGeneration: boolean;
+  deleteEverything: boolean;
+  setUpAgain: boolean;
+}
+
+export function avatarReferenceControls(profile: AvatarProfile): AvatarReferenceControls {
+  const live =
+    profile.statusIsKnown &&
+    (profile.status === 'ready' || profile.status === 'refresh_recommended');
+  const offered = profile.candidate != null;
+  return {
+    showsReference: profile.activeVersion?.canonicalFrontUrl != null,
+    replace: live ? (offered ? 'consent_offered_photo' : 'new_photo') : null,
+    stopGeneration: live || (profile.statusIsKnown && profile.status === 'preparing'),
+    // Deliberately NOT gated on `statusIsKnown`. Every other control is, because
+    // acting on a state we cannot read is guesswork — but deletion is the one
+    // request whose worst case is that there was nothing left to delete, and a
+    // client that hid it would strand a user's photos behind a status string this
+    // build happens not to recognize. `none` is still excluded: the endpoint
+    // answers 404, and offering a delete for material that never existed is a
+    // control that can only fail.
+    deleteEverything: !profile.statusIsKnown || profile.status !== 'none',
+    setUpAgain: profile.statusIsKnown && profile.status === 'disabled',
+  };
 }
 
 /**

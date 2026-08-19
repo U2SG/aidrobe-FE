@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
+  AVATAR_STATUSES,
   avatarSetupStart,
   preparationConflictOutcome,
   toAvatarPreparation,
@@ -193,12 +194,15 @@ check('work already under way, or already done, is terminal rather than an error
   }
 });
 
-check('a revoked profile is blocked — P0 has no reachable re-enable path', () => {
-  // Contract §4.1 lists `disabled → preparing`, but V3-013 recorded that edge as
-  // unreachable: `offer_candidate` will not move a disabled profile, so no
-  // candidate can ever be offered to consent against. Uploading a photo that
-  // provably cannot become an avatar would be the dead end §3.6 forbids.
-  assert.equal(avatarSetupStart(toAvatarProfile(profile({ status: 'disabled' }))), 'blocked');
+check('a revoked profile starts a NEW photo — V3-021 gave the §4.1 edge a path', () => {
+  // Was `blocked` through V3-013/014/015: `offer_candidate` will not move a
+  // disabled profile, so no candidate could be offered to consent against and
+  // uploading a photo that provably could not become an avatar would have been
+  // the dead end §3.6 forbids. V3-021's widened `candidate` block reports
+  // material for every status but `preparing`, so register → poll → consent →
+  // prepare now completes from `disabled` — which is what keeps Profile's
+  // 停止用于生成 control reversible.
+  assert.equal(avatarSetupStart(toAvatarProfile(profile({ status: 'disabled' }))), 'new_photo');
 });
 
 check('an unknown status degrades to blocked, not to an upload invitation', () => {
@@ -218,7 +222,9 @@ const STARTS = [
 
 check('visual_need=none never offers the entry, whatever the profile says', () => {
   for (const start of STARTS) {
-    assert.equal(previewSetupEntryVisible({ visualNeed: 'none', start }), false);
+    for (const status of AVATAR_STATUSES) {
+      assert.equal(previewSetupEntryVisible({ visualNeed: 'none', start, status }), false);
+    }
   }
 });
 
@@ -226,13 +232,43 @@ check('the entry appears only for the two states this flow can serve', () => {
   const servable = new Set(['new_photo', 'consent_existing_candidate']);
   for (const visualNeed of DECISION_VISUAL_NEEDS) {
     for (const start of STARTS) {
-      assert.equal(
-        previewSetupEntryVisible({ visualNeed, start }),
-        visualNeed !== 'none' && servable.has(start),
-        `${visualNeed} × ${start}`,
-      );
+      for (const status of AVATAR_STATUSES) {
+        assert.equal(
+          previewSetupEntryVisible({ visualNeed, start, status }),
+          visualNeed !== 'none' && servable.has(start) && status !== 'disabled',
+          `${visualNeed} × ${start} × ${status}`,
+        );
+      }
     }
   }
+});
+
+check('V3-021: a REVOKED profile opens the screen but is never re-invited', () => {
+  // The two questions this pair separates. `avatarSetupStart` answers "where does
+  // the screen open" and now says `new_photo`, because Profile's stop control has
+  // to be reversible. `previewSetupEntryVisible` answers "may we ask them again"
+  // and says no: they did not decline one photo, they switched the feature off,
+  // and re-asking from a purchase decision is the 反复提醒 §7.3 forbids. Deriving
+  // the second from the first is what made one value serve both.
+  const revoked = toAvatarProfile(profile({ status: 'disabled' }));
+  assert.equal(avatarSetupStart(revoked), 'new_photo');
+  for (const visualNeed of DECISION_VISUAL_NEEDS) {
+    assert.equal(
+      previewSetupEntryVisible({
+        visualNeed,
+        start: avatarSetupStart(revoked),
+        status: revoked.status,
+      }),
+      false,
+      `a revoked profile must not be invited at visual_need=${visualNeed}`,
+    );
+  }
+  // …and the same start value from a `none` profile IS invited, so the assertion
+  // above cannot be passing because `new_photo` is refused everywhere.
+  assert.equal(
+    previewSetupEntryVisible({ visualNeed: 'recommended', start: 'new_photo', status: 'none' }),
+    true,
+  );
 });
 
 check('the matrix covers every frozen visual_need value', () => {
@@ -287,14 +323,18 @@ check('an existing candidate opens on review WITH the photo consent will name', 
   assert.equal(state.candidate?.sourceAssetId, 'asset-9');
 });
 
-check('terminal starts open terminal, and a revoked one states the reason', () => {
+check('terminal starts open terminal, and an unservable one states the reason', () => {
   assert.equal(initialAvatarSetupState('already_preparing', null).step, 'preparing');
   assert.equal(initialAvatarSetupState('already_ready', null).step, 'ready');
   assert.ok(setupIsTerminal(initialAvatarSetupState('already_ready', null)));
   const blocked = initialAvatarSetupState('blocked', null);
   assert.equal(blocked.step, 'problem');
-  assert.equal(blocked.problem, 'revoked');
-  assert.equal(retryTarget(blocked), null, 'a revoked profile must not offer a retry');
+  // V3-021 retired the `revoked` problem with the dead end it described. `blocked`
+  // now means only "a candidate this build cannot name", and `unavailable` is the
+  // honest word for that — the old copy would have told a user their reference was
+  // switched off when it is not.
+  assert.equal(blocked.problem, 'unavailable');
+  assert.equal(retryTarget(blocked), null, 'an unservable state must not offer a retry');
 });
 
 check('a failed opening read hides the surface instead of blaming the photo', () => {
@@ -542,11 +582,31 @@ check('a candidate profile has no start that reaches the picker', () => {
   assert.equal(opened.step, 'review');
   // `intro` — the only step that renders the album/camera pair — is unreachable
   // from a candidate profile except through a dismissal.
-  for (const status of ['candidate', 'preparing', 'ready', 'refresh_recommended', 'disabled']) {
+  //
+  // `disabled` LEFT this list in V3-021, and the invariant is intact rather than
+  // weakened: the rule is "do not register a photo the server cannot offer", and
+  // the four statuses below are the ones where something is already on offer or
+  // in use. A revoked profile has nothing on offer — both §15 delete controls
+  // remove every source-asset row — and `_suppression` lets a PREVIEW_REQUEST
+  // through for exactly that case, so a photo registered there IS assessed and
+  // IS reported back through the widened `candidate` block.
+  for (const status of ['candidate', 'preparing', 'ready', 'refresh_recommended']) {
     const start = avatarSetupStart(toAvatarProfile(profile({ status })));
     assert.notEqual(initialAvatarSetupState(start, null).step, 'intro', status);
   }
-  assert.equal(initialAvatarSetupState(avatarSetupStart(toAvatarProfile(profile())), null).step, 'intro');
+  for (const status of ['none', 'disabled']) {
+    const start = avatarSetupStart(toAvatarProfile(profile({ status })));
+    assert.equal(initialAvatarSetupState(start, null).step, 'intro', status);
+  }
+  // …and a status this build cannot read still does not reach the picker, even
+  // though the skew rule collapsed it onto `disabled` (see `statusIsKnown`).
+  assert.notEqual(
+    initialAvatarSetupState(
+      avatarSetupStart(toAvatarProfile(profile({ status: 'hologram_ready' }))),
+      null,
+    ).step,
+    'intro',
+  );
 });
 
 check('choosing another photo goes through a dismissal, not a reset', () => {

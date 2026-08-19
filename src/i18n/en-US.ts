@@ -907,6 +907,52 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'avatarSetup.problem.preparation': "Preparation couldn't start. Your choice has been saved.",
   'avatarSetup.problem.unavailable':
     'Appearance references are unavailable right now; your purchase judgment still stands.',
-  'avatarSetup.problem.revoked':
-    'Your appearance reference is switched off and cannot be turned back on yet.',
+  // `avatarSetup.problem.revoked` is deleted by V3-021 — see the zh-CN note.
+
+  // --- V3-021: Profile appearance-reference management (§4.4 + §15) ---------
+  // Placeholder copy under the §4.3 human gate, same as `avatarConsent.*`.
+  'avatarReference.title': 'My appearance reference',
+  'avatarReference.entry': 'My appearance reference',
+  'avatarReference.entry.sub': 'See how it is used, replace it, or delete it',
+  'avatarReference.purpose':
+    'An appearance reference is only used to generate previews of your own outfits.',
+  'avatarReference.thirdParty':
+    'When a preview is generated, the photo is sent to a third-party AI model for processing and used for nothing else.',
+  'avatarReference.section.state': 'Photo & authorization',
+  'avatarReference.section.controls': 'Data controls',
+  'avatarReference.status': 'Authorization',
+  'avatarReference.status.none': 'Not set up',
+  'avatarReference.status.candidate': 'One photo is waiting for your decision',
+  'avatarReference.status.preparing': 'Preparing',
+  'avatarReference.status.ready': 'In use',
+  'avatarReference.status.refresh_recommended': 'In use; an update is suggested',
+  'avatarReference.status.disabled': 'Switched off',
+  'avatarReference.version': 'Current version',
+  'avatarReference.version.since': 'Generated on {date}',
+  'avatarReference.consent': 'Authorized on',
+  'avatarReference.referenceAlt': 'Current appearance reference',
+  'avatarReference.noReference': 'There is no appearance reference available right now.',
+  'avatarReference.replace': 'Replace',
+  'avatarReference.replace.sub':
+    'Generate again from another photo; the current version is only swapped out once the new one succeeds',
+  'avatarReference.replaceOffered': 'Replace it with the photo you just uploaded',
+  'avatarReference.setUpAgain': 'Set up again',
+  'avatarReference.setUpAgain.sub': 'Needs a new photo and a new authorization',
+  'avatarReference.stop': 'Stop using it for generation',
+  'avatarReference.stop.sub':
+    'Deletes the reference and the original photo; previews already generated are kept',
+  'avatarReference.stop.confirm':
+    'The reference and the original photo will be deleted, and nothing will be generated from them again. Previews already generated are kept, and you can delete those separately later.',
+  'avatarReference.stop.done': 'Stopped using it for generation.',
+  'avatarReference.delete': 'Delete the reference and everything generated from it',
+  'avatarReference.delete.sub': 'Also deletes the previews already generated',
+  'avatarReference.delete.confirm':
+    'The reference, the original photo and the previews generated from it will all be deleted. This cannot be undone.',
+  'avatarReference.delete.done': 'Deleted the reference and everything generated from it.',
+  'avatarReference.replace.started':
+    'A new version is being prepared and will replace the current one when it is done.',
+  'avatarReference.confirm': 'Confirm',
+  'avatarReference.error.read': "Couldn't read the state of your appearance reference.",
+  'avatarReference.error.action': "That didn't go through. You can try again.",
+  'avatarReference.error.unavailable': 'Appearance references are unavailable right now.',
 };

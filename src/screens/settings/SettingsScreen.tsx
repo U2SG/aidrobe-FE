@@ -15,6 +15,7 @@ import { DepartureTimeSheet } from '@/components/settings/DepartureTimeSheet';
 import { Button } from '@/components/ui/Button';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
+import { enableV3Avatar } from '@/lib/featureFlags';
 import {
   invalidateAfterChangeLanguage,
   invalidateAfterUpdateDepartureTime,
@@ -33,7 +34,7 @@ import { coordsValue, getCurrentCoords, isCoords, reverseGeocodeLabel } from '@/
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'Settings'>;
 
-export function SettingsScreen(_props: Props) {
+export function SettingsScreen({ navigation }: Props) {
   const { t } = useT();
   const showToast = useToastStore((state) => state.show);
   const clearAuth = useAuthStore((state) => state.clear);
@@ -364,6 +365,37 @@ export function SettingsScreen(_props: Props) {
         </Section>
 
         <Section title={t('settings.section.privacy')}>
+          {/* V3-021 — the §15 形象参考 controls, in the privacy section of the
+              Profile surface the DEFAULT build ships. `ENABLE_MVP_V2_UI` is off
+              by default, so `ProfileV2Screen` (which carries the same row) is not
+              what a user sees; putting the entry only there would have made the
+              controls unreachable in the shipped shell. Both rows are gated by
+              `enableV3Avatar` and both push the same screen.
+
+              NO `detail`, deliberately — and this is the one row here without
+              one, so the reason is recorded rather than left to look like an
+              omission. This `Row` renders `detail` in a right-aligned, single-
+              line, tail-ellipsized VALUE column; its every other use is a short
+              value (a departure time, a version number, 识别与推荐). A row
+              DESCRIPTION is not a value, and it does not survive that column:
+              measured at 360 dp, `entry.sub` fits in zh-CN at 1.0x, ellipsizes
+              from 1.3x, and in en-US ("See how it is used, replace it, or delete
+              it") collapses to 97 dp — about seven characters — at 1.0x already.
+              `avatarReference.status` was worse still: that key is the field
+              LABEL 授权状态, which in a value column reads as a value that failed
+              to load. `ProfileV2Screen` keeps the description because its `Row`
+              has a real sub-label slot that wraps.
+              The label names the destination and the chevron says it navigates;
+              the two §15 clauses are the first thing on the screen it opens.
+              Showing the real authorization status here was the other candidate
+              and is rejected: it would make a settings list depend on a network
+              read of the avatar profile. */}
+          {enableV3Avatar ? (
+            <Row
+              label={t('avatarReference.entry')}
+              onPress={() => navigation.navigate('AvatarReference')}
+            />
+          ) : null}
           <Row
             label={t('settings.photoUse')}
             detail={t('settings.photoUse.detail')}

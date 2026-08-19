@@ -917,10 +917,53 @@ export const zhCN = {
   'avatarSetup.problem.dismiss': '没能放弃这张照片。可以再试一次，或者就用这张。',
   'avatarSetup.problem.preparation': '这次没能开始准备，你的选择已经保存。',
   'avatarSetup.problem.unavailable': '形象参考现在不可用，这条购买判断仍然有效。',
-  // The revoked case: §4.1 lists a re-enable edge but P0 has no reachable path
-  // to it (see `avatarSetupStart`), so this says so instead of offering a retry
-  // that cannot succeed.
-  'avatarSetup.problem.revoked': '形象参考已停用，目前还不能重新开启。',
+  // `avatarSetup.problem.revoked` is deleted by V3-021. It read「形象参考已停用，
+  // 目前还不能重新开启」, which was true while the frozen `disabled → preparing`
+  // edge had no reachable path. It has one now (Profile → 重新设置), so keeping
+  // the string would let the screen state something the product no longer does.
+
+  // --- V3-021: Profile 形象参考 management (§4.4 + §15) ----------------------
+  // Placeholder copy under the §4.3 human gate, same as `avatarConsent.*`: the
+  // production retention/deletion wording is a privacy approval, and nothing
+  // here may ship to production unreviewed. Each string states one verifiable
+  // consequence and no more — no reassurance we cannot keep.
+  'avatarReference.title': '我的形象参考',
+  'avatarReference.entry': '我的形象参考',
+  'avatarReference.entry.sub': '查看用途、替换或删除',
+  'avatarReference.purpose': '形象参考只用于生成你自己的穿搭预览。',
+  'avatarReference.thirdParty': '生成预览时，照片会发送给第三方 AI 模型处理，不用于其他用途。',
+  'avatarReference.section.state': '照片与授权',
+  'avatarReference.section.controls': '数据控制',
+  'avatarReference.status': '授权状态',
+  'avatarReference.status.none': '尚未设置',
+  'avatarReference.status.candidate': '有一张照片待你确认',
+  'avatarReference.status.preparing': '正在准备',
+  'avatarReference.status.ready': '可用',
+  'avatarReference.status.refresh_recommended': '可用，建议更新',
+  'avatarReference.status.disabled': '已停用',
+  'avatarReference.version': '当前版本',
+  'avatarReference.version.since': '生成于 {date}',
+  'avatarReference.consent': '授权时间',
+  'avatarReference.referenceAlt': '当前形象参考',
+  'avatarReference.noReference': '现在没有可用的形象参考。',
+  'avatarReference.replace': '替换',
+  'avatarReference.replace.sub': '用另一张照片重新生成，成功后才会替换当前版本',
+  'avatarReference.replaceOffered': '用刚上传的那张照片替换',
+  'avatarReference.setUpAgain': '重新设置',
+  'avatarReference.setUpAgain.sub': '需要重新上传一张照片并再次授权',
+  'avatarReference.stop': '停止用于生成',
+  'avatarReference.stop.sub': '删除形象参考和原始照片；已生成的预览会保留',
+  'avatarReference.stop.confirm': '停止后，形象参考和原始照片会被删除，之后不会再用它生成任何预览。已经生成的预览会保留，可以稍后单独删除。',
+  'avatarReference.stop.done': '已停止用于生成。',
+  'avatarReference.delete': '删除形象参考及派生结果',
+  'avatarReference.delete.sub': '同时删除已生成的上身预览',
+  'avatarReference.delete.confirm': '删除后，形象参考、原始照片和由它生成的上身预览都会被删除。这一步不能撤销。',
+  'avatarReference.delete.done': '已删除形象参考及派生结果。',
+  'avatarReference.replace.started': '正在准备新版本，完成后会自动替换。',
+  'avatarReference.confirm': '确认',
+  'avatarReference.error.read': '没能读取形象参考的状态。',
+  'avatarReference.error.action': '这一步没能完成，可以再试一次。',
+  'avatarReference.error.unavailable': '形象参考现在不可用。',
 } as const;
 
 export type I18nKey = keyof typeof zhCN;

@@ -1,6 +1,8 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { SettingsScreen } from '@/screens/settings/SettingsScreen';
+import { AvatarReferenceScreen } from '@/screens/avatar/AvatarReferenceScreen';
+import { AvatarPhotoSetupScreen } from '@/screens/avatar/AvatarPhotoSetupScreen';
 import { ProfileV2Screen } from '@/screens/profile-v2/ProfileV2Screen';
 import { DataTrustScreen } from '@/screens/profile-v2/DataTrustScreen';
 import { MemoryManagementScreen } from '@/screens/profile-v2/MemoryManagementScreen';
@@ -34,6 +36,26 @@ export function SettingsNavigator() {
       }}
     >
       <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: '设置', headerShown: false }} />
+      {/* V3-021 — mounted OUTSIDE the V2 conditional, because the 形象参考
+          controls have to be reachable from whichever Profile the build ships:
+          `SettingsScreen` under the V1 default and `ProfileV2Screen` under
+          `ENABLE_MVP_V2_UI`. Both entry rows are gated by `enableV3Avatar`, so a
+          default build mounts two routes nothing can navigate to — which is the
+          same shape as every other flag-off V3 surface. Own header, so this page
+          always has a visible back control. */}
+      <Stack.Screen
+        name="AvatarReference"
+        component={AvatarReferenceScreen}
+        options={{ headerShown: false }}
+      />
+      {/* The re-enable path after 停止用于生成. Typed against the Discover stack
+          (its first home) and cast per the repo's cross-stack convention; it only
+          ever navigates back, so nothing it can reach is missing here. */}
+      <Stack.Screen
+        name="AvatarPhotoSetup"
+        component={AvatarPhotoSetupScreen as never}
+        options={{ headerShown: false }}
+      />
       {enableMvpV2Ui ? (
         <>
           <Stack.Screen name="ProfileV2" component={ProfileV2Screen} options={{ headerShown: false }} />
