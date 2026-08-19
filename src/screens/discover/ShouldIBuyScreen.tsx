@@ -537,14 +537,18 @@ function VisualPreviewSection({
 /**
  * V3-020 — the lightweight fidelity ask under a ready render: one prompt line,
  * the frozen three verdicts (§6.1 / `v3_preview_feedback` — one vocabulary,
- * two channels), one tap. The tap emits the FE-owned event (the channel every
- * dashboard metric is defined over) and fires the §6.1 record POST, then the
- * row settles: the chosen chip stays highlighted and a quiet thanks line
- * replaces the prompt. Single-shot by design — a re-answer would put a second
- * event under the same render into the looks-like-me denominator (see
- * `previewFeedbackMapping.ts`). No toast in either direction: feedback is a
- * learning signal, and both its loss and its success are too small to
- * interrupt a purchase judgment for (§3.6).
+ * two channels), one tap. The tap fires the §6.1 record POST — the durable
+ * channel, implemented by V3-024, and the reason the thanks line below can
+ * claim anything at all — and emits the FE-owned analytics event, which has no
+ * registered dispatcher yet (see `previewFeedbackMapping.ts` for why that
+ * distinction is written down rather than blurred). Then the row settles: the
+ * chosen chip stays highlighted and a quiet thanks line replaces the prompt.
+ * Single-shot by design, for a product reason rather than a metric one — P0
+ * ships no undo affordance, so a second tap must not silently rewrite the
+ * answer (the server would accept it; `previewFeedbackMapping.ts` has the full
+ * argument). No toast in either direction: feedback is a learning signal, and
+ * both its loss and its success are too small to interrupt a purchase judgment
+ * for (§3.6).
  */
 function PreviewFeedbackRow({
   assetId,

@@ -389,8 +389,10 @@ export const zhCN = {
   // V3-020 — the ready render's honest presentation. The caption names what
   // the picture is (§5.4 layer 4: the candidate plus the user's OWN items,
   // never a product-only try-on); the feedback row is the frozen three-verdict
-  // vocabulary (§6.1 / v3_preview_feedback — one list, two channels); the
-  // thanks line acknowledges the tap without claiming durable storage.
+  // vocabulary (§6.1 / v3_preview_feedback — one list, two channels). The
+  // thanks line is deliberately a plain acknowledgement rather than a storage
+  // promise, but it is no longer an empty one either: V3-024 implements the
+  // §6.1 route, so the tap it acknowledges does persist server-side.
   'should_i_buy.preview.readyCaption': '画面里是这件候选，和你衣橱里已有的搭配单品。',
   'should_i_buy.preview.feedbackPrompt': '这张预演像你吗？',
   'should_i_buy.preview.feedback.looksLikeMe': '基本像我',

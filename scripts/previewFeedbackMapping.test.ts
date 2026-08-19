@@ -98,19 +98,9 @@ check('every verdict has a distinct label key present in both catalogues', () =>
 
 console.log('the boundary line (acceptance 2)');
 
-check('the zh fallback is V3_SPEC §14\'s fixed sentence, verbatim', () => {
-  assert.equal(
-    zhCN[PREVIEW_BOUNDARY_FALLBACK_KEY],
-    '用于判断整体感觉；实际尺码、触感和精确垂坠仍需参考商品信息。',
-  );
-});
-
-check('the en fallback mirrors the server\'s en-US boundary_note copy', () => {
-  assert.equal(
-    enUS[PREVIEW_BOUNDARY_FALLBACK_KEY],
-    'This is about the overall look; actual size, feel and drape still come from the product details.',
-  );
-});
+// The two locale pins and the FE==BE==V3_SPEC provenance chain live in
+// scripts/boundaryCopyProvenance.test.ts — one file owns the sentence itself.
+// What stays here is how the card USES it, and the deny-list it is exempt from.
 
 check('the boundary line renders unconditionally — null server note falls back, never disappears', () => {
   assert.ok(SCREEN_SOURCE.includes('card.boundaryNote ?? t.t(PREVIEW_BOUNDARY_FALLBACK_KEY)'));

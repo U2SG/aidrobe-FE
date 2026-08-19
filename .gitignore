@@ -19,6 +19,12 @@ android/.gradle/
 android/build/
 android/app/build/
 android/local.properties
+# `expo prebuild` / `expo run:android` output. This project is CNG — the native
+# tree is generated, never committed (a device-testing round leaves a ~170 MB
+# android/ here, and an untracked build tree is one `git add -A` away from a
+# PR). The narrower rules above stay for a tree someone deliberately tracks
+# with `git add -f`.
+/android/
 
 # editor
 .idea/

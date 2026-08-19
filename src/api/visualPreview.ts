@@ -25,16 +25,21 @@ export async function requestVisualPreview(
   return { assetId: data.asset_id, generationStatus: data.generation_status };
 }
 
-// V3-020 — contract §6.1's fidelity-feedback record, fire-and-forget on the
-// `emitRecommendationEvent` precedent: a lightweight learning signal must
-// never interrupt the user — no toast, and a swallowed failure (a record lost
-// to a blip is acceptable; a red toast over the decision card for it is not).
-// The FE-owned `v3_preview_feedback` event — the channel every dashboard
-// metric is defined over — is emitted by the caller ON THE TAP, independently
-// of this write. Known gap, stated plainly rather than hidden: no BE feature
-// has implemented this §6.1 route yet, so today this POST answers 404; the
-// path and body are the frozen contract shapes, so when the BE side lands,
-// nothing here changes.
+// V3-020 — contract §6.1's fidelity-feedback record, and the DURABLE half of
+// the two channels (see `previewFeedbackMapping.ts`): V3-024 implements this
+// route, so a tap writes one `static_preview_feedback` row per asset. The
+// FE-owned `v3_preview_feedback` event is emitted by the caller on the tap,
+// independently of this write, and terminates in a dev console.log until a
+// dispatcher is registered — so this POST, not that event, is what makes the
+// thanks line honest.
+//
+// Fire-and-forget on the `emitRecommendationEvent` precedent: a lightweight
+// learning signal must never interrupt the user — no toast, and a swallowed
+// failure (a record lost to a blip is acceptable; a red toast over the decision
+// card for it is not). The non-200s that remain, none of which the user can act
+// on: 503 while the BE's ENABLE_V3_STATIC_TRYON is off, and 404 for an asset
+// that is not the caller's own `static_tryon` one — including the version-skew
+// case of a client newer than its backend.
 export function sendVisualPreviewFeedback(assetId: string, verdict: PreviewFeedbackVerdict): void {
   void apiPost(previewFeedbackPath(assetId), previewFeedbackBody(verdict), undefined, {
     silentErrorToast: true,

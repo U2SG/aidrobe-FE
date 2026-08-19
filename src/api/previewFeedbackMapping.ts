@@ -5,27 +5,53 @@
 // directly in Node, the `visualPreviewMapping.ts` pattern. The screen renders
 // these states; it decides nothing.
 //
-// ## One vocabulary, two channels
+// ## One vocabulary, two channels — and which of them is the durable one
 //
-// A verdict travels twice: as the FE-owned `v3_preview_feedback` analytics
-// event (the channel every V3-023 metric — looks-like-me rate, garment
-// distortion rate — is defined over) and as contract §6.1's
-// `POST /v1/outfit-visual-assets/{asset_id}/feedback` body (BE's durable
-// fidelity record). Both are frozen to the same three strings. The list below
-// is declared locally so this module stays Node-loadable (a runtime `@/`
-// import breaks the direct-load test path); the regression test pins it
-// deep-equal to `V3_FEEDBACK_VERDICTS`, so an edit to either side without the
-// other fails the build — the same guard `PREVIEW_CONCERNS` rides.
+// A verdict travels twice: as contract §6.1's
+// `POST /v1/outfit-visual-assets/{asset_id}/feedback` body, and as the
+// FE-owned `v3_preview_feedback` analytics event. Both are frozen to the same
+// three strings. Their fates today are NOT the same, and the difference is
+// worth stating instead of implying:
 //
-// ## Why feedback is single-shot
+//   - The §6.1 POST is the durable record. V3-024 implements it
+//     (`static_preview_feedback`, one row per asset, last write wins), so a
+//     tap persists and V3-023's looks-like-me / garment-wrong rates are
+//     computable per provider/model/prompt version off that table.
+//   - The analytics event is NOT a live sink yet. `setAnalyticsDispatcher` is
+//     never called anywhere in `src` (pre-existing V1-Slim infrastructure,
+//     shared with every other V3 event), so `trackV3` terminates in a
+//     `__DEV__` console.log. It is emitted here because the contract says this
+//     surface owns that event, not because anything currently reads it.
 //
-// `looks_like_me_rate` is defined as `v3_preview_feedback[verdict=
-// looks_like_me] / all v3_preview_feedback`. A user who can re-answer emits
-// several events into that denominator for one render, which biases exactly
-// the metric the feedback exists to feed. So the state machine goes one way:
-// `open → sent`, no transition back. (Aspects stay off the P0 surface: the
-// contract marks them optional, the acceptance names only the three verdicts,
-// and "lightweight" is in the feature description.)
+// So: the honest claim for this control is that the BACKEND persists the
+// verdict. No copy, comment or evidence line in this feature may promise a
+// dashboard the analytics channel cannot feed today.
+//
+// The verdict list below is declared locally so this module stays
+// Node-loadable (a runtime `@/` import breaks the direct-load test path); the
+// regression test pins it deep-equal to `V3_FEEDBACK_VERDICTS`, so an edit to
+// either side without the other fails the build — the same guard
+// `PREVIEW_CONCERNS` rides.
+//
+// ## Why feedback stays single-shot, now that the server dedupes
+//
+// The original reason was the metric denominator: `looks_like_me_rate` as
+// `v3_preview_feedback[verdict=looks_like_me] / all v3_preview_feedback`
+// double-counts a render whose user re-answers. That argument now leans on the
+// analytics channel described above, and V3-024's durable side cannot
+// double-count at all — it is unique on `asset_id` with last-write-wins, and
+// its contract §6.1 note explicitly allows a client to re-submit.
+//
+// The lock stays anyway, deliberately, for a product reason rather than a
+// metric one: a P0 surface with no undo affordance should not silently accept
+// a second answer as a correction. Re-answering is a real affordance (chips
+// that stay live, a "changed your mind?" state) and P0 does not ship one; a
+// row that quietly flips because a finger landed twice is worse than a locked
+// row. When that affordance is designed, this is the single function to relax
+// (`previewFeedbackAllowed`) and the server side already supports it.
+// (Aspects stay off the P0 surface: the contract marks them optional, the
+// acceptance names only the three verdicts, and "lightweight" is in the
+// feature description.)
 
 import type { I18nKey } from '@/i18n';
 import type { V3FeedbackVerdict } from '@/utils/v3AnalyticsEvents';
