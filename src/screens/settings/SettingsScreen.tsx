@@ -372,18 +372,27 @@ export function SettingsScreen({ navigation }: Props) {
               controls unreachable in the shipped shell. Both rows are gated by
               `enableV3Avatar` and both push the same screen.
 
-              The supporting string is `entry.sub`, the same one `ProfileV2Screen`
-              uses, so the two shells describe the row identically. It is NOT
-              `avatarReference.status`: that key is the field LABEL 授权状态 on the
-              reference screen, and this `Row` puts `detail` in the right-aligned
-              VALUE slot, where a bare label reads as a value that failed to
-              load. Showing the real status here would mean fetching the avatar
-              profile to render a settings list — a network dependency, and a new
-              failure mode, for one line of description. */}
+              NO `detail`, deliberately — and this is the one row here without
+              one, so the reason is recorded rather than left to look like an
+              omission. This `Row` renders `detail` in a right-aligned, single-
+              line, tail-ellipsized VALUE column; its every other use is a short
+              value (a departure time, a version number, 识别与推荐). A row
+              DESCRIPTION is not a value, and it does not survive that column:
+              measured at 360 dp, `entry.sub` fits in zh-CN at 1.0x, ellipsizes
+              from 1.3x, and in en-US ("See how it is used, replace it, or delete
+              it") collapses to 97 dp — about seven characters — at 1.0x already.
+              `avatarReference.status` was worse still: that key is the field
+              LABEL 授权状态, which in a value column reads as a value that failed
+              to load. `ProfileV2Screen` keeps the description because its `Row`
+              has a real sub-label slot that wraps.
+              The label names the destination and the chevron says it navigates;
+              the two §15 clauses are the first thing on the screen it opens.
+              Showing the real authorization status here was the other candidate
+              and is rejected: it would make a settings list depend on a network
+              read of the avatar profile. */}
           {enableV3Avatar ? (
             <Row
               label={t('avatarReference.entry')}
-              detail={t('avatarReference.entry.sub')}
               onPress={() => navigation.navigate('AvatarReference')}
             />
           ) : null}

@@ -478,15 +478,25 @@ check('both Profile surfaces carry the entry, and both gate it on the flag', () 
   }
 });
 
-check('both entry rows describe the row with the SAME supporting string', () => {
-  // The two shells use different `Row` components — `ProfileV2Screen` stacks a
-  // `subKey` under the label, `SettingsScreen` puts `detail` in a right-aligned
-  // value slot — so the same row can drift into saying two different things.
-  // `entry.sub` describes what the row leads to; `avatarReference.status` is the
-  // field LABEL 授权状态 from the reference screen, and in a value slot it reads
-  // as a value that failed to load. That was shipped once; this pins the fix.
+check('neither entry row puts a description in a single-line value column', () => {
+  // The two shells have different `Row` components and the row has to respect
+  // each. `ProfileV2Screen`'s has a `subKey` sub-label that wraps, so it carries
+  // the description. `SettingsScreen`'s renders `detail` right-aligned,
+  // `numberOfLines={1}`, tail-ellipsized — a value column, whose every other use
+  // here is a short value. Measured at 360 dp (see the round-3 driver log), a
+  // description in that column ellipsizes in zh-CN from font scale 1.3x and
+  // collapses to ~97 dp in en-US at 1.0x, so the V1 row passes no `detail` at
+  // all. What shipped first was worse than either: `avatarReference.status`, the
+  // field LABEL 授权状态, which in a value column reads as a value that failed to
+  // load. This pins all three facts.
   assert.match(PROFILE_V2, /subKey="avatarReference\.entry\.sub"/);
-  assert.match(SETTINGS_V1, /detail=\{t\('avatarReference\.entry\.sub'\)\}/);
+  const v1Row = SETTINGS_V1.slice(
+    SETTINGS_V1.indexOf("label={t('avatarReference.entry')}"),
+  ).slice(0, 200);
+  assert.ok(
+    !/\bdetail=/.test(v1Row),
+    'the SettingsScreen entry row must not pass a detail into the value column',
+  );
   for (const [name, source] of [
     ['ProfileV2Screen', PROFILE_V2],
     ['SettingsScreen', SETTINGS_V1],
