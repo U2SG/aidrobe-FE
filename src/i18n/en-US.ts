@@ -918,6 +918,8 @@ export const enUS: Record<keyof typeof zhCN, string> = {
     'An appearance reference is only used to generate previews of your own outfits.',
   'avatarReference.thirdParty':
     'When a preview is generated, the photo is sent to a third-party AI model for processing and used for nothing else.',
+  'avatarReference.section.state': 'Photo & authorization',
+  'avatarReference.section.controls': 'Data controls',
   'avatarReference.status': 'Authorization',
   'avatarReference.status.none': 'Not set up',
   'avatarReference.status.candidate': 'One photo is waiting for your decision',

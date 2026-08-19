@@ -932,6 +932,8 @@ export const zhCN = {
   'avatarReference.entry.sub': '查看用途、替换或删除',
   'avatarReference.purpose': '形象参考只用于生成你自己的穿搭预览。',
   'avatarReference.thirdParty': '生成预览时，照片会发送给第三方 AI 模型处理，不用于其他用途。',
+  'avatarReference.section.state': '照片与授权',
+  'avatarReference.section.controls': '数据控制',
   'avatarReference.status': '授权状态',
   'avatarReference.status.none': '尚未设置',
   'avatarReference.status.candidate': '有一张照片待你确认',

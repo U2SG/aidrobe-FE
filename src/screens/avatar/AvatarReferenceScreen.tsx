@@ -360,7 +360,7 @@ export function AvatarReferenceScreen({ navigation }: Props) {
 
         {profile ? (
           <>
-            <Section title={t('avatarReference.status')}>
+            <Section title={t('avatarReference.section.state')}>
               <ValueRow
                 labelKey="avatarReference.status"
                 value={t(
@@ -451,7 +451,7 @@ export function AvatarReferenceScreen({ navigation }: Props) {
             ) : null}
 
             {controls ? (
-              <Section title={t('avatarReference.title')}>
+              <Section title={t('avatarReference.section.controls')}>
                 {controls.replace ? (
                   <ControlRow
                     labelKey={
