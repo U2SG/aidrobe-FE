@@ -178,16 +178,43 @@ function sourceFiles(dir: string, acc: string[] = []): string[] {
   return acc;
 }
 
-const srcText = sourceFiles(join(repoRoot, 'src'))
-  .map((f) => readFileSync(f, 'utf8'))
-  .join('\n');
+// Emitter discovery is restricted to CALL SITES, and the contract mirror is
+// excluded from the scan. Both restrictions are load-bearing; without them this
+// check cannot fail, which is worse than not having it:
+//
+//   - Matching every `'v3_*'` literal anywhere in src/ collects the registry's
+//     OWN declarations (V3_FE_OWNED_EVENTS and the V3_EVENT_SPECS keys), so
+//     deleting the last real emitter for an event would still "pass".
+//   - Filtering the collected set down to fe-owned names then makes the
+//     be-owned assertion below unconditionally true, because the only place a
+//     be-owned name appears is the registry that was just filtered out.
+//
+// So: skip the registry and the dispatcher module, require the literal to be the
+// first argument of a `trackV3(` / `emit(` call, and collect ALL v3_ names.
+// `\s*` spans newlines on purpose — both `v3_avatar_prompt_shown` call sites put
+// the literal on the line after `trackV3(`.
+const REGISTRY_FILES = [
+  join(repoRoot, 'src', 'utils', 'v3AnalyticsEvents.ts'),
+  join(repoRoot, 'src', 'utils', 'analytics.ts'),
+];
+const CALL_SITE = /\b(?:trackV3|emit)\(\s*'(v3_[a-z_]+)'/g;
 
-// `trackV3(` followed by either a literal or, in ShouldIBuyScreen's helper, a
-// generic `event` parameter — so the literals are collected from the call sites
-// that pass them to the helper too.
+const emitterFiles = sourceFiles(join(repoRoot, 'src')).filter((f) => !REGISTRY_FILES.includes(f));
 const emittedLiterals = new Set(
-  [...srcText.matchAll(/'(v3_[a-z_]+)'/g)].map((m) => m[1]).filter((name) => V3_FE_OWNED_EVENTS.includes(name as never)),
+  [...emitterFiles.map((f) => readFileSync(f, 'utf8')).join('\n').matchAll(CALL_SITE)].map((m) => m[1]),
 );
+
+// Meta-check, so the exclusion above is proved rather than trusted: the registry
+// declares all 11 event names, and if the call-site pattern matched declarations
+// this would be non-empty and every emitter assertion here would be vacuous.
+const registryCallSites = [
+  ...REGISTRY_FILES.map((f) => readFileSync(f, 'utf8')).join('\n').matchAll(CALL_SITE),
+].map((m) => m[1]);
+check(
+  `the contract mirror declares no emitter call sites: ${JSON.stringify(registryCallSites)}`,
+  registryCallSites.length === 0,
+);
+check('at least one non-registry source file was scanned', emitterFiles.length > 0);
 
 for (const event of V3_FE_OWNED_EVENTS) {
   check(`fe-owned event ${event} is emitted somewhere in src/`, emittedLiterals.has(event));
