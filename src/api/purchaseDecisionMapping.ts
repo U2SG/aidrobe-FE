@@ -308,7 +308,20 @@ export type DecisionErrorState =
   /** Other 5xx — server-side incident: offer an explicit retry action. */
   | { kind: 'server_error'; retryable: true }
   /** No response at all — connectivity: offer an explicit retry action. */
-  | { kind: 'network'; retryable: true };
+  | { kind: 'network'; retryable: true }
+  /** The candidate was still `submitted` after the bounded parse wait. Not an
+   * HTTP failure and not mapped from a status: raised by the caller so a slow
+   * asynchronous parse asks for a retry instead of asking the server to decide
+   * on evidence that does not exist yet (codex review, FE#141). */
+  | { kind: 'parse_pending'; retryable: true };
+
+/** Sentinel the decision flow throws when the parse wait runs out. Structural
+ * (not an Error subclass) so this module stays runtime-import-free. */
+export const PARSE_PENDING = { v3ParsePending: true } as const;
+
+export function isParsePending(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'v3ParsePending' in error;
+}
 
 /** The minimal axios-error surface this module reads; kept structural so the
  * mapping stays runtime-import-free and Node-testable. */
@@ -330,6 +343,7 @@ export function toDecisionErrorState(
   error: HttpErrorLike | null | undefined,
   context: DecisionEndpointContext = 'read',
 ): DecisionErrorState {
+  if (isParsePending(error)) return { kind: 'parse_pending', retryable: true };
   const status = error?.response?.status ?? null;
   const message = strOrNull(error?.response?.data?.message);
   if (status === null) return { kind: 'network', retryable: true };

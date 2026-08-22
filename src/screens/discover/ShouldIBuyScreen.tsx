@@ -45,13 +45,13 @@ import type {
   PurchaseCandidate,
   WardrobeDecision,
 } from '@/api/purchaseDecisionMapping';
-import { toDecisionErrorState } from '@/api/purchaseDecisionMapping';
+import { PARSE_PENDING, toDecisionErrorState } from '@/api/purchaseDecisionMapping';
 import {
   createPurchaseCandidate,
   decidePurchaseCandidate,
   getPurchaseCandidate,
 } from '@/api/purchaseDecisions';
-import { adoptV3Flow, beginV3Flow, endV3Flow } from '@/api/v3Flow';
+import { adoptV3Flow, beginV3Flow, currentV3FlowId, endV3Flow } from '@/api/v3Flow';
 import { enableV3Avatar, enableV3StaticTryon } from '@/lib/featureFlags';
 import { previewSetupEntryVisible } from '@/screens/avatar/avatarPhotoSetup';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
@@ -845,6 +845,12 @@ export function ShouldIBuyScreen({ navigation }: Props) {
         },
       );
     }
+    // The loop is bounded, so it can run out. Deciding anyway would ask the
+    // server for a judgment on evidence that does not exist yet — the very
+    // thing the poll was added to prevent — so an exhausted wait surfaces a
+    // retryable state instead (codex review, FE#141). `parse_failed` is NOT
+    // this case: it is terminal and still decidable below.
+    if (!settled.isTerminal) throw PARSE_PENDING;
     // A `parse_failed` candidate is still decidable — partial information,
     // not a dead end (contract §5.2).
     const decision = await decidePurchaseCandidate(settled.id, 'none', {
@@ -921,6 +927,16 @@ export function ShouldIBuyScreen({ navigation }: Props) {
 
   const onChooseAction = (action: RenderedAction) => {
     setChosenAction(action);
+    // Blur ends the flow but leaves this persistent screen — and its action
+    // row — mounted, so a tap after returning to the tab would emit
+    // `v3_decision_action` with no `flow_id`: required by the contract, so it
+    // throws in dev and is dropped in production (codex review, FE#141).
+    // Re-adopt this attempt's OWN id for the duration of the emit and hand it
+    // back immediately: same attempt, so the funnel join is correct, and
+    // nothing lingers to stamp unrelated requests the way a general reopen
+    // would (see `adoptV3Flow`'s docstring).
+    const orphaned = currentV3FlowId() === null && flowIdRef.current !== null;
+    if (orphaned) adoptV3Flow(flowIdRef.current as string);
     // No `endV3Flow()` here. Choosing an action does not remove the card, so a
     // second tap is a normal thing for a user to do — and closing the flow on
     // the first tap made that second emit fail validation and throw.
@@ -930,6 +946,7 @@ export function ShouldIBuyScreen({ navigation }: Props) {
     // reads it as a reuse outcome rather than a purchase conversion (feature
     // acceptance 3).
     emit('v3_decision_action', { action });
+    if (orphaned) endV3Flow();
     if (action === 'style_with_existing') openExistingItemAlternative();
   };
 

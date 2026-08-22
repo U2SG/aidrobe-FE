@@ -98,6 +98,9 @@ export type SettingsStackParamList = {
   PackingList: undefined;
   PackingListDetail: { id: string };
   CreatePackingList: { durationDays?: number } | undefined;
+  // Same reason as `AskStackParamList.ShouldIBuy`: Profile's tool section is a
+  // V2-shell entry point for the same decision (codex review, FE#141).
+  ShouldIBuy: undefined;
   SenseCheck: undefined;
   WardrobeReport: { period?: string } | undefined;
   // V3-021 — Profile's 形象参考 data controls (V3_SPEC §4.4 + §15). A settings
@@ -119,6 +122,11 @@ export type AskStackParamList = {
   // entrance passes it today (V3-010's only caller is Discover-hosted ShouldIBuy).
   AskAidrobe: { focusedItemId?: string; scope?: 'today'; autoAsk?: string } | undefined;
   SenseCheck: undefined;
+  // V3: the Ask tool entrance opens this instead of `SenseCheck` while
+  // `enableV3PurchaseDecision` is on. Registered here too because the V2 shell
+  // has no Discover tab, so the Discover-only registration left the gated
+  // screen unreachable in that shell (codex review, FE#141).
+  ShouldIBuy: undefined;
   PackingList: undefined;
   PackingListDetail: { id: string };
   // `durationDays` prefills the trip length (Ask trip-intent handoff, BE#115).

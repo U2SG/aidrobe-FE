@@ -26,7 +26,8 @@ import { ContextualEntrySheet } from '@/components/discover/ContextualEntrySheet
 import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { useWardrobeItemNames } from '@/hooks/useWardrobeItemNames';
-import { enableMvpV2Ui } from '@/lib/featureFlags';
+import { enableMvpV2Ui, enableV3PurchaseDecision } from '@/lib/featureFlags';
+import { shoppingEntryRoute } from './shoppingEntryRoute';
 import type { I18nKey } from '@/i18n';
 // useToastStore removed — contextual-entry toasts replaced with real navigation
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
@@ -693,7 +694,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
       hintKey: 'contextualEntry.shopping.hint',
       onPress: () => {
         setContextualSheetVisible(false);
-        navigation.navigate('SenseCheck');
+        navigation.navigate(shoppingEntryRoute(enableV3PurchaseDecision));
       },
     },
     {

@@ -13,7 +13,8 @@ import { OptionPickerSheet } from '@/components/ui/OptionPickerSheet';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
 import type { I18nKey } from '@/i18n';
-import { enableV3Avatar } from '@/lib/featureFlags';
+import { enableV3Avatar, enableV3PurchaseDecision } from '@/lib/featureFlags';
+import { shoppingEntryRoute } from '@/screens/discover/shoppingEntryRoute';
 import {
   invalidateAfterChangeLanguage,
   invalidateAfterUpdateDepartureTime,
@@ -435,7 +436,7 @@ export function ProfileV2Screen({ navigation }: Props) {
         <Row
           labelKey="profile.row.senseCheck"
           leadingIcon={<SystemIcon name="bag" size={18} color={colors.tertiaryLabel} />}
-          onPress={() => navigation.navigate('SenseCheck')}
+          onPress={() => navigation.navigate(shoppingEntryRoute(enableV3PurchaseDecision))}
         />
         <Row
           labelKey="profile.row.wardrobeReport"

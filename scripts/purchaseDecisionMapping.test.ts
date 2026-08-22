@@ -6,7 +6,9 @@
 import assert from 'node:assert/strict';
 
 import {
+  isParsePending,
   isTerminalCandidateStatus,
+  PARSE_PENDING,
   toDecisionErrorState,
   toParsedCandidateItem,
   toPurchaseCandidate,
@@ -158,5 +160,16 @@ check('500 → server_error, retryable', toDecisionErrorState(err(500)).kind ===
 check('no response → network, retryable', toDecisionErrorState(err(null)).kind === 'network');
 check('undefined error → network', toDecisionErrorState(undefined).kind === 'network');
 check('unadvertised 4xx → invalid_request', toDecisionErrorState(err(418)).kind === 'invalid_request');
+
+// A still-`submitted` candidate after the bounded parse wait is not an HTTP
+// failure: deciding anyway would ask the server to judge evidence that does not
+// exist yet (codex review, FE#141), so the caller raises this sentinel and the
+// user gets a retry rather than a premature verdict.
+const pending = toDecisionErrorState(PARSE_PENDING as never);
+check('PARSE_PENDING → parse_pending', pending.kind === 'parse_pending');
+check('parse_pending is retryable', pending.retryable === true);
+check('isParsePending recognises the sentinel', isParsePending(PARSE_PENDING) === true);
+check('isParsePending ignores an http error', isParsePending(err(503)) === false);
+check('isParsePending ignores null', isParsePending(null) === false);
 
 console.log(`purchaseDecisionMapping: ${passed}/${passed} cases passed`);
