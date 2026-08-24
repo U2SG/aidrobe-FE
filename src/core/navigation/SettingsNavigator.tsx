@@ -4,6 +4,8 @@ import { SettingsScreen } from '@/screens/settings/SettingsScreen';
 import { AvatarReferenceScreen } from '@/screens/avatar/AvatarReferenceScreen';
 import { AvatarPhotoSetupScreen } from '@/screens/avatar/AvatarPhotoSetupScreen';
 import { ProfileV2Screen } from '@/screens/profile-v2/ProfileV2Screen';
+import { AskAidrobeScreen } from '@/screens/discover/AskAidrobeScreen';
+import { ShouldIBuyScreen } from '@/screens/discover/ShouldIBuyScreen';
 import { DataTrustScreen } from '@/screens/profile-v2/DataTrustScreen';
 import { MemoryManagementScreen } from '@/screens/profile-v2/MemoryManagementScreen';
 import { StyleInspirationsScreen } from '@/screens/discover/StyleInspirationsScreen';
@@ -59,6 +61,11 @@ export function SettingsNavigator() {
       {enableMvpV2Ui ? (
         <>
           <Stack.Screen name="ProfileV2" component={ProfileV2Screen} options={{ headerShown: false }} />
+          <Stack.Screen name="ShouldIBuy" component={ShouldIBuyScreen as never} options={{ headerShown: false }} />
+          {/* `style_with_existing` hands off to an item-scoped Ask thread, so the
+              card's destination must exist in this host too (codex review,
+              FE#154). */}
+          <Stack.Screen name="AskAidrobe" component={AskAidrobeScreen as never} />
           {/* Sub-pages keep a native header so there is always a visible back
               control (web / Android hardware back / no gesture). */}
           <Stack.Screen

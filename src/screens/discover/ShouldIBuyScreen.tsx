@@ -45,13 +45,13 @@ import type {
   PurchaseCandidate,
   WardrobeDecision,
 } from '@/api/purchaseDecisionMapping';
-import { toDecisionErrorState } from '@/api/purchaseDecisionMapping';
+import { PARSE_PENDING, toDecisionErrorState } from '@/api/purchaseDecisionMapping';
 import {
   createPurchaseCandidate,
   decidePurchaseCandidate,
   getPurchaseCandidate,
 } from '@/api/purchaseDecisions';
-import { adoptV3Flow, beginV3Flow, endV3Flow } from '@/api/v3Flow';
+import { adoptV3Flow, beginV3Flow, currentV3FlowId, endV3Flow } from '@/api/v3Flow';
 import { enableV3Avatar, enableV3StaticTryon } from '@/lib/featureFlags';
 import { previewSetupEntryVisible } from '@/screens/avatar/avatarPhotoSetup';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
@@ -672,6 +672,12 @@ export function ShouldIBuyScreen({ navigation }: Props) {
   const [result, setResult] = useState<DecisionResult | null>(null);
   const [errorState, setErrorState] = useState<DecisionErrorState | null>(null);
   const [chosenAction, setChosenAction] = useState<RenderedAction | null>(null);
+  // A candidate whose parse outran the poll window. The retry must resume THIS
+  // candidate: re-creating one abandons the resource that may now be ready,
+  // leaks a server row per press, and for any parser slower than the window it
+  // never converges (codex review, FE#154). Cleared once a decision is actually
+  // obtained, and on a new submit — a changed input is a new attempt.
+  const pendingCandidateRef = useRef<{ id: string; source: string } | null>(null);
   // V3-015 — what the avatar profile says the visual entry may offer, or null
   // while unknown (never probed, probe failed, or the flag is off). Null renders
   // no entry: an optional V3 surface self-hides rather than explaining itself.
@@ -817,6 +823,33 @@ export function ShouldIBuyScreen({ navigation }: Props) {
 
   const runDecision = useCallback(async (): Promise<DecisionResult> => {
     const sourceType = sourceTypeForInput(objectKey !== null);
+    // The source is stored with the id because `onMutate` fires for a retry and
+    // a fresh submit alike, so the ref alone cannot tell them apart: resuming on
+    // a changed input would answer a NEW link with the OLD candidate.
+    const source = objectKey ?? url.trim();
+    const pending = pendingCandidateRef.current;
+    const resuming = pending !== null && pending.source === source ? pending.id : null;
+    if (resuming !== null) {
+      // Same attempt, so the flow id is kept and no second
+      // `v3_decision_started` is emitted — that would double-count the funnel's
+      // denominator for one user intent.
+      const settledAgain = await getPurchaseCandidate(resuming, {
+        silentErrorToast: true,
+      }).catch((error: unknown) => {
+        throw withEndpointContext(error, 'read');
+      });
+      if (!settledAgain.isTerminal) throw PARSE_PENDING;
+      const decisionAgain = await decidePurchaseCandidate(settledAgain.id, 'none', {
+        silentErrorToast: true,
+      }).catch((error: unknown) => {
+        throw withEndpointContext(error, 'decide');
+      });
+      // Only now: a failing `decide` on an already-terminal candidate should
+      // retry the decision, not spend a new candidate on the same link.
+      pendingCandidateRef.current = null;
+      return { candidate: settledAgain, decision: decisionAgain };
+    }
+    pendingCandidateRef.current = null;
     // Kept so the same attempt can re-adopt its own id after the existing-item
     // hand-off; a new submit is a new attempt and overwrites it.
     flowIdRef.current = beginV3Flow();
@@ -844,6 +877,15 @@ export function ShouldIBuyScreen({ navigation }: Props) {
           throw withEndpointContext(error, 'read');
         },
       );
+    }
+    // The loop is bounded, so it can run out. Deciding anyway would ask the
+    // server for a judgment on evidence that does not exist yet — the very
+    // thing the poll was added to prevent — so an exhausted wait surfaces a
+    // retryable state instead (codex review, FE#141). `parse_failed` is NOT
+    // this case: it is terminal and still decidable below.
+    if (!settled.isTerminal) {
+      pendingCandidateRef.current = { id: settled.id, source };
+      throw PARSE_PENDING;
     }
     // A `parse_failed` candidate is still decidable — partial information,
     // not a dead end (contract §5.2).
@@ -921,6 +963,16 @@ export function ShouldIBuyScreen({ navigation }: Props) {
 
   const onChooseAction = (action: RenderedAction) => {
     setChosenAction(action);
+    // Blur ends the flow but leaves this persistent screen — and its action
+    // row — mounted, so a tap after returning to the tab would emit
+    // `v3_decision_action` with no `flow_id`: required by the contract, so it
+    // throws in dev and is dropped in production (codex review, FE#141).
+    // Re-adopt this attempt's OWN id for the duration of the emit and hand it
+    // back immediately: same attempt, so the funnel join is correct, and
+    // nothing lingers to stamp unrelated requests the way a general reopen
+    // would (see `adoptV3Flow`'s docstring).
+    const orphaned = currentV3FlowId() === null && flowIdRef.current !== null;
+    if (orphaned) adoptV3Flow(flowIdRef.current as string);
     // No `endV3Flow()` here. Choosing an action does not remove the card, so a
     // second tap is a normal thing for a user to do — and closing the flow on
     // the first tap made that second emit fail validation and throw.
@@ -930,6 +982,7 @@ export function ShouldIBuyScreen({ navigation }: Props) {
     // reads it as a reuse outcome rather than a purchase conversion (feature
     // acceptance 3).
     emit('v3_decision_action', { action });
+    if (orphaned) endV3Flow();
     if (action === 'style_with_existing') openExistingItemAlternative();
   };
 

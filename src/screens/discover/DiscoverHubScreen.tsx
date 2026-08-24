@@ -6,6 +6,7 @@ import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
 import { enableV3PurchaseDecision } from '@/lib/featureFlags';
+import { shoppingEntryRoute } from './shoppingEntryRoute';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { DiscoverStackParamList } from '@/types/navigation';
 
@@ -151,7 +152,7 @@ export function DiscoverHubScreen({ navigation }: Props) {
               icon="bag"
               title="该不该买"
               subtitle="对照现有衣橱"
-              onPress={() => navigation.navigate(enableV3PurchaseDecision ? 'ShouldIBuy' : 'SenseCheck')}
+              onPress={() => navigation.navigate(shoppingEntryRoute(enableV3PurchaseDecision))}
             />
           </View>
           <View style={{ flexDirection: 'row', gap: 12 }}>

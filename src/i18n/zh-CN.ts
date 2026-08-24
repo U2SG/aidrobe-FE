@@ -366,6 +366,7 @@ export const zhCN = {
   'should_i_buy.error.rateLimited': '操作太频繁，稍等片刻再试。',
   'should_i_buy.error.serverError': '服务暂时不可用，可以重试一次。',
   'should_i_buy.error.network': '网络异常，请检查连接后重试。',
+  'should_i_buy.error.parsePending': '商品信息还在解析，稍等一下再试。',
   // V3-015 — the on-demand visual entry (§5.5 Avatar None). The label is §5.5's
   // own wording; the caption pre-discloses that a photo is involved so the tap is
   // not a surprise, while the full explanation still waits until after it (§5.5

@@ -204,6 +204,7 @@ export const ERROR_MESSAGE_KEYS: Record<DecisionErrorState['kind'], I18nKey> = {
   rate_limited: 'should_i_buy.error.rateLimited',
   server_error: 'should_i_buy.error.serverError',
   network: 'should_i_buy.error.network',
+  parse_pending: 'should_i_buy.error.parsePending',
 };
 
 export function errorView(state: DecisionErrorState): {

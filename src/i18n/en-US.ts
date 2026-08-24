@@ -379,6 +379,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'should_i_buy.error.rateLimited': 'Too many requests — wait a moment and try again.',
   'should_i_buy.error.serverError': 'The service is temporarily unavailable — you can retry.',
   'should_i_buy.error.network': 'Network problem — check your connection and retry.',
+  'should_i_buy.error.parsePending': 'Still reading the product details — try again in a moment.',
   // V3-015 — the on-demand visual entry (§5.5 Avatar None).
   'should_i_buy.preview.entry': 'See how it would look on you',
   'should_i_buy.preview.entryHint': 'Needs one clear full-body photo — set up once',
