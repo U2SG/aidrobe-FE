@@ -1,9 +1,13 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Image, Pressable, Text, View, type ImageSourcePropType } from 'react-native';
 
 import { colors, radius, type } from '@/theme/design';
 
-import { initialImageThumbState, type ImageThumbState } from './imageThumbState';
+import {
+  imageThumbLoaderHandlers,
+  initialImageThumbState,
+  type ImageThumbState,
+} from './imageThumbState';
 import { Skeleton } from './Skeleton';
 import { SystemIcon } from './SystemIcon';
 
@@ -57,7 +61,18 @@ export function ImageThumb({
 }: ImageThumbProps) {
   const hasImage = Boolean(uri || source);
   const [state, setState] = useState<ImageThumbState>(initialImageThumbState(hasImage));
+  // Stable for this component's whole life — see imageThumbLoaderHandlers.
+  // Passing inline arrows here re-arms react-native-web's loader effect on every
+  // render and reloads the image forever (FE#143); scripts/image-thumb.test.ts
+  // fails if these ever go back to being per-render closures.
+  const loader = useMemo(() => imageThumbLoaderHandlers(setState), []);
 
+  // `source` is compared by identity, so it must be a stable reference: a
+  // module-level asset (every current consumer that passes it) or a memoized
+  // object. An inline `source={{ uri }}` would re-run this effect every render
+  // and reset the state machine — the same identity-loop class the loader
+  // callbacks above just fixed, one layer up. Pass `uri` instead; that is a
+  // string and compares by value.
   useEffect(() => {
     setState(initialImageThumbState(Boolean(uri || source)));
   }, [source, uri]);
@@ -143,9 +158,9 @@ export function ImageThumb({
         source={imageSource}
         style={{ width: '100%', height: '100%', opacity: state === 'loaded' ? 1 : 0 }}
         resizeMode={resizeMode}
-        onLoadStart={() => setState('loading')}
-        onLoad={() => setState('loaded')}
-        onError={() => setState('failed')}
+        onLoadStart={loader.onLoadStart}
+        onLoad={loader.onLoad}
+        onError={loader.onError}
         testID="image-thumb-image"
       />
     </View>

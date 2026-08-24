@@ -16,3 +16,24 @@ export function initialImageThumbState(hasImage: boolean): ImageThumbState {
 export function imageThumbShowsPlaceholder(state: ImageThumbState): boolean {
   return state === 'empty' || state === 'failed';
 }
+
+/** The three loader callbacks ImageThumb hands to react-native-web's <Image>.
+ *
+ *  FE#143 — RNW's Image lists onLoadStart/onLoad/onError in its loader effect's
+ *  dependency array (node_modules/react-native-web/dist/exports/Image/index.js),
+ *  so a fresh closure per render re-arms that effect, and the effect's own
+ *  setState schedules the next render: an unbounded reload loop that reaches
+ *  React's "Maximum update depth exceeded". Built ONCE PER MOUNT behind a
+ *  dependency-free useMemo in ImageThumb, so the identities are stable for the
+ *  component's whole life and the effect re-arms only when the uri changes.
+ *
+ *  Returns a fresh object per call on purpose: the memo owns the stability, not
+ *  a module-level cache that would leak one component's setState into another.
+ *  The useState setter it closes over is itself stable, so no deps are needed. */
+export function imageThumbLoaderHandlers(setState: (next: ImageThumbState) => void) {
+  return {
+    onLoadStart: () => setState('loading'),
+    onLoad: () => setState('loaded'),
+    onError: () => setState('failed'),
+  };
+}
