@@ -675,8 +675,8 @@ export function ShouldIBuyScreen({ navigation }: Props) {
   // A candidate whose parse outran the poll window. The retry must resume THIS
   // candidate: re-creating one abandons the resource that may now be ready,
   // leaks a server row per press, and for any parser slower than the window it
-  // never converges (codex review, FE#154). Cleared on success, on a terminal
-  // failure and on a new submit — a changed input is a new attempt.
+  // never converges (codex review, FE#154). Cleared once a decision is actually
+  // obtained, and on a new submit — a changed input is a new attempt.
   const pendingCandidateRef = useRef<{ id: string; source: string } | null>(null);
   // V3-015 — what the avatar profile says the visual entry may offer, or null
   // while unknown (never probed, probe failed, or the flag is off). Null renders
@@ -839,12 +839,14 @@ export function ShouldIBuyScreen({ navigation }: Props) {
         throw withEndpointContext(error, 'read');
       });
       if (!settledAgain.isTerminal) throw PARSE_PENDING;
-      pendingCandidateRef.current = null;
       const decisionAgain = await decidePurchaseCandidate(settledAgain.id, 'none', {
         silentErrorToast: true,
       }).catch((error: unknown) => {
         throw withEndpointContext(error, 'decide');
       });
+      // Only now: a failing `decide` on an already-terminal candidate should
+      // retry the decision, not spend a new candidate on the same link.
+      pendingCandidateRef.current = null;
       return { candidate: settledAgain, decision: decisionAgain };
     }
     pendingCandidateRef.current = null;
