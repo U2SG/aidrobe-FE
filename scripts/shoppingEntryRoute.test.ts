@@ -56,6 +56,27 @@ for (const file of [
   check(`${file} registers ShouldIBuy`, /name="ShouldIBuy"/.test(read(file)));
 }
 
+// Registering the card is not enough: every screen it navigates TO must exist
+// in the same host, or the visible control is an unhandled navigation action —
+// the same defect one level down (codex review, FE#154). The destinations are
+// read out of the screen itself so a new `navigation.navigate('X')` cannot be
+// added without this test noticing.
+const cardSrc = read('src/screens/discover/ShouldIBuyScreen.tsx');
+const destinations = [...cardSrc.matchAll(/navigation\.navigate\(\s*'([A-Za-z]+)'/g)].map(
+  (m) => m[1],
+);
+check('the card has outgoing navigations to assert', destinations.length >= 2);
+for (const host of [
+  'src/core/navigation/DiscoverNavigator.tsx',
+  'src/core/navigation/AskNavigator.tsx',
+  'src/core/navigation/SettingsNavigator.tsx',
+]) {
+  const src = read(host);
+  for (const dest of destinations) {
+    check(`${host} registers ${dest}`, new RegExp(`name="${dest}"`).test(src));
+  }
+}
+
 // Both V2-reachable param lists must declare it too, or the navigate call does
 // not type-check for callers typed against them.
 const navTypes = read('src/types/navigation.ts');

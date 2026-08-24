@@ -101,6 +101,8 @@ export type SettingsStackParamList = {
   // Same reason as `AskStackParamList.ShouldIBuy`: Profile's tool section is a
   // V2-shell entry point for the same decision (codex review, FE#141).
   ShouldIBuy: undefined;
+  // `ShouldIBuy`'s `style_with_existing` hand-off target (codex review, FE#154).
+  AskAidrobe: { focusedItemId?: string; scope?: 'today'; autoAsk?: string } | undefined;
   SenseCheck: undefined;
   WardrobeReport: { period?: string } | undefined;
   // V3-021 — Profile's 形象参考 data controls (V3_SPEC §4.4 + §15). A settings
@@ -127,6 +129,8 @@ export type AskStackParamList = {
   // has no Discover tab, so the Discover-only registration left the gated
   // screen unreachable in that shell (codex review, FE#141).
   ShouldIBuy: undefined;
+  // `ShouldIBuy`'s photo-setup destination (codex review, FE#154).
+  AvatarPhotoSetup: { flowId?: string } | undefined;
   PackingList: undefined;
   PackingListDetail: { id: string };
   // `durationDays` prefills the trip length (Ask trip-intent handoff, BE#115).
