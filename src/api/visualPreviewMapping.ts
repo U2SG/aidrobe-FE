@@ -200,9 +200,16 @@ export type PreviewUnavailableReason =
    *  user action changes that — a classified state, not an error (the V3-017
    *  handoff, resolved here). */
   | 'no_preview_possible'
-  /** 429 — the daily generation quota is spent. Calm, and honest that the
-   *  wardrobe judgment is unaffected. */
+  /** 429 `daily_budget_exhausted` (or a 429 with no reason, from a server that
+   *  predates V3-026) — the daily generation quota is spent. Calm, and honest
+   *  that the wardrobe judgment is unaffected. Clears tomorrow. */
   | 'quota_exhausted'
+  /** 429 `retry_budget_exhausted` — V3-026. THIS generation has used its
+   *  bounded retry allowance and will not be attempted again, ever. Told apart
+   *  from `quota_exhausted` because the two clear on different horizons and
+   *  only one of them is a "come back later": captioning this one as today's
+   *  allowance would promise a preview that is never coming. */
+  | 'retry_exhausted'
   /** 503 — the flag is off (or the surface is mid-rollback). The entry hides
    *  on the next decision; this covers the one that was already on screen. */
   | 'feature_unavailable'
@@ -223,7 +230,13 @@ export interface PreviewHttpErrorLike {
 /** §6.1's refusal mapping, from the wire. A 4091 whose `data.reason` is
  *  missing (older server) or unrecognized (newer server) degrades to
  *  `no_preview_possible` — the generic 4091 treatment the router's docstring
- *  promises is safe in both skew directions. */
+ *  promises is safe in both skew directions.
+ *
+ *  A 429 degrades the same way and in the same direction: V3-026 gave that
+ *  status two meanings, and a server that predates it sends no reason at all,
+ *  so anything but `retry_budget_exhausted` reads as the daily quota. That is
+ *  the safe default of the two — it under-promises finality rather than telling
+ *  a user their preview is permanently gone when it is not. */
 export function toPreviewUnavailableReason(
   error: PreviewHttpErrorLike | null | undefined,
 ): PreviewUnavailableReason {
@@ -232,7 +245,10 @@ export function toPreviewUnavailableReason(
     const reason = error?.response?.data?.data?.reason ?? null;
     return reason === 'avatar_not_ready' ? 'avatar_not_ready' : 'no_preview_possible';
   }
-  if (status === 429) return 'quota_exhausted';
+  if (status === 429) {
+    const reason = error?.response?.data?.data?.reason ?? null;
+    return reason === 'retry_budget_exhausted' ? 'retry_exhausted' : 'quota_exhausted';
+  }
   if (status === 503) return 'feature_unavailable';
   return 'error';
 }
@@ -312,6 +328,8 @@ export function previewUnavailableCaptionKey(reason: PreviewUnavailableReason): 
       return 'should_i_buy.preview.notPossible';
     case 'quota_exhausted':
       return 'should_i_buy.preview.quotaExhausted';
+    case 'retry_exhausted':
+      return 'should_i_buy.preview.retryExhausted';
     case 'error':
       return 'should_i_buy.preview.requestFailed';
     case 'avatar_not_ready':

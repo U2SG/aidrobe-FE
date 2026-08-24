@@ -384,6 +384,7 @@ export const zhCN = {
   'should_i_buy.preview.stillWorking': '还在生成中，可以稍后回来查看。衣橱判断不受影响。',
   'should_i_buy.preview.checkAgain': '再看一眼',
   'should_i_buy.preview.quotaExhausted': '今天的预演次数已用完。衣橱判断不受影响。',
+  'should_i_buy.preview.retryExhausted': '这套预演没能生成，不再重试。衣橱判断不受影响。',
   'should_i_buy.preview.notPossible': '这个候选暂时无法生成预演，可以继续查看搭配依据。',
   'should_i_buy.preview.requestFailed': '预演请求没有发出去。衣橱判断不受影响。',
   'should_i_buy.preview.readyAlt': '静态上身预演',

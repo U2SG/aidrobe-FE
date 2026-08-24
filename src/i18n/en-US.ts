@@ -395,6 +395,8 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'should_i_buy.preview.checkAgain': 'Check again',
   'should_i_buy.preview.quotaExhausted':
     'Today’s preview allowance is used up. The wardrobe judgment is unaffected.',
+  'should_i_buy.preview.retryExhausted':
+    'This preview couldn’t be generated and won’t be retried. The wardrobe judgment is unaffected.',
   'should_i_buy.preview.notPossible':
     'A preview can’t be generated for this candidate. The reasoning above still applies.',
   'should_i_buy.preview.requestFailed':

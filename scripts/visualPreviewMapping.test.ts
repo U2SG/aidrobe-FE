@@ -202,6 +202,9 @@ check('terminal refusals offer no retry treadmill; transient ones stay available
   assert.equal(previewRequestAllowed({ kind: 'no_result' }), false);
   assert.equal(previewRequestAllowed({ kind: 'unavailable', reason: 'quota_exhausted' }), false);
   assert.equal(previewRequestAllowed({ kind: 'unavailable', reason: 'no_preview_possible' }), false);
+  // V3-026: the retry allowance is spent for THIS generation and no press can
+  // change that, so it belongs with the answers rather than the obstacles.
+  assert.equal(previewRequestAllowed({ kind: 'unavailable', reason: 'retry_exhausted' }), false);
 });
 
 check('every refusal maps to a calm caption or deliberate silence, and the copy exists', () => {
@@ -209,6 +212,7 @@ check('every refusal maps to a calm caption or deliberate silence, and the copy 
     'avatar_not_ready',
     'no_preview_possible',
     'quota_exhausted',
+    'retry_exhausted',
     'feature_unavailable',
     'error',
   ];
