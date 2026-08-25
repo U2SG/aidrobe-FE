@@ -399,6 +399,11 @@ console.log('\nA4b. the shared fixtures are shapes the server can actually send'
 //     files and two evidence drivers read it, and rewriting it inside V3-022
 //     would be unrelated churn. Recorded instead, so the next reader knows it
 //     is a skew shape rather than the happy path.
+//     V3-027 UPDATE: a driver that needs a SENDABLE `worth_adding` now imports
+//     `WORTH_ADDING_WITH_COMPARISON_DECISION` instead of grafting a block from
+//     another verdict. This one keeps its null on purpose and stays skewed; the
+//     new sibling is walked by this same check and must NOT appear in the list
+//     below, which is what pins the two apart.
 const INTENTIONAL_SKEW = new Set(['UNKNOWN_DECISION', 'WORTH_ADDING_DECISION']);
 
 const fixtures = await import('./fixtures/purchaseDecisionFixtures.ts');
