@@ -100,6 +100,50 @@ export const WORTH_ADDING_DECISION: ServerWardrobeDecision = {
   created_at: '2026-08-13T04:12:07.512000+00:00',
 };
 
+/** V3-027 — `worth_adding` with the comparison block today's server ALWAYS
+ * sends, and whose content agrees with the verdict above it.
+ *
+ * Why it exists: the BE declares `closet_comparison` required and non-nullable
+ * (`purchase_decisions.py: closet_comparison: ClosetComparisonModel`), so
+ * `WORTH_ADDING_DECISION` (whose null block is the §3 tolerance case four
+ * regression files depend on, pinned in `v3ContractJoin.test.ts`'s
+ * `INTENTIONAL_SKEW`) is not a payload the server can send. The V3-022 evidence
+ * driver worked around that by GRAFTING `DUPLICATE_DECISION`'s block onto this
+ * verdict, which produced a frame reading 值得加入 above "你已有的米色短外套覆盖了
+ * 它的大部分使用场景" with 可替代 thumbnails — a screen no real server would
+ * produce, which is exactly the failure mode the schema binding exists to stop.
+ *
+ * Coherent because it follows what the BE actually emits for this state, not
+ * just what the schema admits:
+ *  - `worth_adding` requires `redundancy_level == none` (`_decision_state`), so
+ *    `_summary` renders the `summary.nothing_similar` branch — nothing in the
+ *    wardrobe covers it.
+ *  - `similar_items` may still be non-empty in that state:
+ *    `wardrobe_similarity` appends COMPLEMENTARY items (a different category
+ *    that pairs) after the `covers` ones, and here there are no `covers`.
+ *  - `next_actions` therefore stays `['add_to_candidates', 'skip']`:
+ *    `_next_actions` offers `style_with_existing` only when V3-006 composed an
+ *    alternative, and those are seeded from `covers` items alone.
+ */
+export const WORTH_ADDING_WITH_COMPARISON_DECISION: ServerWardrobeDecision = {
+  ...WORTH_ADDING_DECISION,
+  closet_comparison: {
+    summary_text: '衣橱里没有同类的外套，不属于重复购买；这几件可以和它搭在一起。',
+    similar_items: [
+      // One real signed-URL-shaped image so the comparison layer is evidenced
+      // with a thumbnail rather than only its placeholder (§13.5: short-lived,
+      // never persisted).
+      {
+        item_id: '44444444-4444-4444-8444-444444444444',
+        image_url:
+          'https://cdn.aidrobe.test/wardrobe/44444444-4444-4444-8444-444444444444.png?X-Amz-Expires=1800&X-Amz-Signature=stub',
+        relation: 'complements',
+      },
+      { item_id: '33333333-3333-4333-8333-333333333333', image_url: null, relation: 'complements' },
+    ],
+  },
+};
+
 /** The dynamic-text stress case: maximally long server copy in both locales.
  * The failure this catches is real — `decision_text`, `reasons[].text` and
  * `summary_text` are ALL server-owned (§5.3), so the client cannot shorten
