@@ -1,6 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
@@ -10,6 +10,8 @@ import {
   markOutfitWorn,
   unfavoriteOutfit,
 } from '@/api/recommendations';
+import { createOutfitShareAsset, getOutfitVisualAsset } from '@/api/outfitVisual';
+import { waitForOutfitVisualAsset } from '@/api/outfitVisualPolling';
 import { getWardrobeItem } from '@/api/wardrobe';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
@@ -117,7 +119,8 @@ type ReplacementTarget = {
 };
 
 export function OutfitDetailScreen({ navigation, route }: Props) {
-  const { outfitId } = route.params;
+  const outfitId = route.params?.outfitId ?? '';
+  const hasOutfitId = Boolean(outfitId);
   const isLocal = outfitId === 'local-showcase';
   const track = useTrack();
   const qc = useQueryClient();
@@ -129,11 +132,21 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
   const [overflowOpen, setOverflowOpen] = useState(false);
   const [autoReplacingItemId, setAutoReplacingItemId] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [isPreparingShare, setIsPreparingShare] = useState(false);
+  const shareInFlightRef = useRef(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const outfitQuery = useQuery({
     queryKey: ['outfitDetail', outfitId],
     queryFn: () => getOutfitDetail(outfitId),
-    enabled: !isLocal,
+    enabled: hasOutfitId && !isLocal,
     retry: 1,
   });
 
@@ -152,7 +165,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
   const replacementQuery = useQuery({
     queryKey: ['outfitReplacements', outfitId, replacementTarget?.itemId],
     queryFn: () => getOutfitItemReplacements(outfitId, replacementTarget!.itemId),
-    enabled: !isLocal && Boolean(replacementTarget),
+    enabled: hasOutfitId && !isLocal && Boolean(replacementTarget),
     retry: 1,
   });
 
@@ -276,15 +289,32 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
   };
 
   const shareOutfitSummary = async (source: 'download' | 'overflow') => {
+    if (shareInFlightRef.current) return;
+
+    shareInFlightRef.current = true;
+    setIsPreparingShare(true);
     const items = displayItems.map((item) => item.name).filter(Boolean).join(' / ') || t('outfitDetail.noItems');
-    await shareWithAsset(t('outfitDetail.shareMessage', { title: heroTitle, items }));
-    track('outfit_shared', { outfitId, source });
+    try {
+      let imageUrl: string | null = null;
+      if (hasOutfitId && !isLocal) {
+        try {
+          const initialAsset = await createOutfitShareAsset(outfitId);
+          imageUrl = await waitForOutfitVisualAsset(initialAsset, { fetchAsset: getOutfitVisualAsset });
+        } catch {
+          // Text is the producer/poll fallback, never a retry after dismissal.
+        }
+      }
+
+      await shareWithAsset(t('outfitDetail.shareMessage', { title: heroTitle, items }), imageUrl);
+      track('outfit_shared', { outfitId, source });
+    } finally {
+      shareInFlightRef.current = false;
+      if (isMountedRef.current) setIsPreparingShare(false);
+    }
   };
 
-  const handleDownload = async () => {
-    // API_GAP[untracked]: no poster/share image asset — fallback to text summary.
-    showToast({ message: t('outfitDetail.downloadNoAsset'), kind: 'info' });
-    await shareOutfitSummary('download');
+  const handleDownload = () => {
+    void shareOutfitSummary('download');
   };
 
   const openReplacementSheet = (item: DisplayItem) => {
@@ -832,6 +862,8 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
           <Button
             label={t('outfitDetail.overflowShare')}
             variant="secondary"
+            disabled={isPreparingShare}
+            loading={isPreparingShare}
             icon={<SystemIcon name="share" size={17} color={T.ink2} />}
             onPress={() => {
               setOverflowOpen(false);
@@ -841,6 +873,8 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
           <Button
             label={t('outfitDetail.download')}
             variant="secondary"
+            disabled={isPreparingShare}
+            loading={isPreparingShare}
             icon={<SystemIcon name="download" size={17} color={T.ink2} />}
             onPress={() => {
               setOverflowOpen(false);

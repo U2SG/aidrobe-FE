@@ -1,10 +1,31 @@
-import { apiGet } from './client';
+import { apiGet, apiPost } from './client';
 import type {
   OutfitVisualAsset,
   ServerOutfitVisualAssetResponse,
   ServerWardrobeItemImagesResponse,
   WardrobeItemImages,
 } from '@/types/api';
+
+function toOutfitVisualAsset(data: ServerOutfitVisualAssetResponse): OutfitVisualAsset {
+  return {
+    assetId: data.asset_id,
+    generationStatus: data.generation_status,
+    imageUrl: data.image_url ?? null,
+    visualType: data.visual_type ?? null,
+    errorCode: data.error_code ?? null,
+    errorMessage: data.error_message ?? null,
+  };
+}
+
+export async function createOutfitShareAsset(outfitId: string): Promise<OutfitVisualAsset> {
+  const data = await apiPost<ServerOutfitVisualAssetResponse>(
+    `/v1/outfits/${outfitId}/share-asset`,
+    undefined,
+    undefined,
+    { timeout: 2_000 },
+  );
+  return toOutfitVisualAsset(data);
+}
 
 // V4 M10/E5 — visual asset polling + per-item image set.
 // E5: `imageUrl` may be a short-lived signed URL (~30 min TTL) on private
@@ -14,14 +35,7 @@ export async function getOutfitVisualAsset(assetId: string): Promise<OutfitVisua
   const data = await apiGet<ServerOutfitVisualAssetResponse>(
     `/v1/outfit-visual-assets/${assetId}`,
   );
-  return {
-    assetId: data.asset_id,
-    generationStatus: data.generation_status,
-    imageUrl: data.image_url ?? null,
-    visualType: data.visual_type ?? null,
-    errorCode: data.error_code ?? null,
-    errorMessage: data.error_message ?? null,
-  };
+  return toOutfitVisualAsset(data);
 }
 
 export async function getItemImages(itemId: string): Promise<WardrobeItemImages> {

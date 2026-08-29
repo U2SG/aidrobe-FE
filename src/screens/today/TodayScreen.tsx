@@ -17,6 +17,8 @@ import {
 
 import { getTodayRecommendation, refreshTodayRecommendation } from '@/api/recommendations';
 import { getUserSettings } from '@/api/settings';
+import { createOutfitShareAsset, getOutfitVisualAsset } from '@/api/outfitVisual';
+import { waitForOutfitVisualAsset } from '@/api/outfitVisualPolling';
 import { getWardrobeItem } from '@/api/wardrobe';
 import { OutfitBoard } from '@/components/outfit/OutfitBoard';
 import WeatherBackdrop from '@/components/outfit/WeatherBackdrop';
@@ -419,10 +421,13 @@ function CompactCandidate({
 export function TodayScreen({ navigation }: Props) {
   const { t, tEnum } = useT();
   const [strategy, setStrategy] = useState<StrategyKey>('safe');
+  const [isPreparingShare, setIsPreparingShare] = useState(false);
   const { width, height } = useWindowDimensions();
   const track = useTrack();
   const qc = useQueryClient();
   const showToast = useToastStore((state) => state.show);
+  const shareInFlightRef = useRef(false);
+  const isMountedRef = useRef(true);
   const maxWidth = Math.min(width, 520);
 
   const settingsQuery = useQuery({
@@ -453,6 +458,13 @@ export function TodayScreen({ navigation }: Props) {
       void qc.invalidateQueries({ queryKey: ['todayRecommendation'] });
     }, [qc]),
   );
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const recommendedItemIds = useMemo(
     () => Array.from(new Set((todayQuery.data?.outfits ?? []).flatMap((outfit) => outfit.items.map((item) => item.id)))),
@@ -543,19 +555,28 @@ export function TodayScreen({ navigation }: Props) {
     refreshMutation.mutate();
   };
 
-  // Concept A — basic outfit share (a real board, no selfie). API_GAP[FE#15]:
-  // the backend has no share-asset/export endpoint (only GET
-  // /v1/outfit-visual-assets/{id}; no POST that renders a shareable board from
-  // an outfit_id), and rasterizing the React view would need a native
-  // image-export dep that's out of scope. Until that lands, hand a plain
-  // text+title to the native share sheet — no fake permanent artifact.
-  // Disabled for the local mock showcase and empty/insufficient variants
-  // (nothing real to share).
-  const canShare = boardIsReal && Boolean(apiOutfit?.id);
+  const canShare = boardIsReal && Boolean(apiOutfit?.id) && !isPreparingShare;
   const handleShare = async () => {
-    if (!canShare || !apiOutfit?.id) return;
-    await shareWithAsset(t('today.shareMessage', { title }));
-    track('outfit_shared', { strategy, outfitId: apiOutfit.id });
+    if (!boardIsReal || !apiOutfit?.id || shareInFlightRef.current) return;
+
+    shareInFlightRef.current = true;
+    setIsPreparingShare(true);
+    try {
+      const message = t('today.shareMessage', { title });
+      let imageUrl: string | null = null;
+      try {
+        const initialAsset = await createOutfitShareAsset(apiOutfit.id);
+        imageUrl = await waitForOutfitVisualAsset(initialAsset, { fetchAsset: getOutfitVisualAsset });
+      } catch {
+        // Text is the producer/poll fallback, never a retry after dismissal.
+      }
+
+      await shareWithAsset(message, imageUrl);
+      track('outfit_shared', { strategy, outfitId: apiOutfit.id });
+    } finally {
+      shareInFlightRef.current = false;
+      if (isMountedRef.current) setIsPreparingShare(false);
+    }
   };
 
   return (
