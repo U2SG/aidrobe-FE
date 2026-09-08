@@ -56,3 +56,12 @@ Expo Doctor, full FE typecheck/lint/tests in EAS cloud. It has no automatic trig
 deployment, update or app-store submission. Its actual result must be recorded;
 a YAML file is not verification evidence. Do not submit a new APK while the key
 is still missing or imply runtime/device approval before cloud checks finish.
+
+## Cloud archive reliability
+
+Readback confirmed no workflow run was accepted after the timed-out upload. The
+cloud archive now excludes only historical PNG/JPEG/WebP/PDF media under docs/design
+and docs/v4-ui (44 files, 55,686,734 bytes), which no runtime/test source references.
+Repository files are preserved. Actual assets/, src/assets/, contract JSON/Markdown,
+all tests and native modules remain in the upload. The next source-upload attempt
+must be observed independently; no execution is claimed from an upload log alone.
