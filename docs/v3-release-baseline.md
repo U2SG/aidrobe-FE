@@ -64,3 +64,10 @@ re-enable; failed-preview fallback; ImageThumb stability; recommendation revisio
 attribution; review of the path back to main. None is silently discharged here.
 A separately approved qualitative decision-only study is distinct from a
 telemetry-backed quantitative rollout and from a paid visual beta.
+
+## PR #161 review follow-up
+
+Recommendation impressions now require actual navigation focus before marking
+the dedupe key seen. Hidden Today cache/revision updates stay silent; returning
+records the visible revision once. The executable hook regression covers hidden
+updates, focus entry, repeated focus, changed revision and legacy identity.

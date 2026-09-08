@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
@@ -73,6 +73,7 @@ const MODE_COPY: Record<TodayMode, { title: I18nKey; subtitle: I18nKey }> = {
 };
 
 export function TodayV2Screen({ navigation }: Props) {
+  const isFocused = useIsFocused();
   const { t, tEnum } = useT();
   const track = useTrack();
   const qc = useQueryClient();
@@ -300,6 +301,7 @@ export function TodayV2Screen({ navigation }: Props) {
   // insufficient/empty board states even if `outfit` incidentally exists).
   // No-ops on legacy/flag-off payloads (recommendationId/revision null).
   useRecommendationImpression({
+    isVisible: isFocused,
     recommendationId: todayQuery.data?.recommendationId ?? null,
     revision: todayQuery.data?.revision ?? null,
     outfitId: hasRecommendation ? (outfit?.id ?? null) : null,

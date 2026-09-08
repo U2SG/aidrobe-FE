@@ -4,6 +4,8 @@ import { emitRecommendationEvent, type RecommendationEventBody } from '@/api/eve
 import { buildImpressionKey, impressionDedupeStore } from '@/hooks/recommendationImpressionDedupe';
 
 interface UseRecommendationImpressionArgs {
+  /** True only when the owning screen/card is actually visible. */
+  isVisible: boolean;
   recommendationId?: string | null;
   revision?: number | null;
   outfitId?: string | null;
@@ -27,6 +29,7 @@ interface UseRecommendationImpressionArgs {
  * never blocks rendering.
  */
 export function useRecommendationImpression({
+  isVisible,
   recommendationId,
   revision,
   outfitId,
@@ -36,7 +39,7 @@ export function useRecommendationImpression({
   const key = buildImpressionKey({ recommendationId, revision, outfitId, sourceSurface });
 
   useEffect(() => {
-    if (!key) return;
+    if (!isVisible || !key) return;
     if (!impressionDedupeStore.shouldEmit(key)) return;
     emitRecommendationEvent({
       eventType: 'outfit_impression',
@@ -47,7 +50,8 @@ export function useRecommendationImpression({
       metadata: { ...metadata, revision },
     });
     // `key` already encodes every identity input (recommendationId, revision,
-    // outfitId, sourceSurface) — re-running only when it changes is the point.
+    // outfitId, sourceSurface). Visibility re-entry can emit a previously hidden
+    // revision, but a hidden cache update must never consume its dedupe key.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, isVisible]);
 }
