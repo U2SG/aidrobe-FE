@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+const lock = readFileSync(new URL('../pnpm-lock.yaml', import.meta.url), 'utf8');
+assert.equal(pkg.dependencies.expo, '~57.0.20');
+assert.equal(pkg.dependencies['react-native'], '0.86.3');
+assert.equal(pkg.dependencies['react-native-worklets'], '0.10.1');
+assert.equal(pkg.dependencies['react-native-reanimated'], '4.5.1');
+assert.equal(pkg.dependencies['@expo/dom-webview'], '~57.0.1');
+assert.equal(pkg.devDependencies['@react-native/metro-config'], '0.86.3');
+assert.equal(pkg.dependencies['expo-system-ui'], '~57.0.3');
+assert.ok(lock.includes('react-native@0.86.3'));
+assert.ok(!lock.includes('react-native@0.85.3'));
+assert.ok(!pkg.expo?.install?.exclude, 'do not suppress SDK dependency validation');
+assert.ok(!pkg.expo?.doctor, 'do not mask Expo Doctor checks');
+assert.ok(!pkg.overrides?.['hermes-compiler'], 'do not force a mismatched Hermes binary');
+console.log('sdk57Runtime: 12 pinned-runtime/lockfile/unsuppressed-check invariants passed');
