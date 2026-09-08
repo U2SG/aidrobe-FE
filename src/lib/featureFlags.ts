@@ -41,3 +41,6 @@ export const enableV3Avatar: boolean = extra.ENABLE_V3_AVATAR === true;
  * outfit-board polling depends on it (contract §2 rollback rule 4).
  */
 export const enableV3StaticTryon: boolean = extra.ENABLE_V3_STATIC_TRYON === true;
+
+/** Independent analytics kill switch; default false, separate from product flags. */
+export const enableV3Analytics: boolean = extra.ENABLE_V3_ANALYTICS === true;

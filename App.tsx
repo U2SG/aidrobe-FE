@@ -1,6 +1,7 @@
 import './global.css';
 
 import { useState } from 'react';
+import { installV3Analytics } from '@/utils/v3AnalyticsRuntime';
 import { StatusBar } from 'expo-status-bar';
 import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -11,6 +12,8 @@ import { ToastHost } from '@/components/feedback/ToastHost';
 import { RootNavigator } from '@/core/navigation/RootNavigator';
 import { QueryProvider } from '@/core/providers/QueryProvider';
 import { LandingPage } from '@/screens/landing/LandingPage';
+
+installV3Analytics();
 
 export default function App() {
   const [showApp, setShowApp] = useState(Platform.OS !== 'web');

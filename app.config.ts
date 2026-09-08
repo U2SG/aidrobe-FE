@@ -40,6 +40,9 @@ const ENABLE_V3_AVATAR = (process.env.ENABLE_V3_AVATAR ?? 'false') === 'true';
 // BE gate ENABLE_V3_STATIC_TRYON also defaults off and answers 503 on the
 // create POST, so this build flag only controls whether the decision card
 // offers the generate entry at all. Enabling it in production is a human gate.
+// Independently gated collection; no production opt-in is committed.
+const ENABLE_V3_ANALYTICS = (process.env.ENABLE_V3_ANALYTICS ?? 'false') === 'true';
+
 const ENABLE_V3_STATIC_TRYON = (process.env.ENABLE_V3_STATIC_TRYON ?? 'false') === 'true';
 
 const androidConfig: NonNullable<ExpoConfig['android']> & {
@@ -148,6 +151,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ENABLE_V3_PURCHASE_DECISION,
     ENABLE_V3_AVATAR,
     ENABLE_V3_STATIC_TRYON,
+    ENABLE_V3_ANALYTICS,
     eas: {
       projectId: '8c50e01b-2844-473e-adec-3668fc2c2e9c',
     },
