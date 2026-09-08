@@ -519,7 +519,10 @@ for (const [schemaName, field, feList] of statusFields) {
 console.log('\nB. the cross-repo half (workspace only)');
 
 const WORKSPACE = new URL('../../', import.meta.url);
-const BE = (relative: string) => fileURLToPath(new URL(`aidrobe-BE/${relative}`, WORKSPACE));
+// Explicit pairing is required for nested/isolated worktrees (FE #160).
+const BE = (relative: string) => process.env.AIDROBE_BE_DIR
+  ? join(process.env.AIDROBE_BE_DIR, relative)
+  : fileURLToPath(new URL(`aidrobe-BE/${relative}`, WORKSPACE));
 const BE_OPENAPI = BE('docs/openapi.json');
 const BE_EVENTS = BE('docs/v3-analytics-events.json');
 const BE_ENUMS = BE('app/common/enums.py');
@@ -535,6 +538,11 @@ function pythonEnumValues(source: string, className: string): string[] {
   return [...block.matchAll(/^ {4}[A-Z_0-9]+ = "([a-z_0-9]+)"$/gm)].map((m) => m[1]);
 }
 
+if (process.env.AIDROBE_BE_DIR) {
+  for (const path of [BE_OPENAPI, BE_EVENTS, BE_ENUMS, BE_CONTRACT]) {
+    assert.ok(existsSync(path), `Explicit BE pairing is incomplete: ${path}`);
+  }
+}
 if ([BE_OPENAPI, BE_EVENTS, BE_ENUMS, BE_CONTRACT].every((path) => existsSync(path))) {
   check('docs/openapi.json is the BE\'s bytes, not a re-authored copy', () => {
     assert.deepEqual(

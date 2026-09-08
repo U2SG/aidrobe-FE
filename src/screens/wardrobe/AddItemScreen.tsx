@@ -109,7 +109,7 @@ export function AddItemScreen({ navigation }: Props) {
     uri: string,
     sourceType: 'camera' | 'album',
     labelPrefix = '',
-    inputType: Extract<ImportInputType, 'image' | 'outfit_image'> = 'image',
+    inputType: Extract<ImportInputType, 'image' | 'outfit_image' | 'order_screenshot'> = 'image',
   ) => {
     setUploadProgress(0);
     setProcessingLabel(`${labelPrefix}${t('add.tidyPhoto')}`);
@@ -146,12 +146,12 @@ export function AddItemScreen({ navigation }: Props) {
   const handlePicked = async (
     uri: string,
     sourceType: 'camera' | 'album',
-    inputType: Extract<ImportInputType, 'image' | 'outfit_image'> = 'image',
+    inputType: Extract<ImportInputType, 'image' | 'outfit_image' | 'order_screenshot'> = 'image',
   ) => {
     try {
       const { task, localUri } = await runImportPipeline(uri, sourceType, '', inputType);
       setDraft({ taskId: task.id, localImageUri: localUri, recognized: task.recognized });
-      track('import_task_created', { taskId: task.id, sourceType });
+      track('import_task_created', { taskId: task.id, sourceType, inputType });
       navigation.replace('ImportConfirm', { taskId: task.id, inputType });
     } catch (error) {
       console.error('[import] failed', error);
@@ -258,6 +258,27 @@ export function AddItemScreen({ navigation }: Props) {
     if (asset) void handlePicked(asset.uri, 'album', 'outfit_image');
   };
 
+  // Shopping/order screenshot import: same album picker + upload plumbing as
+  // pickFromLibrary, single image only (one order screenshot per task), tagged
+  // with input_type 'order_screenshot' so the backend OCR adapter picks it up.
+  const pickShoppingScreenshot = async () => {
+    if (busy) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      showToast({ message: t('add.albumPermission'), kind: 'error' });
+      setSourceSheetVisible(true);
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 1, mediaTypes: ['images'] });
+    if (result.canceled || !result.assets[0]) {
+      // The source sheet is the only entry point for this import type, so
+      // restore it when the picker is dismissed without a selection.
+      setSourceSheetVisible(true);
+      return;
+    }
+    void handlePicked(result.assets[0].uri, 'album', 'order_screenshot');
+  };
+
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
@@ -329,6 +350,10 @@ export function AddItemScreen({ navigation }: Props) {
         onLink={() => {
           setSourceSheetVisible(false);
           setLinkModalOpen(true);
+        }}
+        onShoppingScreenshot={() => {
+          setSourceSheetVisible(false);
+          void pickShoppingScreenshot();
         }}
       />
       <LinkImportModal
