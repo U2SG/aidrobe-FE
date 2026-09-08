@@ -14,6 +14,9 @@ const API_BASE_URL =
       ? 'https://api.staging.aidrobe.app'
       : 'http://localhost:8000');
 
+// Explicit internal package variant; production and existing profiles are unchanged.
+const IS_V3_PREVIEW = process.env.AIDROBE_BUILD_VARIANT === 'v3-preview';
+
 const DEV_USER_ID =
   process.env.DEV_USER_ID ?? '00000000-0000-4000-8000-000000000001';
 
@@ -49,7 +52,7 @@ const androidConfig: NonNullable<ExpoConfig['android']> & {
   usesCleartextTraffic?: boolean;
 } = {
   package: 'app.aidrobe.android',
-  versionCode: 6,
+  versionCode: IS_V3_PREVIEW ? 7 : 6,
   usesCleartextTraffic: APP_ENV !== 'production',
   // 衣然 YIRAN adaptive launcher icon: the primary mark on the warm-white brand
   // background (docs/design/brand/logo/final-v1).
@@ -78,7 +81,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: 'aidrobe',
   owner: 'gt1o',
   scheme: 'aidrobe',
-  version: '0.1.0',
+  version: IS_V3_PREVIEW ? '0.3.0' : '0.1.0',
   platforms: ['ios', 'android', 'web'],
   orientation: 'portrait',
   userInterfaceStyle: 'automatic',
@@ -152,6 +155,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ENABLE_V3_AVATAR,
     ENABLE_V3_STATIC_TRYON,
     ENABLE_V3_ANALYTICS,
+    ...(IS_V3_PREVIEW ? {
+      BUILD_VARIANT: 'v3-preview',
+      BUILD_SOURCE_COMMIT: process.env.EAS_BUILD_GIT_COMMIT_HASH ?? null,
+    } : {}),
     eas: {
       projectId: '8c50e01b-2844-473e-adec-3668fc2c2e9c',
     },

@@ -1,0 +1,63 @@
+node_modules/
+.expo/
+dist/
+web-build/
+.tmp/
+
+# 本地环境变量
+.env
+.env.local
+.env.development
+.env.staging
+.env.production
+
+# native
+ios/Pods/
+ios/build/
+ios/*.xcworkspace/xcuserdata/
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+# `expo prebuild` / `expo run:android` output. This project is CNG — the native
+# tree is generated, never committed (a device-testing round leaves a ~170 MB
+# android/ here, and an untracked build tree is one `git add -A` away from a
+# PR). The narrower rules above stay for a tree someone deliberately tracks
+# with `git add -f`.
+/android/
+
+# editor
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# logs
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+
+# 本地会话产物（规划/走查截图/备份），不进仓
+.claude/
+.playwright-mcp/
+.upgrade-backup-sdk51/
+walk-shots/
+findings.md
+progress.md
+task_plan.md
+web-smoke.png
+upg-*.png
+.expo-qr.png
+
+# Keep local control state, credentials and previous packages out of cloud uploads.
+.git/
+.git
+.agent-artifacts/
+.agents/
+*.apk
+*.aab
+*.jks
+*.keystore
+credentials.json
+.env*
