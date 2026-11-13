@@ -37,10 +37,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
   },
   clear: async () => {
+    // Clear synchronously so analytics aborts before SecureStore I/O completes.
+    set({ accessToken: null, refreshToken: null });
     await Promise.all([
       SecureStore.deleteItemAsync(ACCESS_KEY).catch(() => undefined),
       SecureStore.deleteItemAsync(REFRESH_KEY).catch(() => undefined),
     ]);
-    set({ accessToken: null, refreshToken: null });
   },
 }));

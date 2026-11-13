@@ -123,7 +123,7 @@ export function trackV3<E extends V3FeOwnedEvent>(
   if (problem) {
     if (typeof __DEV__ !== 'undefined' && __DEV__) throw new Error(`[trackV3] ${problem}`);
     // eslint-disable-next-line no-console
-    console.warn('[trackV3] dropped invalid event', problem);
+    console.warn('[trackV3] dropped invalid event');
     return;
   }
   dispatcher(event, buildV3EventProps(props, context, new Date().toISOString()));

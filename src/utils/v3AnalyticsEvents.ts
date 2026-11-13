@@ -308,7 +308,7 @@ export function validateV3Event(
   flowId?: string,
 ): string | null {
   const spec = V3_EVENT_SPECS[event];
-  if (!spec) return `unknown V3 analytics event: ${event}`;
+  if (!Object.prototype.hasOwnProperty.call(V3_EVENT_SPECS, event)) return `unknown V3 analytics event: ${event}`;
   if (spec.flow_id === 'required' && !flowId) return `${event}: flow_id is required`;
   if (spec.flow_id === 'not_applicable' && flowId) return `${event}: flow_id does not apply to this event`;
 
@@ -316,7 +316,7 @@ export function validateV3Event(
     if (V3_FORBIDDEN_FIELD_NAMES.includes(name)) {
       return `${event}: field '${name}' is forbidden by the privacy contract`;
     }
-    if (!(name in spec.fields)) return `${event}: unknown field '${name}'`;
+    if (!Object.prototype.hasOwnProperty.call(spec.fields, name)) return `${event}: unknown field '${name}'`;
   }
   for (const [name, field] of Object.entries(spec.fields)) {
     const value = payload[name];

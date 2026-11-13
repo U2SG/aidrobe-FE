@@ -301,14 +301,14 @@ check(
 // committed default is what a release build ships.
 
 const appConfig = readFileSync(join(repoRoot, 'app.config.ts'), 'utf8');
-for (const flag of ['ENABLE_V3_PURCHASE_DECISION', 'ENABLE_V3_AVATAR', 'ENABLE_V3_STATIC_TRYON']) {
+for (const flag of ['ENABLE_V3_PURCHASE_DECISION', 'ENABLE_V3_AVATAR', 'ENABLE_V3_STATIC_TRYON', 'ENABLE_V3_ANALYTICS']) {
   const pattern = new RegExp(`const ${flag} = \\(process\\.env\\.${flag} \\?\\? 'false'\\) === 'true'`);
   check(`${flag} defaults to false in committed config`, pattern.test(appConfig));
 }
 
-// The dispatcher gap this dashboard depends on. If a future change registers a
-// sink, this assertion is the one that should be revisited deliberately — the
-// readiness report's largest open item stops being true at that moment.
+// FE #157 registers the transport seam; registration does NOT discharge the
+// still-unmet durable-collector/privacy gate above. Runtime tests exercise actual
+// release delivery, and this guard prevents a second unreviewed dispatcher.
 //
 // The declaration in src/utils/analytics.ts and the two comments that mention
 // the seam are excluded: what matters is whether anything INVOKES it. Matching
@@ -319,8 +319,12 @@ const dispatcherInvocations = sourceFiles(join(repoRoot, 'src'))
   .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))
   .filter((line) => !/\bfunction\s+setAnalyticsDispatcher\s*\(/.test(line));
 check(
-  `setAnalyticsDispatcher is still never invoked in src/ (no sink registered): ${JSON.stringify(dispatcherInvocations)}`,
-  dispatcherInvocations.length === 0,
+  `exactly the reviewed V3 transport is registered: ${JSON.stringify(dispatcherInvocations)}`,
+  dispatcherInvocations.length === 1 && dispatcherInvocations[0].trim() === 'setAnalyticsDispatcher(transport.dispatch);',
 );
+
+const appSource = readFileSync(join(repoRoot, 'App.tsx'), 'utf8');
+check('registration precedes App rendering', appSource.indexOf('installV3Analytics();') >= 0 &&
+  appSource.indexOf('installV3Analytics();') < appSource.indexOf('export default function App'));
 
 console.log(`v3RolloutDashboard: ${passed} checks passed`);
