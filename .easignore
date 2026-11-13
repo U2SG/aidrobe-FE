@@ -61,3 +61,15 @@ upg-*.png
 *.keystore
 credentials.json
 .env*
+
+# Historical design media is not runtime input; retain source assets and all contract text.
+/docs/design/**/*.png
+/docs/design/**/*.jpg
+/docs/design/**/*.jpeg
+/docs/design/**/*.webp
+/docs/design/**/*.pdf
+/docs/v4-ui/**/*.png
+/docs/v4-ui/**/*.jpg
+/docs/v4-ui/**/*.jpeg
+/docs/v4-ui/**/*.webp
+/docs/v4-ui/**/*.pdf

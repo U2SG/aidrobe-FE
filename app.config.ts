@@ -52,7 +52,7 @@ const androidConfig: NonNullable<ExpoConfig['android']> & {
   usesCleartextTraffic?: boolean;
 } = {
   package: 'app.aidrobe.android',
-  versionCode: IS_V3_PREVIEW ? 7 : 6,
+  versionCode: IS_V3_PREVIEW ? 8 : 6,
   usesCleartextTraffic: APP_ENV !== 'production',
   // 衣然 YIRAN adaptive launcher icon: the primary mark on the warm-white brand
   // background (docs/design/brand/logo/final-v1).
@@ -81,7 +81,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: 'aidrobe',
   owner: 'gt1o',
   scheme: 'aidrobe',
-  version: IS_V3_PREVIEW ? '0.3.0' : '0.1.0',
+  version: IS_V3_PREVIEW ? '0.3.1' : '0.1.0',
   platforms: ['ios', 'android', 'web'],
   orientation: 'portrait',
   userInterfaceStyle: 'automatic',
