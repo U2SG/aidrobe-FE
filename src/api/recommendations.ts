@@ -9,6 +9,7 @@ import type {
   OutfitReplacementCandidate,
   OutfitScores,
   OutfitSummary,
+  RecommendationIdentity,
   SendFeedbackBody,
   ServerFeedbackTagsResponse,
   ServerFavoriteOutfitResponse,
@@ -17,12 +18,26 @@ import type {
   ServerOutfitResponse,
   ServerOutfitReplacementsResponse,
   ServerOutfitScores,
+  ServerRecommendationIdentity,
   ServerTodayContext,
   ServerTodayRecommendation,
   TodayContext,
   TodayRecommendation,
 } from '@/types/api';
 import { toI18nMessage } from '@/utils/i18n';
+
+// BE#131 — shared identity/revision mapping for Today + First Outfit (both
+// extend RecommendationIdentityResponse server-side). Null on legacy rows and
+// on non-persisted fallback / no_outfit gate responses.
+function toRecommendationIdentity(data: ServerRecommendationIdentity): RecommendationIdentity {
+  return {
+    recommendationId: data.recommendation_id ?? null,
+    revision: data.revision ?? null,
+    generatedAt: data.generated_at ?? null,
+    generationSource: data.generation_source ?? null,
+    traceId: data.trace_id ?? null,
+  };
+}
 
 function toScores(s?: ServerOutfitScores | null): OutfitScores | null {
   if (!s) return null;
@@ -90,6 +105,7 @@ function toOutfit(outfit: ServerOutfitResponse): OutfitSummary {
 
 function toToday(data: ServerTodayRecommendation): TodayRecommendation {
   return {
+    ...toRecommendationIdentity(data),
     date: data.recommendation_date,
     state: data.status,
     guidanceText: data.guidance_text ?? null,
@@ -156,6 +172,7 @@ export async function getFirstOutfitGate(): Promise<FirstOutfitGate> {
     { timeout: 60_000 },
   );
   return {
+    ...toRecommendationIdentity(data),
     state: data.state,
     feasibleOutfitCount: data.feasible_outfit_count,
     missingSlots: data.missing_slots,

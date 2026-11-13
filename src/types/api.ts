@@ -202,6 +202,18 @@ export type TodayState = 'ready' | 'insufficient_items' | 'failed' | (string & N
 export type OutfitVariant = 'safe' | 'fast' | 'stylish' | (string & NonNullable<unknown>);
 export type TimeSensitivity = 'relaxed' | 'standard' | 'rushed' | 'instant' | (string & NonNullable<unknown>);
 
+// BE#131 — what produced a persisted recommendation revision (drives learning
+// attribution; see FE#130).
+export type RecommendationGenerationSource =
+  | 'nightly'
+  | 'departure'
+  | 'read_time'
+  | 'refresh'
+  | 'context_override'
+  | 'tomorrow_preview'
+  | 'midday_checkpoint'
+  | (string & NonNullable<unknown>);
+
 export interface OutfitItemBrief {
   id: string;
   name?: string | null;
@@ -373,7 +385,27 @@ export interface TodayResurfaceInsight {
   cooldownKey: string;
 }
 
-export interface TodayRecommendation {
+// BE#131 — stable recommendation identity/revision metadata. Additive and
+// nullable on both Today and First Outfit: null on legacy rows persisted
+// before BE#131, and on non-persisted fallback / no_outfit gate responses.
+// FE#130 attributes passive-learning events (impression/swap) to this.
+export interface RecommendationIdentity {
+  recommendationId: string | null;
+  revision: number | null;
+  generatedAt: string | null;
+  generationSource: RecommendationGenerationSource | null;
+  traceId: string | null;
+}
+
+export interface ServerRecommendationIdentity {
+  recommendation_id?: string | null;
+  revision?: number | null;
+  generated_at?: string | null;
+  generation_source?: RecommendationGenerationSource | null;
+  trace_id?: string | null;
+}
+
+export interface TodayRecommendation extends RecommendationIdentity {
   date: string;
   state: TodayState;
   guidanceText: string | null;
@@ -435,7 +467,7 @@ export interface ServerResurfaceInsight {
   cooldown_key: string;
 }
 
-export interface ServerTodayRecommendation {
+export interface ServerTodayRecommendation extends ServerRecommendationIdentity {
   recommendation_date: string;
   status: TodayState;
   guidance_text?: string | null;
@@ -451,7 +483,7 @@ export interface ServerTodayRecommendation {
 // the same daily the Today pipeline persists, so gate and /today never diverge.
 export type FirstOutfitGateState = 'no_outfit' | 'single_outfit' | 'ready';
 
-export interface ServerFirstOutfitGate {
+export interface ServerFirstOutfitGate extends ServerRecommendationIdentity {
   state: FirstOutfitGateState;
   feasible_outfit_count: number;
   missing_slots: string[];
@@ -459,7 +491,7 @@ export interface ServerFirstOutfitGate {
   gate_failures: string[];
 }
 
-export interface FirstOutfitGate {
+export interface FirstOutfitGate extends RecommendationIdentity {
   state: FirstOutfitGateState;
   feasibleOutfitCount: number;
   missingSlots: string[];
@@ -853,7 +885,8 @@ export type ImportInputType =
   | 'link'
   | 'screenshot'
   | 'image_batch'
-  | 'shared_content';
+  | 'shared_content'
+  | 'order_screenshot';
 
 export type ImportSourceType =
   | 'camera'

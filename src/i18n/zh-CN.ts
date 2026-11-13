@@ -786,6 +786,8 @@ export const zhCN = {
   'addSource.outfit.hint': '一张照片识别多件',
   'addSource.link.label': '粘贴商品链接',
   'addSource.link.hint': '添加正在考虑的商品',
+  'addSource.shoppingScreenshot.label': '导入购物截图',
+  'addSource.shoppingScreenshot.hint': '淘宝/京东订单截图自动识别',
   'addSource.cancel': '取消',
 
   // --- Contextual entry sheet (Ask 14) -------------------------------------
