@@ -32,6 +32,23 @@
       "env": {
         "APP_ENV": "production"
       }
+    },
+    "preview-v3": {
+      "extends": "preview-v2",
+      "distribution": "internal",
+      "environment": "preview",
+      "developmentClient": false,
+      "node": "24.14.0",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "AIDROBE_BUILD_VARIANT": "v3-preview",
+        "ENABLE_V3_PURCHASE_DECISION": "true",
+        "ENABLE_V3_AVATAR": "true",
+        "ENABLE_V3_STATIC_TRYON": "true",
+        "ENABLE_V3_ANALYTICS": "false"
+      }
     }
   }
 }
