@@ -1,6 +1,6 @@
 import type { AxiosRequestConfig } from 'axios';
 
-import { apiGet } from './client';
+import { apiGet, apiPost } from './client';
 import type {
   OutfitVisualAsset,
   ServerOutfitVisualAssetResponse,
@@ -32,6 +32,28 @@ export async function getOutfitVisualAsset(
     errorCode: data.error_code ?? null,
     errorMessage: data.error_message ?? null,
     // V3-019 — §6.2's additive pair; absent on an older BE, so `?? null`.
+    createdAt: data.created_at ?? null,
+    expiresAt: data.expires_at ?? null,
+  };
+}
+
+// Producer for the Today share board (BE `POST /v1/outfits/{id}/share-asset`,
+// idempotent per outfit + layout). Sharing falls back to text when this fails,
+// so the request is silent: no error toast over a share that still succeeds.
+export async function createOutfitShareAsset(outfitId: string): Promise<OutfitVisualAsset> {
+  const data = await apiPost<ServerOutfitVisualAssetResponse>(
+    `/v1/outfits/${outfitId}/share-asset`,
+    undefined,
+    undefined,
+    { timeout: 5_000, silentErrorToast: true },
+  );
+  return {
+    assetId: data.asset_id,
+    generationStatus: data.generation_status,
+    imageUrl: data.image_url ?? null,
+    visualType: data.visual_type ?? null,
+    errorCode: data.error_code ?? null,
+    errorMessage: data.error_message ?? null,
     createdAt: data.created_at ?? null,
     expiresAt: data.expires_at ?? null,
   };
