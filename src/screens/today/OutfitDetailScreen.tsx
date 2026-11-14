@@ -1,6 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
@@ -10,6 +10,8 @@ import {
   markOutfitWorn,
   unfavoriteOutfit,
 } from '@/api/recommendations';
+import { createOutfitShareAsset, getOutfitVisualAsset } from '@/api/outfitVisual';
+import { waitForOutfitVisualAsset } from '@/api/outfitVisualPolling';
 import { getWardrobeItem } from '@/api/wardrobe';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
@@ -38,6 +40,8 @@ import type {
 import type { TodayStackParamList } from '@/types/navigation';
 import { renderI18n } from '@/utils/i18n';
 import { shareWithAsset } from '@/utils/share';
+import { shareBoardImage } from '@/utils/shareBoard';
+import { canShareServerBoard } from '@/utils/shareBoardPolicy';
 
 type Props = NativeStackScreenProps<TodayStackParamList, 'OutfitDetail'>;
 
@@ -249,15 +253,39 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
     favoriteMutation.mutate(!isFavorited);
   };
 
+  const shareInFlight = useRef(false);
+
+  // Board image first (rendered server-side, shared as a file), text summary as
+  // the fallback. Local swaps are not persisted, so a swapped outfit shares
+  // text only rather than a picture of the old garments.
   const shareOutfitSummary = async (source: 'download' | 'overflow') => {
-    const items = displayItems.map((item) => item.name).filter(Boolean).join(' / ') || t('outfitDetail.noItems');
-    await shareWithAsset(t('outfitDetail.shareMessage', { title: heroTitle, items }));
-    track('outfit_shared', { outfitId, source });
+    if (shareInFlight.current) return;
+    shareInFlight.current = true;
+    try {
+      const items = displayItems.map((item) => item.name).filter(Boolean).join(' / ') || t('outfitDetail.noItems');
+      const message = t('outfitDetail.shareMessage', { title: heroTitle, items });
+      if (canShareServerBoard({ isLocal, localReplacementCount: Object.keys(localReplacements).length })) {
+        try {
+          const asset = await createOutfitShareAsset(outfitId);
+          const imageUrl = await waitForOutfitVisualAsset(asset, {
+            fetchAsset: (assetId) => getOutfitVisualAsset(assetId, { silentErrorToast: true }),
+          });
+          if (imageUrl && (await shareBoardImage(imageUrl, message))) {
+            track('outfit_shared', { outfitId, source, format: 'image' });
+            return;
+          }
+        } catch {
+          // Producer / poll failed: fall through to the text summary.
+        }
+      }
+      await shareWithAsset(message);
+      track('outfit_shared', { outfitId, source, format: 'text' });
+    } finally {
+      shareInFlight.current = false;
+    }
   };
 
   const handleDownload = async () => {
-    // API_GAP[untracked]: no poster/share image asset — fallback to text summary.
-    showToast({ message: t('outfitDetail.downloadNoAsset'), kind: 'info' });
     await shareOutfitSummary('download');
   };
 
