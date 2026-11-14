@@ -128,6 +128,8 @@ sameSet('parsed_item fields', Object.keys(parsedProps), [
   'material_hints',
   'price',
   'scene_tags',
+  // Additive revision 2026-11-14 (contract §5.2, BE #183).
+  'garment_type',
 ]);
 check(
   'every parsed_item field is nullable (contract §5.2: all fields nullable)',
