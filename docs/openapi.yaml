@@ -163,7 +163,7 @@ paths:
   /readyz:
     get:
       summary: Readiness
-      description: 'Deep health check: returns 200 when the DB is reachable, 503 otherwise.
+      description: 'Deep health check: 200 only when the DB and Redis both answer.
 
         Used by the docker-compose healthcheck and load-balancer probes.'
       operationId: readiness_readyz_get
@@ -173,6 +173,26 @@ paths:
           content:
             application/json:
               schema: {}
+  /version:
+    get:
+      summary: Version
+      description: 'Which code and which schema this instance runs; null revision
+        when the
+
+        database has no alembic_version table (e.g. schema built without Alembic).'
+      operationId: version_version_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  anyOf:
+                  - type: string
+                  - type: 'null'
+                type: object
+                title: Response Version Version Get
   /v1/user/settings:
     get:
       tags:
@@ -351,6 +371,15 @@ paths:
       summary: Create Import Task
       operationId: create_import_task_v1_import_tasks_post
       parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Idempotency-Key
       - name: Authorization
         in: header
         required: false
@@ -3882,7 +3911,9 @@ paths:
 
         a download link (push / email) when ready. Idempotent per pending
 
-        request: re-calling while one is in flight returns the same job_id.'
+        request: re-calling while one is in flight returns the same job_id, with
+
+        its real `status`; a `dead` job is replaced by a fresh one.'
       operationId: request_my_data_export_v1_me_data_export_post
       parameters:
       - name: Authorization
@@ -4011,6 +4042,15 @@ paths:
       summary: List Learned Memory
       operationId: list_learned_memory_v1_profile_memory_get
       parameters:
+      - name: locale
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 16
+          - type: 'null'
+          title: Locale
       - name: Authorization
         in: header
         required: false
@@ -5223,6 +5263,32 @@ components:
           - type: boolean
           - type: 'null'
           title: Should Import
+        formality_score:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Formality Score
+        season_tags:
+          items:
+            type: string
+          type: array
+          title: Season Tags
+        material:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Material
+        style_tags:
+          items:
+            type: string
+          type: array
+          title: Style Tags
+        confirmed_item_id:
+          anyOf:
+          - type: string
+            format: uuid
+          - type: 'null'
+          title: Confirmed Item Id
       type: object
       required:
       - title
@@ -5425,6 +5491,10 @@ components:
           type: array
           minItems: 1
           title: Items
+        dismiss_remaining:
+          type: boolean
+          title: Dismiss Remaining
+          default: false
       type: object
       required:
       - items
@@ -5436,6 +5506,11 @@ components:
             $ref: '#/components/schemas/ConfirmedItem'
           type: array
           title: Created Items
+        task_status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Task Status
       type: object
       required:
       - created_items
@@ -6215,6 +6290,9 @@ components:
         wear_history_count:
           type: integer
           title: Wear History Count
+          description: 'Sum of item-level wear counts over live items, including manual
+            item wears. Not the number of outfit records: compare `GET /v1/outfit-history`
+            `total`.'
           default: 0
         has_sufficient_wear_history:
           type: boolean
@@ -6348,6 +6426,9 @@ components:
         label:
           type: string
           title: Label
+        display_text:
+          type: string
+          title: Display Text
         polarity:
           type: string
           title: Polarity
@@ -6365,6 +6446,7 @@ components:
       - id
       - type
       - label
+      - display_text
       - polarity
       - source
       - confidence
@@ -6506,6 +6588,41 @@ components:
       - worn_date
       - selected_at
       title: OutfitHistoryEntry
+    OutfitHistoryItem:
+      properties:
+        item_id:
+          type: string
+          format: uuid
+          title: Item Id
+        title:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Title
+        category:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Category
+        display_role:
+          type: string
+          enum:
+          - top
+          - outer
+          - bottom
+          - shoes
+          - accessory
+          title: Display Role
+          default: accessory
+        cover_image_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Cover Image Url
+      type: object
+      required:
+      - item_id
+      title: OutfitHistoryItem
     OutfitHistoryItemResponse:
       properties:
         outfit_id:
@@ -6556,6 +6673,9 @@ components:
         total:
           type: integer
           title: Total
+          description: Number of outfit-level wear records (one per outfit worn on
+            a day). Not comparable to insights `wear_history_count`, which sums item-level
+            wears including manual item wears.
       type: object
       required:
       - items
@@ -6754,8 +6874,7 @@ components:
           title: Outfit Board Url
         items:
           items:
-            additionalProperties: true
-            type: object
+            $ref: '#/components/schemas/OutfitHistoryItem'
           type: array
           title: Items
           default: []
@@ -6991,6 +7110,11 @@ components:
           - type: string
           - type: 'null'
           title: Silhouette
+        garment_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Garment Type
         material_hints:
           anyOf:
           - items:
@@ -8861,21 +8985,31 @@ components:
           anyOf:
           - items:
               type: string
+              enum:
+              - spring
+              - summer
+              - autumn
+              - winter
+              - all_season
             type: array
+            maxItems: 5
           - type: 'null'
           title: Season Tags
         style_tags:
           anyOf:
           - items:
               type: string
+              maxLength: 24
+              minLength: 1
             type: array
+            maxItems: 8
           - type: 'null'
           title: Style Tags
         formality_score:
           anyOf:
           - type: integer
-            maximum: 5.0
-            minimum: 1.0
+            maximum: 100.0
+            minimum: 0.0
           - type: 'null'
           title: Formality Score
         time_cost_level:
