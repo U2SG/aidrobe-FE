@@ -90,6 +90,8 @@ export interface ServerParsedCandidateItem {
   material_hints?: string[] | null;
   price?: string | null;
   scene_tags?: string[] | null;
+  /** Coarse garment type (tee, turtleneck, jeans…); additive, BE #183. */
+  garment_type?: string | null;
 }
 
 export interface ServerPurchaseCandidate {
@@ -137,6 +139,7 @@ export interface ParsedCandidateItem {
   materialHints: string[];
   price: string | null;
   sceneTags: string[];
+  garmentType: string | null;
 }
 
 export interface PurchaseCandidate {
@@ -217,6 +220,7 @@ export function toParsedCandidateItem(
     materialHints: strList(raw.material_hints),
     price: strOrNull(raw.price),
     sceneTags: strList(raw.scene_tags),
+    garmentType: strOrNull(raw.garment_type),
   };
 }
 
