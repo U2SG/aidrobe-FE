@@ -944,6 +944,64 @@ export interface AskContext {
 // How the Ask screen was entered — drives context/history scoping.
 export type AskScope = 'global' | 'item' | 'today';
 
+export interface StylingConstraints {
+  lockedItemIds: string[];
+  excludedItemIds: string[];
+  goal: string | null;
+  notes: string[];
+  targetStyle: string | null;
+  exploration: boolean;
+  targetDate?: string | null;
+}
+
+export interface ServerStylingConstraints {
+  locked_item_ids?: string[];
+  excluded_item_ids?: string[];
+  goal?: string | null;
+  notes?: string[];
+  target_style?: string | null;
+  exploration?: boolean;
+  target_date?: string | null;
+}
+
+export interface StylingState {
+  conversationId: string;
+  revision: number;
+  status: 'draft' | 'adopted';
+  outfit: OutfitSummary;
+  constraints: StylingConstraints;
+  recommendationId: string | null;
+  recommendationRevision: number | null;
+  recommendationDate: string | null;
+}
+
+export interface ServerStylingResponse {
+  conversation_id: string;
+  revision: number;
+  status: 'draft' | 'adopted';
+  outfit: ServerOutfitResponse;
+  constraints: ServerStylingConstraints;
+  recommendation_id?: string | null;
+  recommendation_revision?: number | null;
+  recommendation_date?: string | null;
+}
+
+export interface AskConversationMessage {
+  id: string;
+  askSessionId?: string | null;
+  role: string;
+  content: string;
+  createdAt: string;
+  styling: StylingState | null;
+}
+
+export interface AskConversation {
+  conversationId: string;
+  title: string | null;
+  styling: StylingState | null;
+  messages: AskConversationMessage[];
+}
+
 export interface AskBody {
   question: string;
   context?: AskContext;
@@ -952,6 +1010,10 @@ export interface AskBody {
   // Thread id for multi-turn continuity. Pass the conversation_id returned by
   // the previous turn so the backend can include prior exchange context.
   conversationId?: string | null;
+  designMode?: boolean;
+  requestId?: string;
+  expectedRevision?: number | null;
+  baseOutfitId?: string;
 }
 
 // BE#29 — denormalized snapshot of a referenced wardrobe item, already
@@ -998,6 +1060,7 @@ export interface AskResult {
   // Present only when the structured answer flagged a multi-day trip question
   // (BE#115) — drives the packing-list handoff card.
   tripIntent: AskTripIntent | null;
+  styling?: StylingState | null;
 }
 
 export interface ServerAskDeltas {
@@ -1022,6 +1085,7 @@ export interface ServerAskResponse {
   recommendation_id?: string | null;
   source_surface?: string;
   trip_intent?: ServerAskTripIntent | null;
+  styling?: ServerStylingResponse | null;
 }
 
 export interface AskHistoryEntry {
@@ -1037,6 +1101,7 @@ export interface AskHistoryEntry {
   itemRefs: string[];
   itemRefSnapshots: AskItemRefSnapshot[];
   createdAt: string;
+  styling?: StylingState | null;
 }
 
 export interface ServerAskHistoryItem {
@@ -1048,6 +1113,7 @@ export interface ServerAskHistoryItem {
   item_refs?: string[];
   item_ref_snapshots?: ServerAskItemRefSnapshot[];
   created_at: string;
+  styling?: ServerStylingResponse | null;
 }
 
 // --- Packing list (M16) ----------------------------------------------------

@@ -58,18 +58,25 @@ function MemoryChip({
   onMarkWrong: () => void;
   onDelete: () => void;
 }) {
-  const { t } = useT();
+  const { t, locale } = useT();
 
   const typeKey = MEMORY_TYPE_LABEL[item.type];
   const typeLabel = typeKey ? t(typeKey) : item.type.replace(/_/g, ' ');
-  const chipText = `${item.label} · ${typeLabel}`;
+  const expires = item.expiresAt ? new Date(item.expiresAt) : null;
+  const context = [
+    item.scopeText,
+    expires && !Number.isNaN(expires.getTime())
+      ? t('privacy.memory.until', { date: expires.toLocaleDateString(locale) })
+      : '',
+  ].filter(Boolean).join(' · ');
+  const chipText = [item.label, typeLabel, context].filter(Boolean).join(' · ');
 
   const handlePress = () => {
     const sourceText = t(SOURCE_LABEL[item.source]);
     const confidenceText = t(CONFIDENCE_LABEL[item.confidence]);
     Alert.alert(
       item.label,
-      `${typeLabel}  ·  ${sourceText}  ·  ${confidenceText}`,
+      [typeLabel, sourceText, confidenceText, context].filter(Boolean).join(' · '),
       [
         {
           text: t('privacy.memory.markWrong'),
@@ -107,7 +114,7 @@ function MemoryChip({
           ...type.footnote,
           color: busy ? colors.quaternaryLabel : colors.label,
         }}
-        numberOfLines={1}
+        numberOfLines={2}
       >
         {chipText}
       </Text>
@@ -159,7 +166,11 @@ export function MemoryManagementScreen() {
     retry: 1,
   });
 
-  const invalidate = () => void qc.invalidateQueries({ queryKey: ['learnedMemory'] });
+  const invalidate = () => {
+    void qc.invalidateQueries({ queryKey: ['learnedMemory'] });
+    void qc.invalidateQueries({ queryKey: ['todayRecommendation'] });
+    void qc.invalidateQueries({ queryKey: ['askConversation'] });
+  };
 
   const markWrongMutation = useMutation({
     mutationFn: markMemoryWrong,
@@ -202,6 +213,7 @@ export function MemoryManagementScreen() {
 
   const positiveItems = items.filter((i) => i.polarity === 'positive');
   const negativeItems = items.filter((i) => i.polarity === 'negative');
+  const neutralItems = items.filter((i) => i.polarity === 'neutral');
 
   return (
     <ScrollView
@@ -250,6 +262,13 @@ export function MemoryManagementScreen() {
           <MemorySection
             titleKey="privacy.memory.section.negative"
             items={negativeItems}
+            busy={busy}
+            onMarkWrong={(id) => markWrongMutation.mutate(id)}
+            onDelete={(id) => deleteMutation.mutate(id)}
+          />
+          <MemorySection
+            titleKey="privacy.memory.section.neutral"
+            items={neutralItems}
             busy={busy}
             onMarkWrong={(id) => markWrongMutation.mutate(id)}
             onDelete={(id) => deleteMutation.mutate(id)}

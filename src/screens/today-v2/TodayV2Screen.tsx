@@ -459,7 +459,7 @@ export function TodayV2Screen({ navigation }: Props) {
             temperatureC={displayWeather?.temperatureC ?? null}
             onWear={() => {
               track('outfit_worn', { outfitId: outfit.id });
-              navigation.navigate('OutfitDetail', { outfitId: outfit.id });
+              navigation.navigate('OutfitDetail', { outfitId: outfit.id, recommendationDate: todayQuery.data?.date });
             }}
             // Refresh regenerates TODAY only (no tomorrow-swap contract), so
             // swapping is disabled while a real tomorrow payload is shown.
@@ -467,10 +467,25 @@ export function TodayV2Screen({ navigation }: Props) {
               if (serverTomorrowActive) return;
               refreshMutation.mutate(undefined);
             }}
-            onViewDetail={() => navigation.navigate('OutfitDetail', { outfitId: outfit.id })}
+            onViewDetail={() => navigation.navigate('OutfitDetail', { outfitId: outfit.id, recommendationDate: todayQuery.data?.date })}
             swapBusy={refreshMutation.isPending}
             swapDisabled={serverTomorrowActive}
           />
+
+          <Pressable
+            accessibilityRole="button"
+            disabled={refreshMutation.isPending}
+            onPress={() => navigation.getParent()?.navigate('AskTab', {
+              screen: 'AskAidrobe', params: { scope: 'today', baseOutfitId: outfit.id, targetDate: todayQuery.data?.date },
+            })}
+            style={({ pressed }) => ({ opacity: pressed || refreshMutation.isPending ? 0.5 : 1 })}
+          >
+            <View style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <SystemIcon name="sparkle" size={16} color={colors.secondaryLabel} />
+              <Text style={{ ...type.callout, color: colors.secondaryLabel }}>{t('ask.design.discussOutfit')}</Text>
+              <SystemIcon name="chevronRight" size={14} color={colors.tertiaryLabel} />
+            </View>
+          </Pressable>
 
           <ResurfaceInsightCard insight={resurfaceInsight} onPress={openResurfaceItem} />
 

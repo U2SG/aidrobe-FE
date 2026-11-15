@@ -1,17 +1,19 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import {
   favoriteOutfit,
   getOutfitDetail,
   getOutfitItemReplacements,
+  getTodayRecommendation,
   markOutfitWorn,
   unfavoriteOutfit,
 } from '@/api/recommendations';
 import { createOutfitShareAsset, getOutfitVisualAsset } from '@/api/outfitVisual';
 import { waitForOutfitVisualAsset } from '@/api/outfitVisualPolling';
+import { getAskConversation, reviseOutfit } from '@/api/styling';
 import { getWardrobeItem } from '@/api/wardrobe';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
@@ -41,7 +43,8 @@ import type { TodayStackParamList } from '@/types/navigation';
 import { renderI18n } from '@/utils/i18n';
 import { shareWithAsset } from '@/utils/share';
 import { shareBoardImage } from '@/utils/shareBoard';
-import { canShareServerBoard } from '@/utils/shareBoardPolicy';
+import { httpStatus } from '@/utils/http';
+import { newFlowId } from '@/utils/v3AnalyticsEvents';
 
 type Props = NativeStackScreenProps<TodayStackParamList, 'OutfitDetail'>;
 
@@ -117,12 +120,24 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
   const { t, tEnum } = useT();
   const [bottomBarHeight, setBottomBarHeight] = useState(120);
   const showToast = useToastStore((state) => state.show);
-  const [localReplacements, setLocalReplacements] = useState<Record<string, OutfitReplacementCandidate>>({});
+  const [replacementBusy, setReplacementBusy] = useState<string | null>(null);
+  const [revisionConflict, setRevisionConflict] = useState(false);
+  const [recovering, setRecovering] = useState(false);
+  const replacementInFlight = useRef(false);
+  const replacementRequest = useRef<{ key: string; id: string } | null>(null);
+  const activeOutfitId = useRef<string | null>(outfitId);
   const [ignoredObstacleItemIds, setIgnoredObstacleItemIds] = useState<Set<string>>(() => new Set());
   const [replacementTarget, setReplacementTarget] = useState<ReplacementTarget | null>(null);
   const [overflowOpen, setOverflowOpen] = useState(false);
   const [autoReplacingItemId, setAutoReplacingItemId] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+
+  useEffect(() => {
+    activeOutfitId.current = outfitId;
+    setIgnoredObstacleItemIds(new Set());
+    setRevisionConflict(false);
+    return () => { activeOutfitId.current = null; };
+  }, [outfitId]);
 
   const outfitQuery = useQuery({
     queryKey: ['outfitDetail', outfitId],
@@ -151,17 +166,19 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
   });
 
   const favoriteMutation = useMutation({
-    mutationFn: (nextFavorited: boolean) =>
-      nextFavorited ? favoriteOutfit(outfitId) : unfavoriteOutfit(outfitId),
-    onMutate: async (nextFavorited) => {
-      await qc.cancelQueries({ queryKey: ['outfitDetail', outfitId] });
-      const previous = qc.getQueryData<OutfitDetail>(['outfitDetail', outfitId]);
-      qc.setQueryData<OutfitDetail>(['outfitDetail', outfitId], (old) =>
+    mutationFn: ({ id, nextFavorited }: { id: string; nextFavorited: boolean }) =>
+      nextFavorited ? favoriteOutfit(id) : unfavoriteOutfit(id),
+    onMutate: async ({ id, nextFavorited }) => {
+      await qc.cancelQueries({ queryKey: ['outfitDetail', id] });
+      const previous = qc.getQueryData<OutfitDetail>(['outfitDetail', id]);
+      qc.setQueryData<OutfitDetail>(['outfitDetail', id], (old) =>
         old ? { ...old, isFavorited: nextFavorited } : old,
       );
-      return { previous };
+      return { previous, id };
     },
-    onSuccess: (_data, nextFavorited) => {
+    onSuccess: (_data, { id, nextFavorited }) => {
+      void qc.invalidateQueries({ queryKey: ['todayRecommendation'] });
+      if (activeOutfitId.current !== id) return;
       showToast({
         message: nextFavorited
           ? t('outfitDetail.favorite.added')
@@ -170,7 +187,8 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
       });
     },
     onError: (_error, _nextFavorited, context) => {
-      if (context?.previous) qc.setQueryData(['outfitDetail', outfitId], context.previous);
+      if (activeOutfitId.current !== context?.id) return;
+      if (context?.previous) qc.setQueryData(['outfitDetail', context.id], context.previous);
       showToast({ message: t('outfitDetail.favorite.failed'), kind: 'error' });
     },
   });
@@ -183,23 +201,6 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
 
   const displayItems = useMemo<DisplayItem[]>(() => {
     return itemBriefs.map((brief) => {
-      const replacement = localReplacements[brief.id];
-      if (replacement) {
-        return {
-          id: replacement.itemId,
-          slotItemId: brief.id,
-          name: replacement.title,
-          category: replacement.category,
-          color: replacement.colorMain,
-          imageUrl: replacement.thumbnailUrl,
-          status: 'wearable',
-          location: null,
-          sizeLabel: null,
-          fitIntent: null,
-          fitStatus: 'unknown',
-        };
-      }
-
       const fullItem = fullItemById.get(brief.id);
       return {
         id: brief.id,
@@ -215,61 +216,130 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
         fitStatus: fullItem?.fitStatus ?? 'unknown',
       };
     });
-  }, [fullItemById, itemBriefs, localReplacements]);
+  }, [fullItemById, itemBriefs]);
 
   const handleWear = async () => {
+    if (replacementInFlight.current || revisionConflict || recovering) return;
     if (!isLocal) {
       try {
         await markOutfitWorn(outfitId);
       } catch {
-        /* swallow — feedback can still proceed */
+        showToast({ message: t('outfitDetail.wearFailed'), kind: 'error' });
+        return;
       }
     }
+    if (activeOutfitId.current !== outfitId) return;
+    void qc.invalidateQueries({ queryKey: ['todayRecommendation'] });
     track('outfit_worn', { outfitId });
     navigation.navigate('FeedbackSheet', { outfitId });
   };
 
-  function applyLocalReplacement(
+  async function applyReplacement(
     slotItemId: string,
     candidate: OutfitReplacementCandidate,
     source: 'auto' | 'sheet',
   ) {
-    // API_GAP[BE#62]: no persist-replacement endpoint; swap is local-only.
-    setLocalReplacements((prev) => ({ ...prev, [slotItemId]: candidate }));
-    showToast({ message: t('outfitDetail.replacementApplied', { name: candidate.title }), kind: 'success' });
-    track('outfit_item_replaced', {
-      outfitId,
-      source,
-      originalItemId: slotItemId,
-      replacementItemId: candidate.itemId,
-    });
+    if (replacementInFlight.current || revisionConflict || recovering) return;
+    replacementInFlight.current = true;
+    setReplacementBusy(candidate.itemId);
+    const key = [outfitId, slotItemId, candidate.itemId].join(':');
+    if (replacementRequest.current?.key !== key) {
+      replacementRequest.current = { key, id: newFlowId() };
+    }
+    try {
+      const result = await reviseOutfit(outfitId, slotItemId, candidate.itemId, replacementRequest.current.id);
+      if (activeOutfitId.current !== outfitId) return;
+      qc.setQueryData(['outfitDetail', result.outfit.id], result.outfit);
+      void qc.invalidateQueries({ queryKey: ['todayRecommendation'] });
+      void qc.invalidateQueries({ queryKey: ['askConversation'] });
+      activeOutfitId.current = result.outfit.id;
+      navigation.setParams({
+        outfitId: result.outfit.id,
+        conversationId: result.conversationId,
+        stylingStatus: result.status,
+        recommendationDate: result.recommendationDate ?? result.constraints.targetDate ?? undefined,
+      });
+      setReplacementTarget(null);
+      replacementRequest.current = null;
+      showToast({ message: t('outfitDetail.replacementApplied', { name: candidate.title }), kind: 'success' });
+      track('outfit_item_replaced', {
+        outfitId: result.outfit.id,
+        source,
+        originalItemId: slotItemId,
+        replacementItemId: candidate.itemId,
+      });
+    } catch (error) {
+      if (activeOutfitId.current !== outfitId) return;
+      if (httpStatus(error) === 409) {
+        setRevisionConflict(true);
+        setReplacementTarget(null);
+      }
+      showToast({
+        message: t(httpStatus(error) === 409 ? 'outfitDetail.replacementConflict' : 'outfitDetail.replacementUnavailable'),
+        kind: 'error',
+      });
+    } finally {
+      replacementInFlight.current = false;
+      setReplacementBusy(null);
+    }
   }
 
+  const recoverCurrentOutfit = async () => {
+    if (recovering) return;
+    setRecovering(true);
+    try {
+      const design = route.params.stylingStatus === 'draft' && route.params.conversationId
+        ? (await getAskConversation(route.params.conversationId)).styling : null;
+      const current = design?.outfit
+        ?? (route.params.stylingStatus === 'draft' ? undefined
+          : (await getTodayRecommendation('commute', route.params.recommendationDate)).outfits[0]);
+      if (activeOutfitId.current !== outfitId) return;
+      if (!current) throw new Error('Current outfit is unavailable');
+      qc.setQueryData(['outfitDetail', current.id], current);
+      activeOutfitId.current = current.id;
+      navigation.setParams({
+        outfitId: current.id,
+        conversationId: design?.conversationId,
+        stylingStatus: design?.status ?? 'adopted',
+        recommendationDate: design?.recommendationDate ?? design?.constraints.targetDate ?? route.params.recommendationDate,
+      });
+      replacementRequest.current = null;
+      setRevisionConflict(false);
+      void qc.invalidateQueries({ queryKey: ['todayRecommendation'] });
+    } catch {
+      if (activeOutfitId.current === outfitId) {
+        showToast({ message: t('outfitDetail.recoveryFailed'), kind: 'error' });
+      }
+    } finally {
+      setRecovering(false);
+    }
+  };
+
   const handleFavorite = () => {
+    if (replacementInFlight.current || revisionConflict || recovering) return;
     if (isLocal) {
       showToast({ message: t('outfitDetail.favorite.unavailable'), kind: 'info' });
       return;
     }
-    favoriteMutation.mutate(!isFavorited);
+    favoriteMutation.mutate({ id: outfitId, nextFavorited: !isFavorited });
   };
 
   const shareInFlight = useRef(false);
 
-  // Board image first (rendered server-side, shared as a file), text summary as
-  // the fallback. Local swaps are not persisted, so a swapped outfit shares
-  // text only rather than a picture of the old garments.
+  // Share the persisted version; a late render must never replace a newer look.
   const shareOutfitSummary = async (source: 'download' | 'overflow') => {
-    if (shareInFlight.current) return;
+    if (shareInFlight.current || replacementInFlight.current || revisionConflict || recovering) return;
     shareInFlight.current = true;
     try {
       const items = displayItems.map((item) => item.name).filter(Boolean).join(' / ') || t('outfitDetail.noItems');
       const message = t('outfitDetail.shareMessage', { title: heroTitle, items });
-      if (canShareServerBoard({ isLocal, localReplacementCount: Object.keys(localReplacements).length })) {
+      if (!isLocal) {
         try {
           const asset = await createOutfitShareAsset(outfitId);
           const imageUrl = await waitForOutfitVisualAsset(asset, {
             fetchAsset: (assetId) => getOutfitVisualAsset(assetId, { silentErrorToast: true }),
           });
+          if (activeOutfitId.current !== outfitId) return;
           if (imageUrl && (await shareBoardImage(imageUrl, message))) {
             track('outfit_shared', { outfitId, source, format: 'image' });
             return;
@@ -278,6 +348,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
           // Producer / poll failed: fall through to the text summary.
         }
       }
+      if (activeOutfitId.current !== outfitId) return;
       await shareWithAsset(message);
       track('outfit_shared', { outfitId, source, format: 'text' });
     } finally {
@@ -290,6 +361,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
   };
 
   const openReplacementSheet = (item: DisplayItem) => {
+    if (revisionConflict || recovering) return;
     if (isLocal) {
       showToast({ message: t('outfitDetail.replacementUnavailable'), kind: 'info' });
       return;
@@ -298,7 +370,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
   };
 
   const handleAutoReplace = async (obstacle: OutfitObstacle) => {
-    if (isLocal || autoReplacingItemId) {
+    if (isLocal || autoReplacingItemId || revisionConflict || recovering) {
       showToast({ message: t('outfitDetail.replacementUnavailable'), kind: 'info' });
       return;
     }
@@ -313,7 +385,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
         showToast({ message: t('outfitDetail.replacementNone'), kind: 'info' });
         return;
       }
-      applyLocalReplacement(obstacle.itemId, top, 'auto');
+      await applyReplacement(obstacle.itemId, top, 'auto');
     } catch {
       showToast({ message: t('outfitDetail.replacementUnavailable'), kind: 'error' });
     } finally {
@@ -333,8 +405,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
 
   const handleSelectReplacement = (candidate: OutfitReplacementCandidate) => {
     if (!replacementTarget) return;
-    applyLocalReplacement(replacementTarget.slotItemId, candidate, 'sheet');
-    setReplacementTarget(null);
+    void applyReplacement(replacementTarget.slotItemId, candidate, 'sheet');
   };
 
   if (!isLocal && outfitQuery.isLoading) {
@@ -363,7 +434,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
   // Pick the most severe obstacle for the top banner.
   const activeObstacles =
     apiObstacles?.filter(
-      (o) => !ignoredObstacleItemIds.has(o.itemId) && !localReplacements[o.itemId],
+      (o) => !ignoredObstacleItemIds.has(o.itemId),
     ) ?? [];
   const primaryObstacle =
     activeObstacles.find((o) => o.severity === 'blocking') ??
@@ -430,6 +501,12 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
         showsVerticalScrollIndicator={false}
       >
         {/* ── Obstacle banner ─────────────────────────────────────────────── */}
+        {revisionConflict ? (
+          <View style={{ margin: 16, padding: 14, gap: 12, borderRadius: radius.md, backgroundColor: T.card }}>
+            <Text style={{ ...type.body, color: T.ink2 }}>{t('ask.design.conflict')}</Text>
+            <Button label={t('ask.design.reviewCurrent')} loading={recovering} onPress={() => { void recoverCurrentOutfit(); }} />
+          </View>
+        ) : null}
         {primaryObstacle && (
           <View style={{ paddingHorizontal: 16 }}>
             <View
@@ -713,6 +790,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
         {/* Full-width black CTA — 54h, matches DecisionOutfitCard */}
         <Pressable
           onPress={handleWear}
+          disabled={Boolean(replacementBusy) || revisionConflict || recovering}
           style={{
             height: 54,
             borderRadius: radius.md,
@@ -745,7 +823,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
       {/* ── Replacement bottom sheet ──────────────────────────────────────── */}
       <BottomSheet
         visible={Boolean(replacementTarget)}
-        onClose={() => setReplacementTarget(null)}
+        onClose={() => { if (!replacementInFlight.current) setReplacementTarget(null); }}
         title={t('outfitDetail.replacementsTitle', { name: replacementTarget?.name ?? '' })}
       >
         {replacementQuery.isLoading ? (
@@ -782,6 +860,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                   <Pressable
                     key={candidate.itemId}
                     onPress={() => handleSelectReplacement(candidate)}
+                    disabled={Boolean(replacementBusy)}
                     accessibilityRole="button"
                     accessibilityLabel={t('outfitDetail.selectReplacement', { name: candidate.title })}
                     style={{
@@ -803,7 +882,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
                         {candidate.title}
                       </Text>
                       <Text numberOfLines={1} style={{ fontSize: 11, color: T.ink3, marginTop: 3 }}>
-                        {meta}
+                        {replacementBusy === candidate.itemId ? t('outfitDetail.replacementSaving') : meta}
                       </Text>
                     </View>
                     <SystemIcon name="chevronRight" size={16} color={T.ink3} />

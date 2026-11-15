@@ -1,4 +1,5 @@
 import { apiGet, apiPost } from './client';
+import { toStyling } from './styling';
 import type {
   AskBody,
   AskHistoryEntry,
@@ -34,7 +35,11 @@ export async function askAidrobe(body: AskBody): Promise<AskResult> {
     focused_item_id: body.focusedItemId ?? null,
     locale: body.locale ?? null,
     conversation_id: body.conversationId ?? null,
-  });
+    design_mode: body.designMode ?? false,
+    request_id: body.requestId,
+    expected_revision: body.expectedRevision ?? undefined,
+    base_outfit_id: body.baseOutfitId,
+  }, undefined, { timeout: 60_000 });
   return {
     askSessionId: data.ask_session_id,
     conversationId: data.conversation_id ?? null,
@@ -51,6 +56,7 @@ export async function askAidrobe(body: AskBody): Promise<AskResult> {
       : null,
     recommendationId: data.recommendation_id ?? null,
     sourceSurface: data.source_surface ?? 'ask',
+    styling: data.styling ? toStyling(data.styling) : null,
     tripIntent: data.trip_intent?.is_trip
       ? { isTrip: true, durationDays: data.trip_intent.duration_days ?? null }
       : null,
@@ -82,6 +88,7 @@ export async function getAskHistory(query: AskHistoryQuery = {}): Promise<AskHis
     itemRefs: item.item_refs ?? [],
     itemRefSnapshots: mapSnapshots(item.item_ref_snapshots),
     createdAt: item.created_at,
+    styling: item.styling ? toStyling(item.styling) : null,
     tripIntent: item.trip_intent?.is_trip
       ? { isTrip: true, durationDays: item.trip_intent.duration_days ?? null }
       : null,

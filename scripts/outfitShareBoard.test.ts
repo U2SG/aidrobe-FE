@@ -3,7 +3,6 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { waitForOutfitVisualAsset } from '../src/api/outfitVisualPolling.ts';
-import { canShareServerBoard } from '../src/utils/shareBoardPolicy.ts';
 import type { OutfitVisualAsset } from '../src/types/api.ts';
 
 const asset = (generationStatus: string, imageUrl: string | null = null): OutfitVisualAsset => ({
@@ -126,9 +125,3 @@ assert.ok(
   detail.indexOf('await shareWithAsset(message)') < detail.lastIndexOf("track('outfit_shared'"),
   'text fallback records analytics only after the native share call',
 );
-
-// Review FE#159 ②: a locally swapped outfit must not share a picture of the
-// old garments; a demo outfit has no server board at all.
-assert.equal(canShareServerBoard({ isLocal: false, localReplacementCount: 0 }), true);
-assert.equal(canShareServerBoard({ isLocal: false, localReplacementCount: 1 }), false);
-assert.equal(canShareServerBoard({ isLocal: true, localReplacementCount: 0 }), false);

@@ -3,6 +3,7 @@ import type { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } fro
 import Constants from 'expo-constants';
 
 import { isErrorToastSilenced } from '@/api/errorToast';
+import { sameRequestSession, type RequestSession } from '@/api/requestSession';
 import { currentV3FlowId, V3_FLOW_ID_HEADER } from '@/api/v3Flow';
 import { queryClient } from '@/core/providers/queryClient';
 import { useAuthStore } from '@/store/auth';
@@ -20,6 +21,7 @@ declare module 'axios' {
     // Internal — marks a request that was already replayed after a token refresh.
     // A 401 on a retry must NOT trigger another refresh (loop guard).
     _isRetry?: boolean;
+    _requestSession?: RequestSession;
   }
 }
 
@@ -28,12 +30,28 @@ const extra = Constants.expoConfig?.extra ?? {};
 export const API_BASE_URL: string = extra.API_BASE_URL ?? 'http://localhost:8000';
 export const APP_ENV: 'development' | 'staging' | 'production' = extra.APP_ENV ?? 'development';
 
+function currentRequestSession(): RequestSession {
+  const auth = useAuthStore.getState();
+  return {
+    authVersion: auth.sessionVersion,
+    devUserId: !auth.accessToken && APP_ENV !== 'production' ? useDevUserStore.getState().userId : null,
+  };
+}
+
+function sessionIsCurrent(session: RequestSession): boolean {
+  return sameRequestSession(session, currentRequestSession());
+}
+
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15_000,
 });
 
 apiClient.interceptors.request.use((config) => {
+  config._requestSession ??= currentRequestSession();
+  if (!sessionIsCurrent(config._requestSession)) {
+    throw new axios.CanceledError('Authentication session changed', config);
+  }
   // V3-008: while a "should I buy this" flow is active, every request carries
   // its flow id so BE-emitted analytics join the FE events of the same flow
   // (V3-002 event contract; the BE CorrelationIdMiddleware already accepts and
@@ -43,6 +61,8 @@ apiClient.interceptors.request.use((config) => {
     config.headers.set(V3_FLOW_ID_HEADER, flowId);
   }
 
+  config.headers.delete('Authorization');
+  config.headers.delete('X-User-Id');
   const accessToken = useAuthStore.getState().accessToken;
   if (accessToken) {
     config.headers.set('Authorization', `Bearer ${accessToken}`);
@@ -58,24 +78,30 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Single-flight refresh promise shared across concurrent 401s.
-let refreshPromise: Promise<void> | null = null;
+// A new login may refresh independently while the previous account's request finishes.
+let refreshFlight: { session: RequestSession; promise: Promise<void> } | null = null;
 
 /**
  * Perform a full sign-out reset: clears auth tokens, resets onboarding state
  * (so RootNavigator flips back to Welcome), and clears the React Query cache.
  * Shows the "session expired" toast.
  */
-async function signOutReset(): Promise<void> {
+async function signOutReset(session: RequestSession): Promise<void> {
+  if (!sessionIsCurrent(session)) return;
   const showToast = useToastStore.getState().show;
-  await useAuthStore.getState().clear();
+  const clear = useAuthStore.getState().clear();
+  // Do UI resets before awaiting storage: a later login must not be reset by this one.
   useOnboardingStore.getState().setCompleted(false);
   queryClient.clear();
   showToast({ message: '登录已过期，请重新登录', kind: 'error' });
+  await clear;
 }
 
 apiClient.interceptors.response.use(
   (response: AxiosResponse<ApiEnvelope<unknown>>) => {
+    if (response.config._requestSession && !sessionIsCurrent(response.config._requestSession)) {
+      throw new axios.CanceledError('Authentication session changed', response.config);
+    }
     const body = response.data;
     if (body && typeof body === 'object' && 'code' in body && 'data' in body) {
       if (body.code === 0 || body.code === 200) {
@@ -89,6 +115,9 @@ apiClient.interceptors.response.use(
     const status = error.response?.status;
     const message = error.response?.data?.message ?? '';
     const config = error.config;
+    if (axios.isCancel(error) || (config?._requestSession && !sessionIsCurrent(config._requestSession))) {
+      return Promise.reject(error);
+    }
 
     // ── 401 handling ─────────────────────────────────────────────────────────
     if (status === 401) {
@@ -111,41 +140,44 @@ apiClient.interceptors.response.use(
       const storedRefreshToken = useAuthStore.getState().refreshToken;
       const hasTokenSession = Boolean(storedRefreshToken || useAuthStore.getState().accessToken);
 
-      if (!isAuthEndpoint && !isRetry && hasTokenSession && config) {
-        // Single-flight: if a refresh is already in progress, wait for it.
-        if (!refreshPromise) {
-          const { refreshToken: refreshTokenFn } = await import('./auth');
-          const currentRefreshToken = useAuthStore.getState().refreshToken;
-
-          if (!currentRefreshToken) {
-            // No refresh token available — sign out.
-            await signOutReset();
-            return Promise.reject(error);
-          }
-
-          refreshPromise = refreshTokenFn(currentRefreshToken)
-            .then(async (tokens) => {
-              await useAuthStore.getState().setTokens(tokens);
-            })
-            .catch(async () => {
-              await signOutReset();
-            })
-            .finally(() => {
-              refreshPromise = null;
-            });
+      if (!isAuthEndpoint && !isRetry && hasTokenSession && config?._requestSession) {
+        const session = config._requestSession;
+        const accessToken = useAuthStore.getState().accessToken;
+        if (accessToken && config.headers.get('Authorization') !== `Bearer ${accessToken}`) {
+          // Another request already refreshed this session before this 401 arrived.
+          return apiClient.request({ ...config, _isRetry: true });
+        }
+        if (!refreshFlight || !sameRequestSession(refreshFlight.session, session)) {
+          const flight = { session, promise: Promise.resolve() };
+          flight.promise = (async () => {
+            try {
+              const { refreshToken: refreshTokenFn } = await import('./auth');
+              if (!sessionIsCurrent(session)) return;
+              const currentRefreshToken = useAuthStore.getState().refreshToken;
+              if (!currentRefreshToken) {
+                await signOutReset(session);
+                return;
+              }
+              const tokens = await refreshTokenFn(currentRefreshToken, session);
+              if (sessionIsCurrent(session)) {
+                await useAuthStore.getState().refreshTokens(tokens, session.authVersion);
+              }
+            } catch {
+              await signOutReset(session);
+            }
+          })().finally(() => {
+            if (refreshFlight === flight) refreshFlight = null;
+          });
+          refreshFlight = flight;
         }
 
         try {
-          await refreshPromise;
+          await refreshFlight.promise;
         } catch {
-          // refreshPromise itself doesn't reject (errors are handled inside);
-          // this catch is a safety net.
           return Promise.reject(error);
         }
 
-        // Check if sign-out happened during the refresh (tokens cleared).
-        if (!useAuthStore.getState().accessToken) {
-          // Sign-out already performed and toasted inside the refresh chain.
+        if (!sessionIsCurrent(session) || !useAuthStore.getState().accessToken) {
           return Promise.reject(error);
         }
 
@@ -233,7 +265,7 @@ export async function apiGet<T>(
 ) {
   // `config` lets a caller carry per-request options (e.g. `silentErrorToast`
   // for optional cards) without changing the default request behavior.
-  const res = await apiClient.get<T>(url, { params, ...config });
+  const res = await apiClient.get<T>(url, { _requestSession: currentRequestSession(), params, ...config });
   return res.data;
 }
 
@@ -245,16 +277,16 @@ export async function apiPost<T>(
 ) {
   // `config` lets a slow endpoint (e.g. LLM-backed today/refresh) override the
   // default 15s timeout per-request without raising it globally.
-  const res = await apiClient.post<T>(url, body, { params, ...config });
+  const res = await apiClient.post<T>(url, body, { _requestSession: currentRequestSession(), params, ...config });
   return res.data;
 }
 
 export async function apiPatch<T>(url: string, body?: unknown) {
-  const res = await apiClient.patch<T>(url, body);
+  const res = await apiClient.patch<T>(url, body, { _requestSession: currentRequestSession() });
   return res.data;
 }
 
 export async function apiDelete<T>(url: string, config?: AxiosRequestConfig) {
-  const res = await apiClient.delete<T>(url, config);
+  const res = await apiClient.delete<T>(url, { _requestSession: currentRequestSession(), ...config });
   return res.data;
 }
