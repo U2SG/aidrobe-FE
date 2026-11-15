@@ -40,7 +40,7 @@ import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { AskBody, AskHistoryEntry, AskScope, StylingState } from '@/types/api';
 import type { AskStackParamList } from '@/types/navigation';
 import { httpStatus } from '@/utils/http';
-import { askConversationStorageKey, conversationTurns, newestStyling, type AskTurn as Turn } from '@/utils/askConversation';
+import { askConversationStorageKey, conversationTurns, enrichConversationTurns, newestStyling, type AskTurn as Turn } from '@/utils/askConversation';
 import { accessTokenSubject, isAnalyticsUuid } from '@/utils/v3AnalyticsIdentity';
 import { newFlowId } from '@/utils/v3AnalyticsEvents';
 
@@ -523,7 +523,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   const storageKey = askConversationStorageKey(API_BASE_URL, ownerId, scope, focusedItemId, baseOutfitId);
   const adoptionRequest = useRef<{ key: string; id: string } | null>(null);
 
-  const restoreConversation = useCallback(async (id: string, epoch: number, replaceTurns: boolean) => {
+  const restoreConversation = useCallback(async (id: string, epoch: number, replaceTurns: boolean, selectedEntry?: AskHistoryEntry) => {
     const readEpoch = ++conversationReadEpoch.current;
     if (replaceTurns) {
       setRestoring(true);
@@ -539,7 +539,15 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
       if (epoch !== conversationEpoch.current || readEpoch !== conversationReadEpoch.current) return;
       setConversationId(result.conversationId);
       setStyling((previous) => newestStyling(previous, result.styling));
-      if (replaceTurns) setTurns(conversationTurns(result.messages, t('ask.history.answerFallback')));
+      if (replaceTurns) {
+        const cachedHistory = qc.getQueryData<AskHistoryEntry[]>([
+          'askHistory', ownerId, scope, focusedItemId ?? null,
+        ]) ?? [];
+        const history = selectedEntry ? [...cachedHistory, selectedEntry] : cachedHistory;
+        setTurns(enrichConversationTurns(
+          conversationTurns(result.messages, t('ask.history.answerFallback')), history,
+        ));
+      }
       if (storageKey) void AsyncStorage.setItem(storageKey, result.conversationId).catch(() => undefined);
     } catch {
       if (replaceTurns && epoch === conversationEpoch.current && readEpoch === conversationReadEpoch.current) {
@@ -550,7 +558,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         setRestoring(false);
       }
     }
-  }, [ownerId, qc, storageKey, t]);
+  }, [ownerId, qc, storageKey, t, scope, focusedItemId]);
 
   useEffect(() => {
     track('ask_viewed', { scope });
@@ -718,7 +726,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     setStyling(null);
     setTurns([]);
     setHistoryVisible(false);
-    void restoreConversation(entry.conversationId, epoch, true);
+    void restoreConversation(entry.conversationId, epoch, true, entry);
   };
 
   // FE#119 — packing handoff from a historical trip answer.
