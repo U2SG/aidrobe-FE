@@ -722,6 +722,7 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   'outfitDetail.replacementConflict': 'This outfit has changed. Reopen it before adjusting it.',
   'outfitDetail.replacementSaving': 'Saving this outfit…',
   'outfitDetail.recoveryFailed': 'Could not load the current outfit. Please retry.',
+  'outfitDetail.forDate': 'Outfit for {date}',
   'outfitDetail.wearFailed': 'Your wear record was not saved. Please retry.',
   'outfitDetail.replacementUnavailable': 'Replacement service is not available yet. Try again later.',
   'outfitDetail.replacementNone': 'No replacement items found yet',

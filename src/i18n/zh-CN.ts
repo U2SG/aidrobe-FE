@@ -716,6 +716,7 @@ export const zhCN = {
   'outfitDetail.replacementConflict': '这套搭配已有更新，请重新打开后再调整。',
   'outfitDetail.replacementSaving': '正在保存这套搭配…',
   'outfitDetail.recoveryFailed': '暂时无法读取当前方案，请重试。',
+  'outfitDetail.forDate': '这套用于 {date}',
   'outfitDetail.wearFailed': '穿着记录未保存，请重试。',
   'outfitDetail.replacementUnavailable': '替换服务暂不可用，请稍后重试',
   'outfitDetail.replacementNone': '暂时没有可替换的单品',

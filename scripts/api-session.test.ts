@@ -16,8 +16,9 @@ function fixture() {
   const resets: unknown[] = [];
   let beforeWrite: ((key: string, value: string) => Promise<void>) | undefined;
   const overrides: Record<string, unknown> = {
-    axios: { default: axios },
-    'expo-constants': { default: { expoConfig: { extra: { APP_ENV: 'production' } } } },
+    // These replacements already expose ES-module defaults; do not wrap them a second time.
+    axios: { __esModule: true, default: axios },
+    'expo-constants': { __esModule: true, default: { expoConfig: { extra: { APP_ENV: 'production' } } } },
     'expo-secure-store': {
       getItemAsync: async (key: string) => disk.get(key) ?? null,
       setItemAsync: async (key: string, value: string) => { await beforeWrite?.(key, value); disk.set(key, value); },
@@ -46,7 +47,7 @@ function fixture() {
     const module = { exports: {} };
     modules.set(file, module);
     const source = ts.transpileModule(readFileSync(file, 'utf8'), {
-      compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
+      compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true },
     }).outputText;
     runInNewContext(source, {
       module, exports: module.exports, require: (child: string) => load(child, dirname(file)),

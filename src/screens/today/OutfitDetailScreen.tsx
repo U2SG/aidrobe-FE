@@ -44,6 +44,7 @@ import { renderI18n } from '@/utils/i18n';
 import { shareWithAsset } from '@/utils/share';
 import { shareBoardImage } from '@/utils/shareBoard';
 import { httpStatus } from '@/utils/http';
+import { todayISO } from '@/utils/date';
 import { newFlowId } from '@/utils/v3AnalyticsEvents';
 
 type Props = NativeStackScreenProps<TodayStackParamList, 'OutfitDetail'>;
@@ -114,6 +115,8 @@ type ReplacementTarget = {
 
 export function OutfitDetailScreen({ navigation, route }: Props) {
   const { outfitId } = route.params;
+  const targetDate = route.params.recommendationDate;
+  const isFutureOutfit = Boolean(targetDate && targetDate > todayISO());
   const isLocal = outfitId === 'local-showcase';
   const track = useTrack();
   const qc = useQueryClient();
@@ -219,7 +222,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
   }, [fullItemById, itemBriefs]);
 
   const handleWear = async () => {
-    if (replacementInFlight.current || revisionConflict || recovering) return;
+    if (replacementInFlight.current || revisionConflict || recovering || isFutureOutfit) return;
     if (!isLocal) {
       try {
         await markOutfitWorn(outfitId);
@@ -790,7 +793,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
         {/* Full-width black CTA — 54h, matches DecisionOutfitCard */}
         <Pressable
           onPress={handleWear}
-          disabled={Boolean(replacementBusy) || revisionConflict || recovering}
+          disabled={Boolean(replacementBusy) || revisionConflict || recovering || isFutureOutfit}
           style={{
             height: 54,
             borderRadius: radius.md,
@@ -800,7 +803,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
           }}
         >
           <Text style={{ ...type.callout, fontWeight: '600', color: colors.inverse }}>
-            {t('outfitDetail.wearToday')}
+            {isFutureOutfit ? t('outfitDetail.forDate', { date: targetDate ?? '' }) : t('outfitDetail.wearToday')}
           </Text>
         </Pressable>
 
