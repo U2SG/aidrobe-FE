@@ -102,7 +102,7 @@ export type SettingsStackParamList = {
   // V2-shell entry point for the same decision (codex review, FE#141).
   ShouldIBuy: undefined;
   // `ShouldIBuy`'s `style_with_existing` hand-off target (codex review, FE#154).
-  AskAidrobe: { focusedItemId?: string; baseOutfitId?: string; targetDate?: string; scope?: 'today'; autoAsk?: string } | undefined;
+  AskAidrobe: { focusedItemId?: string; baseOutfitId?: string; targetDate?: string; scope?: 'today'; autoAsk?: string; resumeConversationId?: string } | undefined;
   SenseCheck: undefined;
   WardrobeReport: { period?: string } | undefined;
   // V3-021 — Profile's 形象参考 data controls (V3_SPEC §4.4 + §15). A settings
@@ -122,7 +122,7 @@ export type AskStackParamList = {
   // `autoAsk` is declared here because `AskAidrobeScreen`'s own props are typed
   // against this list — the screen cannot read a param the list omits. No Ask-tab
   // entrance passes it today (V3-010's only caller is Discover-hosted ShouldIBuy).
-  AskAidrobe: { focusedItemId?: string; baseOutfitId?: string; targetDate?: string; scope?: 'today'; autoAsk?: string } | undefined;
+  AskAidrobe: { focusedItemId?: string; baseOutfitId?: string; targetDate?: string; scope?: 'today'; autoAsk?: string; resumeConversationId?: string } | undefined;
   SenseCheck: undefined;
   // V3: the Ask tool entrance opens this instead of `SenseCheck` while
   // `enableV3PurchaseDecision` is on. Registered here too because the V2 shell
@@ -160,7 +160,7 @@ export type DiscoverStackParamList = {
   // V3-010: `autoAsk` sends that question once on arrival, so a hand-off that
   // promises an outfit delivers one instead of an empty composer. Only the
   // Discover stack declares it — ShouldIBuy, its only caller, lives here.
-  AskAidrobe: { focusedItemId?: string; baseOutfitId?: string; targetDate?: string; scope?: 'today'; autoAsk?: string } | undefined;
+  AskAidrobe: { focusedItemId?: string; baseOutfitId?: string; targetDate?: string; scope?: 'today'; autoAsk?: string; resumeConversationId?: string } | undefined;
   // V3-015 — on-demand full-body photo setup (§9.4), pushed from the decision
   // card so `goBack` returns to that same card with its decision intact. No new
   // tab and no avatar area: one more screen on the existing stack, reachable only

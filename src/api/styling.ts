@@ -1,6 +1,26 @@
 import { apiGet, apiPost } from './client';
 import { toOutfit } from './recommendations';
-import type { AskConversation, ServerStylingResponse, StylingState } from '@/types/api';
+import { toAskMetadata } from './askMetadata';
+import type {
+  AskConversation, DesignBrief, ServerAskItemRefSnapshot, ServerAskTripIntent,
+  ServerDesignBrief, ServerStylingConstraints, ServerStylingResponse, StylingConstraints, StylingState,
+} from '@/types/api';
+
+function toConstraints(data: ServerStylingConstraints): StylingConstraints {
+  return {
+    lockedItemIds: data.locked_item_ids ?? [],
+    excludedItemIds: data.excluded_item_ids ?? [],
+    goal: data.goal ?? null,
+    notes: data.notes ?? [],
+    targetStyle: data.target_style ?? null,
+    exploration: data.exploration ?? false,
+    targetDate: data.target_date ?? null,
+  };
+}
+
+export function toDesignBrief(data: ServerDesignBrief): DesignBrief {
+  return { revision: data.revision, constraints: toConstraints(data.constraints), needsOutfitUpdate: data.needs_outfit_update };
+}
 
 export function toStyling(data: ServerStylingResponse): StylingState {
   return {
@@ -8,15 +28,7 @@ export function toStyling(data: ServerStylingResponse): StylingState {
     revision: data.revision,
     status: data.status,
     outfit: toOutfit(data.outfit),
-    constraints: {
-      lockedItemIds: data.constraints.locked_item_ids ?? [],
-      excludedItemIds: data.constraints.excluded_item_ids ?? [],
-      goal: data.constraints.goal ?? null,
-      notes: data.constraints.notes ?? [],
-      targetStyle: data.constraints.target_style ?? null,
-      exploration: data.constraints.exploration ?? false,
-      targetDate: data.constraints.target_date ?? null,
-    },
+    constraints: toConstraints(data.constraints),
     recommendationId: data.recommendation_id ?? null,
     recommendationRevision: data.recommendation_revision ?? null,
     recommendationDate: data.recommendation_date ?? null,
@@ -28,6 +40,7 @@ export async function getAskConversation(conversationId: string): Promise<AskCon
     conversation_id: string;
     title: string | null;
     styling: ServerStylingResponse | null;
+    design_brief?: ServerDesignBrief | null;
     messages: Array<{
       id: string;
       ask_session_id?: string | null;
@@ -35,20 +48,32 @@ export async function getAskConversation(conversationId: string): Promise<AskCon
       content: string;
       created_at: string;
       styling?: ServerStylingResponse | null;
+      design_brief?: ServerDesignBrief | null;
+      item_refs?: string[];
+      item_ref_snapshots?: ServerAskItemRefSnapshot[];
+      trip_intent?: ServerAskTripIntent | null;
     }>;
   }>('/v1/ask/conversations/' + conversationId, undefined, { silentErrorToast: true });
   return {
     conversationId: data.conversation_id,
     title: data.title,
     styling: data.styling ? toStyling(data.styling) : null,
-    messages: data.messages.map((message) => ({
-      id: message.id,
-      askSessionId: message.ask_session_id,
-      role: message.role,
-      content: message.content,
-      createdAt: message.created_at,
-      styling: message.styling ? toStyling(message.styling) : null,
-    })),
+    designBrief: data.design_brief ? toDesignBrief(data.design_brief) : null,
+    messages: data.messages.map((message) => {
+      const metadata = toAskMetadata(message);
+      return {
+        id: message.id,
+        askSessionId: message.ask_session_id,
+        role: message.role,
+        content: message.content,
+        createdAt: message.created_at,
+        styling: message.styling === undefined ? undefined : message.styling ? toStyling(message.styling) : null,
+        designBrief: message.design_brief ? toDesignBrief(message.design_brief) : null,
+        itemRefs: message.item_refs,
+        itemRefSnapshots: message.item_ref_snapshots === undefined ? undefined : metadata.itemRefSnapshots,
+        tripIntent: message.trip_intent === undefined ? undefined : metadata.tripIntent,
+      };
+    }),
   };
 }
 

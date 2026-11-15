@@ -37,10 +37,13 @@ import { useAuthStore } from '@/store/auth';
 import { useDevUserStore } from '@/store/devUser';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
-import type { AskBody, AskHistoryEntry, AskScope, StylingState } from '@/types/api';
+import type { AskBody, AskHistoryEntry, AskScope, DesignBrief, StylingState } from '@/types/api';
 import type { AskStackParamList } from '@/types/navigation';
 import { httpStatus } from '@/utils/http';
-import { askConversationStorageKey, conversationTurns, enrichConversationTurns, newestStyling, type AskTurn as Turn } from '@/utils/askConversation';
+import {
+  askConversationStorageKey, conversationTurns, enrichConversationTurns, newestDesignBrief, newestStyling, stylingDesignBrief,
+  type AskTurn as Turn,
+} from '@/utils/askConversation';
 import { accessTokenSubject, isAnalyticsUuid } from '@/utils/v3AnalyticsIdentity';
 import { newFlowId } from '@/utils/v3AnalyticsEvents';
 
@@ -138,15 +141,18 @@ function formatHistoryDate(value: string, locale: string) {
   return `${date.getMonth() + 1}/${date.getDate()} ${hours}:${minutes}`;
 }
 
-function StylingCard({ styling, busy, onAdopt, onOpen }: {
-  styling: StylingState;
+function StylingCard({ styling, brief, busy, onAdopt, onOpen }: {
+  styling: StylingState | null;
+  brief: DesignBrief | null;
   busy: boolean;
   onAdopt: () => void;
   onOpen: () => void;
 }) {
   const { t } = useT();
-  const { constraints } = styling;
-  const names = useWardrobeItemNames([...constraints.lockedItemIds, ...constraints.excludedItemIds]);
+  const constraints = brief?.constraints ?? styling?.constraints;
+  const names = useWardrobeItemNames([...(constraints?.lockedItemIds ?? []), ...(constraints?.excludedItemIds ?? [])]);
+  if (!constraints) return null;
+  const needsUpdate = brief?.needsOutfitUpdate ?? false;
   const itemNames = (ids: string[]) => ids.map((id) => names.get(id) ?? t('ask.design.selectedItem')).join(' · ');
   const notes = [
     constraints.goal,
@@ -157,20 +163,23 @@ function StylingCard({ styling, busy, onAdopt, onOpen }: {
   ].filter((note): note is string => Boolean(note));
   return (
     <View style={{ padding: 16, gap: 10, borderRadius: radius.lg, backgroundColor: T.card, marginBottom: 16 }}>
-      <Text style={{ ...type.headline, color: T.ink }}>{t('ask.design.current')}</Text>
-      <Text style={{ ...type.body, color: T.ink2 }}>{styling.outfit.title}</Text>
-      <ItemRefsRow ids={styling.outfit.items.map((item) => item.id)} snapshots={[]} />
+      <Text style={{ ...type.headline, color: T.ink }}>{t(needsUpdate ? 'ask.design.conditionsSaved' : 'ask.design.current')}</Text>
+      {styling ? <>
+        {needsUpdate ? <Text style={{ ...type.caption, color: T.ink3 }}>{t('ask.design.previous')}</Text> : null}
+        <Text style={{ ...type.body, color: T.ink2 }}>{styling.outfit.title}</Text>
+        <ItemRefsRow ids={styling.outfit.items.map((item) => item.id)} snapshots={[]} />
+      </> : null}
       {notes.length ? <Text style={{ ...type.caption, color: T.ink2, lineHeight: 20 }}>{notes.join('\n')}</Text> : null}
       {constraints.exploration ? <Text style={{ ...type.caption, color: T.ink3 }}>{t('ask.design.exploration')}</Text> : null}
       <Text style={{ ...type.caption, color: T.ink3 }}>
-        {t(styling.status === 'adopted' ? 'ask.design.adopted' : 'ask.design.saved')}
+        {t(needsUpdate ? 'ask.design.needsUpdate' : styling?.status === 'adopted' ? 'ask.design.adopted' : 'ask.design.saved')}
       </Text>
-      <View style={{ flexDirection: 'row', gap: 8 }}>
+      {styling ? <View style={{ flexDirection: 'row', gap: 8 }}>
         {styling.status !== 'adopted' ? (
-          <Button label={t('ask.design.adopt')} onPress={onAdopt} loading={busy} disabled={busy} style={{ flex: 1 }} />
+          <Button label={t('ask.design.adopt')} onPress={onAdopt} loading={busy} disabled={busy || needsUpdate} style={{ flex: 1 }} />
         ) : null}
-        <Button label={t('ask.design.open')} onPress={onOpen} disabled={busy} variant="secondary" style={{ flex: 1 }} />
-      </View>
+        <Button label={t('ask.design.open')} onPress={onOpen} disabled={busy || needsUpdate} variant="secondary" style={{ flex: 1 }} />
+      </View> : null}
     </View>
   );
 }
@@ -508,6 +517,8 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   const hasFailedTurn = turns.some((turn) => turn.failed);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [styling, setStyling] = useState<StylingState | null>(null);
+  const [designBrief, setDesignBrief] = useState<DesignBrief | null>(null);
+  const expectedRevision = designBrief?.revision ?? styling?.revision;
   const [restoring, setRestoring] = useState(false);
   const [resumeError, setResumeError] = useState(false);
   const [resumeTarget, setResumeTarget] = useState<string | null>(null);
@@ -539,6 +550,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
       if (epoch !== conversationEpoch.current || readEpoch !== conversationReadEpoch.current) return;
       setConversationId(result.conversationId);
       setStyling((previous) => newestStyling(previous, result.styling));
+      setDesignBrief((previous) => newestDesignBrief(previous, result.designBrief ?? (result.styling ? stylingDesignBrief(result.styling) : null)));
       if (replaceTurns) {
         const cachedHistory = qc.getQueryData<AskHistoryEntry[]>([
           'askHistory', ownerId, scope, focusedItemId ?? null,
@@ -587,6 +599,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     setTurns([]);
     setConversationId(null);
     setStyling(null);
+    setDesignBrief(null);
     setInput('');
     setResumeError(false);
     setResumeTarget(null);
@@ -605,6 +618,23 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     }).catch(() => { if (epoch === conversationEpoch.current) setRestoring(false); });
     return cleanup;
   }, [storageKey, route.params?.autoAsk, restoreConversation]);
+
+  // A stale outfit can return to its exact conversation, even if another
+  // thread is open in this persistent tab. Consume the navigation intent once.
+  useEffect(() => {
+    const id = route.params?.resumeConversationId;
+    if (!isAnalyticsUuid(id)) return;
+    navigation.setParams({ resumeConversationId: undefined });
+    const epoch = ++conversationEpoch.current;
+    setConversationId(null);
+    setStyling(null);
+    setDesignBrief(null);
+    setTurns([]);
+    setInput('');
+    setHistoryVisible(false);
+    adoptionRequest.current = null;
+    void restoreConversation(id, epoch, true);
+  }, [navigation, route.params?.resumeConversationId, restoreConversation]);
 
   const askMutation = useMutation({
     mutationFn: (vars: {
@@ -643,6 +673,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
       // multi-turn session on the backend.
       setConversationId(result.conversationId);
       if (result.styling) setStyling((previous) => newestStyling(previous, result.styling ?? null));
+      setDesignBrief((previous) => newestDesignBrief(previous, result.designBrief ?? (result.styling ? stylingDesignBrief(result.styling) : null)));
       if (storageKey && result.conversationId) {
         void AsyncStorage.setItem(storageKey, result.conversationId).catch(() => undefined);
       }
@@ -687,13 +718,14 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   });
 
   const adoptMutation = useMutation({
-    mutationFn: (vars: { state: StylingState; requestId: string; epoch: number }) =>
-      adoptStyling(vars.state.conversationId, vars.state.revision, vars.requestId, vars.state.constraints.targetDate),
+    mutationFn: (vars: { state: StylingState; revision: number; requestId: string; epoch: number }) =>
+      adoptStyling(vars.state.conversationId, vars.revision, vars.requestId, vars.state.constraints.targetDate),
     onMutate: () => { conversationReadEpoch.current += 1; },
     onSuccess: (result, vars) => {
       void qc.invalidateQueries({ queryKey: ['todayRecommendation'] });
       if (vars.epoch !== conversationEpoch.current) return;
       setStyling((previous) => newestStyling(previous, result));
+      setDesignBrief((previous) => newestDesignBrief(previous, stylingDesignBrief(result)));
       qc.setQueryData(['outfitDetail', result.outfit.id], result.outfit);
       adoptionRequest.current = null;
       showToast({ message: t('ask.design.adopted'), kind: 'success' });
@@ -706,17 +738,18 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   });
 
   const adoptCurrent = () => {
-    if (!styling || adoptMutation.isPending || askMutation.isPending) return;
-    const key = styling.conversationId + ':' + styling.revision;
+    if (!styling || designBrief?.needsOutfitUpdate || adoptMutation.isPending || askMutation.isPending) return;
+    const revision = expectedRevision ?? styling.revision;
+    const key = styling.conversationId + ':' + revision;
     if (adoptionRequest.current?.key !== key) adoptionRequest.current = { key, id: newFlowId() };
-    adoptMutation.mutate({ state: styling, requestId: adoptionRequest.current.id, epoch: conversationEpoch.current });
+    adoptMutation.mutate({ state: styling, revision, requestId: adoptionRequest.current.id, epoch: conversationEpoch.current });
   };
 
   useFocusEffect(useCallback(() => {
-    if (conversationId && !askMutation.isPending && !adoptMutation.isPending && !restoring && !resumeError) {
+    if (!route.params?.resumeConversationId && conversationId && !askMutation.isPending && !adoptMutation.isPending && !restoring && !resumeError) {
       void restoreConversation(conversationId, conversationEpoch.current, false);
     }
-  }, [conversationId, askMutation.isPending, adoptMutation.isPending, restoring, resumeError, restoreConversation]));
+  }, [route.params?.resumeConversationId, conversationId, askMutation.isPending, adoptMutation.isPending, restoring, resumeError, restoreConversation]));
 
   // Resume the complete conversation. Discard late answers from the prior thread.
   const continueFromHistory = (entry: AskHistoryEntry) => {
@@ -724,6 +757,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     const epoch = ++conversationEpoch.current;
     setConversationId(null);
     setStyling(null);
+    setDesignBrief(null);
     setTurns([]);
     setHistoryVisible(false);
     void restoreConversation(entry.conversationId, epoch, true, entry);
@@ -768,13 +802,13 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         body: {
           question: q, focusedItemId, locale, conversationId, designMode: true,
           requestId: newFlowId(),
-          expectedRevision: styling?.revision,
+          expectedRevision,
           baseOutfitId: conversationId ? undefined : baseOutfitId,
           context: !conversationId && route.params?.targetDate ? { date: route.params.targetDate } : undefined,
         },
       });
     },
-    [askMutation, adoptMutation.isPending, conversationId, styling?.revision, restoring, resumeError, hasFailedTurn, focusedItemId, locale, baseOutfitId, route.params?.targetDate],
+    [askMutation, adoptMutation.isPending, conversationId, expectedRevision, restoring, resumeError, hasFailedTurn, focusedItemId, locale, baseOutfitId, route.params?.targetDate],
   );
 
   // V3-010 — a hand-off that promises an outfit has to deliver one, so the
@@ -791,13 +825,13 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   const autoAsk = route.params?.autoAsk;
   const autoAskedRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!autoAsk) return;
+    if (!autoAsk || route.params?.resumeConversationId) return;
     const key = `${ownerId ?? ''}::${focusedItemId ?? ''}::${baseOutfitId ?? ''}::${autoAsk}`;
     if (autoAskedRef.current === key) return;
     if (askMutation.isPending || adoptMutation.isPending || restoring || resumeError || turns.length > 0) return;
     autoAskedRef.current = key;
     submitQuestion(autoAsk);
-  }, [autoAsk, ownerId, focusedItemId, baseOutfitId, askMutation.isPending, adoptMutation.isPending, restoring, resumeError, turns.length, submitQuestion]);
+  }, [autoAsk, route.params?.resumeConversationId, ownerId, focusedItemId, baseOutfitId, askMutation.isPending, adoptMutation.isPending, restoring, resumeError, turns.length, submitQuestion]);
 
   const send = () => {
     submitQuestion(input);
@@ -883,7 +917,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     },
   ];
 
-  const isEmpty = turns.length === 0;
+  const isEmpty = turns.length === 0 && !styling && !designBrief;
   // Header sits in normal flow (repo standard — see SenseCheckScreen / ItemDetailScreen;
   // ScreenHeader owns its notch inset). Only the absolutely-positioned composer needs
   // measuring, because its height varies (focused-item chip + multiline input).
@@ -902,7 +936,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         onBack={() => navigation.goBack()}
         right={
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            {turns.length > 0 || styling || resumeError || restoring ? (
+            {turns.length > 0 || styling || designBrief || resumeError || restoring ? (
               // Start a fresh conversation without restarting the app: drops
               // the rendered turns and the backend conversation thread.
               <HeaderIconButton
@@ -915,6 +949,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
                   setTurns([]);
                   setConversationId(null);
                   setStyling(null);
+                  setDesignBrief(null);
                   setRestoring(false);
                   setResumeError(false);
                   setResumeTarget(null);
@@ -1081,12 +1116,14 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
             />
           ))
         )}
-        {styling && !restoring && !resumeError ? (
+        {(styling || designBrief) && !restoring && !resumeError ? (
           <StylingCard
             styling={styling}
+            brief={designBrief}
             busy={askMutation.isPending || adoptMutation.isPending}
             onAdopt={adoptCurrent}
             onOpen={() => {
+              if (!styling || designBrief?.needsOutfitUpdate) return;
               qc.setQueryData(['outfitDetail', styling.outfit.id], styling.outfit);
               navigation.getParent()?.navigate('TodayTab', {
                 screen: 'OutfitDetail', params: {

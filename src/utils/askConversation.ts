@@ -1,4 +1,6 @@
-import type { AskBody, AskConversationMessage, AskHistoryEntry, AskItemRefSnapshot, AskTripIntent, StylingState } from '../types/api';
+import type {
+  AskBody, AskConversationMessage, AskHistoryEntry, AskItemRefSnapshot, AskTripIntent, DesignBrief, StylingState,
+} from '../types/api';
 
 export interface AskTurn {
   id: string;
@@ -15,6 +17,7 @@ export interface AskTurn {
   feedbackSessionId?: string;
   styling?: StylingState | null;
   requestBody?: AskBody;
+  omittedMetadata?: { itemRefs: boolean; itemRefSnapshots: boolean; tripIntent: boolean; styling: boolean };
 }
 
 // Message IDs are not AskSession IDs: restored messages must not use them for feedback.
@@ -32,26 +35,36 @@ export function conversationTurns(messages: AskConversationMessage[], fallback: 
       previous.answer = message.content;
       previous.styling = message.styling;
       previous.feedbackSessionId = message.askSessionId ?? undefined;
-      previous.itemRefs = message.styling?.outfit.items.map((item) => item.id) ?? [];
+      previous.itemRefs = message.itemRefs ?? message.styling?.outfit.items.map((item) => item.id) ?? [];
+      previous.itemRefSnapshots = message.itemRefSnapshots ?? [];
+      previous.tripIntent = message.tripIntent ?? null;
+      previous.omittedMetadata = {
+        itemRefs: message.itemRefs === undefined && !message.styling,
+        itemRefSnapshots: message.itemRefSnapshots === undefined,
+        tripIntent: message.tripIntent === undefined,
+        styling: message.styling === undefined && message.itemRefs === undefined,
+      };
     }
   }
   return turns;
 }
 
-// Conversation messages are intentionally compact. History contains extra
-// wardrobe snapshots and trip/packing metadata, keyed by AskSession ID.
-// Preserve those affordances when continuing a historical conversation.
+// Older servers omit this metadata. Fill only omitted fields; an explicit
+// empty list or null from the live conversation must beat cached history.
 export function enrichConversationTurns(turns: AskTurn[], history: AskHistoryEntry[]): AskTurn[] {
   const bySessionId = new Map(history.map((entry) => [entry.askSessionId, entry]));
   return turns.map((turn) => {
     const entry = turn.feedbackSessionId ? bySessionId.get(turn.feedbackSessionId) : undefined;
-    if (!entry) return turn;
+    if (!entry || !turn.omittedMetadata) return turn;
+    const missing = turn.omittedMetadata;
+    const itemRefs = missing.itemRefs ? entry.itemRefs : turn.itemRefs;
     return {
       ...turn,
-      itemRefs: turn.itemRefs.length ? turn.itemRefs : entry.itemRefs,
-      itemRefSnapshots: turn.itemRefSnapshots.length ? turn.itemRefSnapshots : entry.itemRefSnapshots,
-      tripIntent: turn.tripIntent ?? entry.tripIntent,
-      styling: turn.styling ?? entry.styling,
+      itemRefs,
+      itemRefSnapshots: missing.itemRefSnapshots
+        ? entry.itemRefSnapshots.filter((snapshot) => itemRefs.includes(snapshot.itemId)) : turn.itemRefSnapshots,
+      tripIntent: missing.tripIntent ? entry.tripIntent : turn.tripIntent,
+      styling: missing.styling ? entry.styling : turn.styling,
     };
   });
 }
@@ -61,6 +74,15 @@ export function newestStyling(current: StylingState | null, incoming: StylingSta
   if (!incoming) return current;
   return current?.conversationId === incoming.conversationId && current.revision > incoming.revision
     ? current : incoming;
+}
+
+export function newestDesignBrief(current: DesignBrief | null, incoming: DesignBrief | null): DesignBrief | null {
+  if (!incoming) return current;
+  return current && current.revision > incoming.revision ? current : incoming;
+}
+
+export function stylingDesignBrief(styling: StylingState): DesignBrief {
+  return { revision: styling.revision, constraints: styling.constraints, needsOutfitUpdate: false };
 }
 
 export function askConversationStorageKey(

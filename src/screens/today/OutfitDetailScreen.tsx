@@ -28,6 +28,7 @@ import { SystemIcon } from '@/components/ui/SystemIcon';
 import { Tag } from '@/components/ui/Tag';
 import { useT } from '@/hooks/useT';
 import { useTrack } from '@/hooks/useTrack';
+import { enableMvpV2Ui } from '@/lib/featureFlags';
 import { useToastStore } from '@/store/toast';
 import { buildRecommendationReasons } from '@/screens/today-v2/todayReasons';
 import { colors, radius, shadow, type } from '@/theme/design';
@@ -125,6 +126,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
   const showToast = useToastStore((state) => state.show);
   const [replacementBusy, setReplacementBusy] = useState<string | null>(null);
   const [revisionConflict, setRevisionConflict] = useState(false);
+  const [designNeedsUpdate, setDesignNeedsUpdate] = useState(false);
   const [recovering, setRecovering] = useState(false);
   const replacementInFlight = useRef(false);
   const replacementRequest = useRef<{ key: string; id: string } | null>(null);
@@ -139,6 +141,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
     activeOutfitId.current = outfitId;
     setIgnoredObstacleItemIds(new Set());
     setRevisionConflict(false);
+    setDesignNeedsUpdate(false);
     return () => { activeOutfitId.current = null; };
   }, [outfitId]);
 
@@ -291,8 +294,15 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
     if (recovering) return;
     setRecovering(true);
     try {
-      const design = route.params.stylingStatus === 'draft' && route.params.conversationId
-        ? (await getAskConversation(route.params.conversationId)).styling : null;
+      const conversation = route.params.stylingStatus === 'draft' && route.params.conversationId
+        ? await getAskConversation(route.params.conversationId) : null;
+      if (activeOutfitId.current !== outfitId) return;
+      if (conversation?.designBrief?.needsOutfitUpdate) {
+        setDesignNeedsUpdate(true);
+        setRevisionConflict(true);
+        return;
+      }
+      const design = conversation?.styling;
       const current = design?.outfit
         ?? (route.params.stylingStatus === 'draft' ? undefined
           : (await getTodayRecommendation('commute', route.params.recommendationDate)).outfits[0]);
@@ -308,6 +318,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
       });
       replacementRequest.current = null;
       setRevisionConflict(false);
+      setDesignNeedsUpdate(false);
       void qc.invalidateQueries({ queryKey: ['todayRecommendation'] });
     } catch {
       if (activeOutfitId.current === outfitId) {
@@ -506,8 +517,22 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
         {/* ── Obstacle banner ─────────────────────────────────────────────── */}
         {revisionConflict ? (
           <View style={{ margin: 16, padding: 14, gap: 12, borderRadius: radius.md, backgroundColor: T.card }}>
-            <Text style={{ ...type.body, color: T.ink2 }}>{t('ask.design.conflict')}</Text>
-            <Button label={t('ask.design.reviewCurrent')} loading={recovering} onPress={() => { void recoverCurrentOutfit(); }} />
+            <Text style={{ ...type.body, color: T.ink2 }}>{t(designNeedsUpdate ? 'ask.design.needsUpdate' : 'ask.design.conflict')}</Text>
+            <Button
+              label={t(designNeedsUpdate ? 'ask.history.continue' : 'ask.design.reviewCurrent')}
+              loading={recovering}
+              onPress={() => {
+                if (designNeedsUpdate && route.params.conversationId) {
+                  navigation.getParent()?.navigate(enableMvpV2Ui ? 'AskTab' : 'DiscoverTab', {
+                    screen: 'AskAidrobe', params: {
+                      resumeConversationId: route.params.conversationId,
+                      focusedItemId: undefined, baseOutfitId: undefined, targetDate: undefined,
+                      scope: undefined, autoAsk: undefined,
+                    },
+                  } as never);
+                } else { void recoverCurrentOutfit(); }
+              }}
+            />
           </View>
         ) : null}
         {primaryObstacle && (

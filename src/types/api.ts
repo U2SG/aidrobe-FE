@@ -964,6 +964,18 @@ export interface ServerStylingConstraints {
   target_date?: string | null;
 }
 
+export interface DesignBrief {
+  revision: number;
+  constraints: StylingConstraints;
+  needsOutfitUpdate: boolean;
+}
+
+export interface ServerDesignBrief {
+  revision: number;
+  constraints: ServerStylingConstraints;
+  needs_outfit_update: boolean;
+}
+
 export interface StylingState {
   conversationId: string;
   revision: number;
@@ -992,13 +1004,18 @@ export interface AskConversationMessage {
   role: string;
   content: string;
   createdAt: string;
-  styling: StylingState | null;
+  styling?: StylingState | null;
+  designBrief?: DesignBrief | null;
+  itemRefs?: string[];
+  itemRefSnapshots?: AskItemRefSnapshot[];
+  tripIntent?: AskTripIntent | null;
 }
 
 export interface AskConversation {
   conversationId: string;
   title: string | null;
   styling: StylingState | null;
+  designBrief?: DesignBrief | null;
   messages: AskConversationMessage[];
 }
 
@@ -1061,6 +1078,7 @@ export interface AskResult {
   // (BE#115) — drives the packing-list handoff card.
   tripIntent: AskTripIntent | null;
   styling?: StylingState | null;
+  designBrief?: DesignBrief | null;
 }
 
 export interface ServerAskDeltas {
@@ -1086,6 +1104,7 @@ export interface ServerAskResponse {
   source_surface?: string;
   trip_intent?: ServerAskTripIntent | null;
   styling?: ServerStylingResponse | null;
+  design_brief?: ServerDesignBrief | null;
 }
 
 export interface AskHistoryEntry {
@@ -1102,6 +1121,7 @@ export interface AskHistoryEntry {
   itemRefSnapshots: AskItemRefSnapshot[];
   createdAt: string;
   styling?: StylingState | null;
+  designBrief?: DesignBrief | null;
 }
 
 export interface ServerAskHistoryItem {
@@ -1114,6 +1134,7 @@ export interface ServerAskHistoryItem {
   item_ref_snapshots?: ServerAskItemRefSnapshot[];
   created_at: string;
   styling?: ServerStylingResponse | null;
+  design_brief?: ServerDesignBrief | null;
 }
 
 // --- Packing list (M16) ----------------------------------------------------
