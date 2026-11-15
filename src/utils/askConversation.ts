@@ -1,4 +1,4 @@
-import type { AskBody, AskConversationMessage, AskItemRefSnapshot, AskTripIntent, StylingState } from '../types/api';
+import type { AskBody, AskConversationMessage, AskHistoryEntry, AskItemRefSnapshot, AskTripIntent, StylingState } from '../types/api';
 
 export interface AskTurn {
   id: string;
@@ -36,6 +36,24 @@ export function conversationTurns(messages: AskConversationMessage[], fallback: 
     }
   }
   return turns;
+}
+
+// Conversation messages are intentionally compact. History contains extra
+// wardrobe snapshots and trip/packing metadata, keyed by AskSession ID.
+// Preserve those affordances when continuing a historical conversation.
+export function enrichConversationTurns(turns: AskTurn[], history: AskHistoryEntry[]): AskTurn[] {
+  const bySessionId = new Map(history.map((entry) => [entry.askSessionId, entry]));
+  return turns.map((turn) => {
+    const entry = turn.feedbackSessionId ? bySessionId.get(turn.feedbackSessionId) : undefined;
+    if (!entry) return turn;
+    return {
+      ...turn,
+      itemRefs: turn.itemRefs.length ? turn.itemRefs : entry.itemRefs,
+      itemRefSnapshots: turn.itemRefSnapshots.length ? turn.itemRefSnapshots : entry.itemRefSnapshots,
+      tripIntent: turn.tripIntent ?? entry.tripIntent,
+      styling: turn.styling ?? entry.styling,
+    };
+  });
 }
 
 // An idempotent retry can return an earlier successful version after a later edit.
