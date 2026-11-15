@@ -1,5 +1,5 @@
 import type {
-  AskBody, AskConversationMessage, AskHistoryEntry, AskItemRefSnapshot, AskTripIntent, DesignBrief, StylingState,
+  AskBody, AskConversationMessage, AskHistoryEntry, AskItemRefSnapshot, AskTripIntent, DesignBrief, LinkedDesignResult, StylingState,
 } from '../types/api';
 
 export interface AskTurn {
@@ -17,6 +17,7 @@ export interface AskTurn {
   feedbackSessionId?: string;
   styling?: StylingState | null;
   requestBody?: AskBody;
+  linkedResult?: LinkedDesignResult | null;
   omittedMetadata?: { itemRefs: boolean; itemRefSnapshots: boolean; tripIntent: boolean; styling: boolean };
 }
 
@@ -28,6 +29,12 @@ export function conversationTurns(messages: AskConversationMessage[], fallback: 
       turns.push({
         id: message.id, question: message.content, answer: fallback,
         itemRefs: [], itemRefSnapshots: [], pending: false,
+      });
+    } else if (message.linkedResult) {
+      turns.push({
+        id: message.id, question: '', answer: message.content,
+        itemRefs: [], itemRefSnapshots: [], pending: false,
+        linkedResult: message.linkedResult,
       });
     } else if (message.role === 'assistant') {
       const previous = turns[turns.length - 1];
@@ -47,6 +54,15 @@ export function conversationTurns(messages: AskConversationMessage[], fallback: 
     }
   }
   return turns;
+}
+
+// Linked tools are authoritative server results. A deleted result or a
+// disabled capability disappears on focus without discarding local drafts.
+export function reconcileLinkedTurns(current: AskTurn[], restored: AskTurn[]): AskTurn[] {
+  const incoming = new Map(restored.filter((turn) => turn.linkedResult).map((turn) => [turn.id, turn]));
+  const shown = new Set(current.map((turn) => turn.id));
+  return current.flatMap((turn) => turn.linkedResult ? (incoming.has(turn.id) ? [incoming.get(turn.id)!] : []) : [turn])
+    .concat([...incoming.values()].filter((turn) => !shown.has(turn.id)));
 }
 
 // Older servers omit this metadata. Fill only omitted fields; an explicit

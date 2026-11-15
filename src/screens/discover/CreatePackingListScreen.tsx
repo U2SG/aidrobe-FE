@@ -1,7 +1,7 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createElement, useState } from 'react';
+import { createElement, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { createPackingList } from '@/api/packingList';
@@ -12,6 +12,9 @@ import { useTrack } from '@/hooks/useTrack';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { DiscoverStackParamList } from '@/types/navigation';
+import { httpStatus } from '@/utils/http';
+import { newFlowId } from '@/utils/v3AnalyticsEvents';
+import { designContextMatches } from '@/utils/designContinuity';
 
 type Props = NativeStackScreenProps<DiscoverStackParamList, 'CreatePackingList'>;
 
@@ -57,6 +60,9 @@ export function CreatePackingListScreen({ navigation, route }: Props) {
   const track = useTrack();
   const showToast = useToastStore((s) => s.show);
   const t = useT();
+  const designContext = route.params?.designContext;
+  const request = useRef<{ key: string; id: string } | null>(null);
+  const [contextConflict, setContextConflict] = useState(false);
 
   const [destination, setDestination] = useState('');
   // Prefilled by the Ask trip-intent handoff (BE#115) when the trip length was
@@ -73,23 +79,31 @@ export function CreatePackingListScreen({ navigation, route }: Props) {
     setScenes((cur) => (cur.includes(v) ? cur.filter((s) => s !== v) : [...cur, v]));
 
   const createMutation = useMutation({
-    mutationFn: () =>
-      createPackingList({
+    mutationFn: () => {
+      const body = {
         destination: destination.trim() || undefined,
         days,
         scenes,
         weatherHint: weatherHint.trim() || undefined,
         departureDate: departureDate ? toISODate(departureDate) : undefined,
-      }),
+        designContext,
+      };
+      const key = JSON.stringify(body);
+      if (!request.current || request.current.key !== key) request.current = { key, id: newFlowId() };
+      setContextConflict(false);
+      return createPackingList({ ...body, requestId: designContext ? request.current.id : undefined });
+    },
     onSuccess: (created) => {
       qc.invalidateQueries({ queryKey: ['packingLists'] });
       track('packing_list_created', { days, scenes: scenes.length });
-      showToast({ message: '清单已生成', kind: 'success' });
+      const linked = !designContext || designContextMatches(designContext, created.designContext);
+      showToast({ message: linked ? '清单已生成' : t.t('ask.design.contextMissing'), kind: linked ? 'success' : 'error' });
       // Land on the list itself — goBack() bounced Ask-handoff users straight
       // back to Ask with no idea where the list went (#116). replace keeps the
       // back gesture returning to the originating screen.
-      navigation.replace('PackingListDetail', { id: created.id });
+      navigation.replace('PackingListDetail', { id: created.id, expectedDesignContext: designContext });
     },
+    onError: (error) => { if (designContext && httpStatus(error) === 409) setContextConflict(true); },
   });
 
   return (
@@ -128,6 +142,15 @@ export function CreatePackingListScreen({ navigation, route }: Props) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {designContext ? <View style={{ gap: 8 }}>
+          <Text style={{ ...type.footnote, color: T.ink2 }}>
+            {t.t(contextConflict ? 'ask.design.contextConflict' : 'ask.design.contextCarried')}
+          </Text>
+          {contextConflict ? <PrimaryButton label={t.t('ask.design.return')} onPress={() => navigation.navigate('AskAidrobe', {
+            resumeConversationId: designContext.conversationId,
+            focusedItemId: undefined, baseOutfitId: undefined, autoAsk: undefined, scope: undefined, targetDate: undefined,
+          })} /> : null}
+        </View> : null}
         <Field label="目的地（可选）">
           <TextInput
             value={destination}

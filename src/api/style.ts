@@ -22,6 +22,7 @@ function toInspiration(p: ServerInspirationResponse): Inspiration {
     sourceType: p.source_type,
     learnStatus: p.learn_status ?? 'learned',
     createdAt: p.created_at,
+    designReferenceAvailable: p.design_reference_available === true,
   };
 }
 

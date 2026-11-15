@@ -43,6 +43,11 @@ function toPackingList(data: ServerPackingListResponse): PackingList {
     })),
     status: data.status,
     plan: toPlan(data.plan),
+    designContext: data.design_context ? {
+      conversationId: data.design_context.conversation_id,
+      revision: data.design_context.revision,
+      outfitId: data.design_context.outfit_id ?? null,
+    } : null,
   };
 }
 
@@ -54,6 +59,11 @@ export async function createPackingList(body: CreatePackingListBody): Promise<Pa
       scenes: body.scenes,
       weather_hint: body.weatherHint ?? null,
       departure_date: body.departureDate ?? null,
+      design_context: body.designContext ? {
+        conversation_id: body.designContext.conversationId,
+        expected_revision: body.designContext.expectedRevision,
+      } : undefined,
+      request_id: body.requestId,
     }),
   );
 }

@@ -18,6 +18,7 @@ import { getWardrobeItem } from '@/api/wardrobe';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { LoadingBlock } from '@/components/feedback/LoadingBlock';
 import { RecommendationFeedback } from '@/components/feedback/RecommendationFeedback';
+import { StylingExperienceFeedback } from '@/components/feedback/StylingExperienceFeedback';
 import { type GarmentPiece } from '@/components/outfit/garments';
 import { RecommendationReasonList } from '@/components/product/RecommendationReasonList';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -236,6 +237,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
     }
     if (activeOutfitId.current !== outfitId) return;
     void qc.invalidateQueries({ queryKey: ['todayRecommendation'] });
+    void qc.invalidateQueries({ queryKey: ['stylingExperiences'] });
     track('outfit_worn', { outfitId });
     navigation.navigate('FeedbackSheet', { outfitId });
   };
@@ -784,6 +786,10 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
           </View>
           <SystemIcon name="chevronRight" size={18} color={T.ink3} />
         </Pressable>
+
+        {!isLocal && !designNeedsUpdate ? <View style={{ marginTop: 20, marginHorizontal: 24 }}>
+          <StylingExperienceFeedback key={outfitId} outfitId={outfitId} disabled={recovering || revisionConflict} />
+        </View> : null}
 
         {/* ── RecommendationFeedback (shown when user taps 不喜欢) ────────── */}
         {!isLocal && showFeedback ? (

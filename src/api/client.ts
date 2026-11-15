@@ -30,7 +30,7 @@ const extra = Constants.expoConfig?.extra ?? {};
 export const API_BASE_URL: string = extra.API_BASE_URL ?? 'http://localhost:8000';
 export const APP_ENV: 'development' | 'staging' | 'production' = extra.APP_ENV ?? 'development';
 
-function currentRequestSession(): RequestSession {
+export function currentRequestSession(): RequestSession {
   const auth = useAuthStore.getState();
   return {
     authVersion: auth.sessionVersion,

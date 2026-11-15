@@ -10,11 +10,13 @@ import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Badge } from '@/components/ui/Badge';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { Tag } from '@/components/ui/Tag';
+import { Button } from '@/components/ui/Button';
 import { useT, type UseT } from '@/hooks/useT';
 import { useWardrobeItemNames } from '@/hooks/useWardrobeItemNames';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
 import type { PackingEntry, PackingPlan, PackingPlanPackingItem } from '@/types/api';
 import type { DiscoverStackParamList } from '@/types/navigation';
+import { designContextMatches } from '@/utils/designContinuity';
 
 import { planItemIds, reuseCountByItem, sortDailyOutfits } from './packingPlan';
 
@@ -39,6 +41,9 @@ export function PackingListDetailScreen({ navigation, route }: Props) {
 
   const query = useQuery({ queryKey: ['packingList', id], queryFn: () => getPackingList(id), retry: 1 });
   const list = query.data;
+  const expectedContext = route.params.expectedDesignContext;
+  const contextMismatch = Boolean(expectedContext && list && !designContextMatches(expectedContext, list.designContext));
+  const returnConversation = expectedContext?.conversationId ?? list?.designContext?.conversationId;
 
   const nameById = useWardrobeItemNames([
     ...(list?.items ?? []).map((it) => it.itemId),
@@ -101,6 +106,14 @@ export function PackingListDetailScreen({ navigation, route }: Props) {
           </Text>
 
           {list.plan ? <PackingPlanView plan={list.plan} nameById={nameById} t={t} /> : null}
+          {contextMismatch ? <Text style={{ ...type.footnote, color: T.ink2, marginBottom: 12 }}>{t.t('ask.design.contextMissing')}</Text> : null}
+          {returnConversation ? <Button
+            label={t.t('ask.design.return')} variant="secondary" style={{ marginBottom: 16 }}
+            onPress={() => navigation.navigate('AskAidrobe', {
+              resumeConversationId: returnConversation,
+              focusedItemId: undefined, baseOutfitId: undefined, autoAsk: undefined, scope: undefined, targetDate: undefined,
+            })}
+          /> : null}
 
           {byDay.map(([day, entries]) => (
             <View key={day} style={{ marginBottom: 18 }}>

@@ -50,11 +50,13 @@ import {
   createPurchaseCandidate,
   decidePurchaseCandidate,
   getPurchaseCandidate,
+  getWardrobeDecision,
 } from '@/api/purchaseDecisions';
 import { adoptV3Flow, beginV3Flow, currentV3FlowId, endV3Flow } from '@/api/v3Flow';
 import { enableV3Avatar, enableV3StaticTryon } from '@/lib/featureFlags';
 import { previewSetupEntryVisible } from '@/screens/avatar/avatarPhotoSetup';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
+import { Button } from '@/components/ui/Button';
 import { ImageThumb } from '@/components/ui/ImageThumb';
 import { SystemIcon } from '@/components/ui/SystemIcon';
 import { useT, type UseT } from '@/hooks/useT';
@@ -67,6 +69,12 @@ import type { V3FeOwnedEvent } from '@/utils/v3AnalyticsEvents';
 import type { DiscoverStackParamList } from '@/types/navigation';
 import { pickAndUploadImage, uploadErrorMessage } from '@/utils/imageUpload';
 import { useToastStore } from '@/store/toast';
+import { useAuthStore } from '@/store/auth';
+import { useDevUserStore } from '@/store/devUser';
+import { currentRequestSession } from '@/api/client';
+import { sameRequestSession } from '@/api/requestSession';
+import { httpStatus } from '@/utils/http';
+import { designContextMatches } from '@/utils/designContinuity';
 import {
   ACTION_LABEL_KEYS,
   buildDecisionCard,
@@ -126,7 +134,7 @@ const PARSE_POLL_MS = 1200;
 /** The candidate is kept beside the decision so §9.2's product header can show
  * the parsed attributes — the decision response carries none of them. */
 interface DecisionResult {
-  candidate: PurchaseCandidate;
+  candidate: PurchaseCandidate | null;
   decision: WardrobeDecision;
 }
 
@@ -660,10 +668,17 @@ function ErrorCard({
   );
 }
 
-export function ShouldIBuyScreen({ navigation }: Props) {
+export function ShouldIBuyScreen({ navigation, route }: Props) {
   const t = useT();
   const eventContext = useV3EventContext();
   const showToast = useToastStore((s) => s.show);
+  const designContext = route.params?.designContext;
+  const decisionId = route.params?.decisionId;
+  const sessionVersion = useAuthStore((state) => state.sessionVersion);
+  const devUserId = useDevUserStore((state) => state.userId);
+  const [readingSaved, setReadingSaved] = useState(false);
+  const [readAttempt, setReadAttempt] = useState(0);
+  const [contextConflict, setContextConflict] = useState(false);
 
   const [url, setUrl] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -696,6 +711,36 @@ export function ShouldIBuyScreen({ navigation }: Props) {
   // existing-item alternative rather than for good. See the focus effect below.
   const flowIdRef = useRef<string | null>(null);
   const handedOffRef = useRef(false);
+  useEffect(() => {
+    setResult(null);
+    setErrorState(null);
+    setContextConflict(false);
+    setAvatarProbe(null);
+    setUrl('');
+    setImageUri(null);
+    setObjectKey(null);
+    pendingCandidateRef.current = null;
+  }, [sessionVersion, devUserId]);
+  useEffect(() => {
+    if (!decisionId) return;
+    let active = true;
+    const session = currentRequestSession();
+    const config = { silentErrorToast: true, _requestSession: session };
+    setResult(null);
+    setErrorState(null);
+    setReadingSaved(true);
+    flowIdRef.current = beginV3Flow();
+    void getWardrobeDecision(decisionId, config).then(async (decision) => {
+      if (!active || !sameRequestSession(session, currentRequestSession())) return;
+      const candidate = decision.candidateId
+        ? await getPurchaseCandidate(decision.candidateId, config).catch(() => null)
+        : null;
+      if (active && sameRequestSession(session, currentRequestSession())) setResult({ candidate, decision });
+    }).catch((error: unknown) => {
+      if (active && sameRequestSession(session, currentRequestSession())) setErrorState(toDecisionErrorState(error as HttpErrorLike, 'read'));
+    }).finally(() => { if (active) setReadingSaved(false); });
+    return () => { active = false; };
+  }, [decisionId, readAttempt, sessionVersion, devUserId]);
   /** Did this focus session resume a suspended attempt? Only then may the flow
    *  be re-asserted — see `ensureResumedFlow`. */
   const resumedFlowRef = useRef(false);
@@ -822,26 +867,23 @@ export function ShouldIBuyScreen({ navigation }: Props) {
   );
 
   const runDecision = useCallback(async (): Promise<DecisionResult> => {
+    const config = { silentErrorToast: true, _requestSession: currentRequestSession() };
     const sourceType = sourceTypeForInput(objectKey !== null);
     // The source is stored with the id because `onMutate` fires for a retry and
     // a fresh submit alike, so the ref alone cannot tell them apart: resuming on
     // a changed input would answer a NEW link with the OLD candidate.
-    const source = objectKey ?? url.trim();
+    const source = JSON.stringify([objectKey ?? url.trim(), designContext ?? null, config._requestSession]);
     const pending = pendingCandidateRef.current;
     const resuming = pending !== null && pending.source === source ? pending.id : null;
     if (resuming !== null) {
       // Same attempt, so the flow id is kept and no second
       // `v3_decision_started` is emitted — that would double-count the funnel's
       // denominator for one user intent.
-      const settledAgain = await getPurchaseCandidate(resuming, {
-        silentErrorToast: true,
-      }).catch((error: unknown) => {
+      const settledAgain = await getPurchaseCandidate(resuming, config).catch((error: unknown) => {
         throw withEndpointContext(error, 'read');
       });
       if (!settledAgain.isTerminal) throw PARSE_PENDING;
-      const decisionAgain = await decidePurchaseCandidate(settledAgain.id, 'none', {
-        silentErrorToast: true,
-      }).catch((error: unknown) => {
+      const decisionAgain = await decidePurchaseCandidate(settledAgain.id, 'none', config, designContext).catch((error: unknown) => {
         throw withEndpointContext(error, 'decide');
       });
       // Only now: a failing `decide` on an already-terminal candidate should
@@ -858,7 +900,7 @@ export function ShouldIBuyScreen({ navigation }: Props) {
       objectKey !== null
         ? { sourceType, sourceAssetId: objectKey }
         : { sourceType, sourceUrl: url.trim() },
-      { silentErrorToast: true },
+      config,
     ).catch((error: unknown) => {
       // `create`'s 404 means "unusable source", not "missing resource" — the
       // two endpoints therefore map their failures with different contexts.
@@ -872,7 +914,7 @@ export function ShouldIBuyScreen({ navigation }: Props) {
     let settled = candidate;
     for (let attempt = 0; !settled.isTerminal && attempt < MAX_PARSE_POLLS; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, PARSE_POLL_MS));
-      settled = await getPurchaseCandidate(settled.id, { silentErrorToast: true }).catch(
+      settled = await getPurchaseCandidate(settled.id, config).catch(
         (error: unknown) => {
           throw withEndpointContext(error, 'read');
         },
@@ -889,13 +931,13 @@ export function ShouldIBuyScreen({ navigation }: Props) {
     }
     // A `parse_failed` candidate is still decidable — partial information,
     // not a dead end (contract §5.2).
-    const decision = await decidePurchaseCandidate(settled.id, 'none', {
-      silentErrorToast: true,
-    }).catch((error: unknown) => {
+    pendingCandidateRef.current = { id: settled.id, source };
+    const decision = await decidePurchaseCandidate(settled.id, 'none', config, designContext).catch((error: unknown) => {
       throw withEndpointContext(error, 'decide');
     });
+    pendingCandidateRef.current = null;
     return { candidate: settled, decision };
-  }, [emit, objectKey, url]);
+  }, [emit, objectKey, url, designContext]);
 
   const decisionMutation = useMutation({
     mutationFn: runDecision,
@@ -903,8 +945,11 @@ export function ShouldIBuyScreen({ navigation }: Props) {
       setErrorState(null);
       setResult(null);
       setChosenAction(null);
+      setContextConflict(false);
+      return currentRequestSession();
     },
-    onSuccess: (next) => {
+    onSuccess: (next, _, session) => {
+      if (!session || !sameRequestSession(session, currentRequestSession())) return;
       setResult(next);
       const value = viewedEventDecision(next.decision);
       // A skewed unknown decision still renders (server copy) but is never
@@ -914,7 +959,12 @@ export function ShouldIBuyScreen({ navigation }: Props) {
       // worth asking about (§5.5).
       void probeAvatar();
     },
-    onError: (error: unknown) => {
+    onError: (error: unknown, _, session) => {
+      if (!session || !sameRequestSession(session, currentRequestSession())) return;
+      if (designContext && httpStatus(error) === 409) {
+        setContextConflict(true);
+        return;
+      }
       // The flow deliberately stays OPEN: the attempt is not over while the
       // retry button is on screen, and blur is the single closer.
       setErrorState(toDecisionErrorState(error as HttpErrorLike, endpointContextOf(error)));
@@ -1006,7 +1056,10 @@ export function ShouldIBuyScreen({ navigation }: Props) {
   };
 
   const canSubmit =
-    (objectKey !== null || url.trim().length > 0) && !decisionMutation.isPending && !uploading;
+    !decisionId && (objectKey !== null || url.trim().length > 0) && !decisionMutation.isPending && !uploading;
+  const contextMismatch = Boolean(designContext && result && !designContextMatches(designContext, result.decision.designContext));
+  const returnConversation = designContext && (result || contextConflict)
+    ? designContext.conversationId : result?.decision.designContext?.conversationId;
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg }}>
@@ -1018,8 +1071,17 @@ export function ShouldIBuyScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {readingSaved ? <Text style={{ ...type.body, color: T.ink2 }}>{t.t('ask.design.readingResult')}</Text> : null}
+        {contextMismatch ? <Text style={{ ...type.footnote, color: T.ink2 }}>{t.t('ask.design.contextMissing')}</Text> : null}
+        {designContext && !result ? <Text style={{ ...type.footnote, color: T.ink2 }}>
+          {t.t(contextConflict ? 'ask.design.contextConflict' : 'ask.design.contextCarried')}
+        </Text> : null}
+        {returnConversation ? <Button label={t.t('ask.design.return')} variant="secondary" onPress={() => navigation.navigate('AskAidrobe', {
+          resumeConversationId: returnConversation,
+          focusedItemId: undefined, baseOutfitId: undefined, targetDate: undefined, scope: undefined, autoAsk: undefined,
+        })} /> : null}
         {/* §5.2 — the natural entrances, no "new try-on project" ceremony. */}
-        <View style={{ backgroundColor: T.card, borderRadius: radius.xl, padding: 16, gap: 12, ...shadow.soft }}>
+        {!decisionId ? <View style={{ backgroundColor: T.card, borderRadius: radius.xl, padding: 16, gap: 12, ...shadow.soft }}>
           <Text style={{ ...type.footnote, color: T.ink3, lineHeight: 18 }}>
             {t.t('should_i_buy.input.hint')}
           </Text>
@@ -1116,10 +1178,10 @@ export function ShouldIBuyScreen({ navigation }: Props) {
                 : t.t('should_i_buy.input.submit')}
             </Text>
           </Pressable>
-        </View>
+        </View> : null}
 
         {errorState ? (
-          <ErrorCard state={errorState} onRetry={() => decisionMutation.mutate()} t={t} />
+          <ErrorCard state={errorState} onRetry={() => decisionId ? setReadAttempt((value) => value + 1) : decisionMutation.mutate()} t={t} />
         ) : null}
 
         {/* The decision card: §5.4 layers 1, 2, 3, 5, 6 — layer 4 (visual
@@ -1127,7 +1189,7 @@ export function ShouldIBuyScreen({ navigation }: Props) {
             or a visual provider (feature acceptance 1). */}
         {result && card ? (
           <View style={{ backgroundColor: T.card, borderRadius: radius.xl, padding: 16, gap: 16, ...shadow.soft }}>
-            <CandidateHeader candidate={result.candidate} t={t} />
+            {result.candidate ? <CandidateHeader candidate={result.candidate} t={t} /> : null}
 
             <Judgment decision={result.decision} t={t} />
 
@@ -1191,7 +1253,7 @@ export function ShouldIBuyScreen({ navigation }: Props) {
               {card.boundaryNote ?? t.t(PREVIEW_BOUNDARY_FALLBACK_KEY)}
             </Text>
 
-            <NextActions actions={card.actions} chosen={chosenAction} onChoose={onChooseAction} t={t} />
+            <NextActions actions={result.decision.designContext ? card.actions.filter((action) => action !== 'style_with_existing') : card.actions} chosen={chosenAction} onChoose={onChooseAction} t={t} />
           </View>
         ) : null}
       </ScrollView>

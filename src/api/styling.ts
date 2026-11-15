@@ -3,7 +3,7 @@ import { toOutfit } from './recommendations';
 import { toAskMetadata } from './askMetadata';
 import type {
   AskConversation, DesignBrief, ServerAskItemRefSnapshot, ServerAskTripIntent,
-  ServerDesignBrief, ServerStylingConstraints, ServerStylingResponse, StylingConstraints, StylingState,
+  ServerDesignBrief, ServerLinkedDesignResult, ServerStylingConstraints, ServerStylingResponse, StylingConstraints, StylingState,
 } from '@/types/api';
 
 function toConstraints(data: ServerStylingConstraints): StylingConstraints {
@@ -15,6 +15,7 @@ function toConstraints(data: ServerStylingConstraints): StylingConstraints {
     targetStyle: data.target_style ?? null,
     exploration: data.exploration ?? false,
     targetDate: data.target_date ?? null,
+    referenceInspirationId: data.reference_inspiration_id ?? null,
   };
 }
 
@@ -52,6 +53,7 @@ export async function getAskConversation(conversationId: string): Promise<AskCon
       item_refs?: string[];
       item_ref_snapshots?: ServerAskItemRefSnapshot[];
       trip_intent?: ServerAskTripIntent | null;
+      linked_result?: ServerLinkedDesignResult | null;
     }>;
   }>('/v1/ask/conversations/' + conversationId, undefined, { silentErrorToast: true });
   return {
@@ -72,6 +74,12 @@ export async function getAskConversation(conversationId: string): Promise<AskCon
         itemRefs: message.item_refs,
         itemRefSnapshots: message.item_ref_snapshots === undefined ? undefined : metadata.itemRefSnapshots,
         tripIntent: message.trip_intent === undefined ? undefined : metadata.tripIntent,
+        linkedResult: message.linked_result && ['purchase_decision', 'packing_list'].includes(message.linked_result.kind) ? {
+          kind: message.linked_result.kind as 'purchase_decision' | 'packing_list',
+          resourceId: message.linked_result.resource_id,
+          sourceRevision: message.linked_result.source_revision,
+          summary: message.linked_result.summary,
+        } : null,
       };
     }),
   };

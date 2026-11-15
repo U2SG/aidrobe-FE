@@ -952,6 +952,7 @@ export interface StylingConstraints {
   targetStyle: string | null;
   exploration: boolean;
   targetDate?: string | null;
+  referenceInspirationId?: string | null;
 }
 
 export interface ServerStylingConstraints {
@@ -962,12 +963,45 @@ export interface ServerStylingConstraints {
   target_style?: string | null;
   exploration?: boolean;
   target_date?: string | null;
+  reference_inspiration_id?: string | null;
 }
 
 export interface DesignBrief {
   revision: number;
   constraints: StylingConstraints;
   needsOutfitUpdate: boolean;
+}
+
+export interface DesignContextRef {
+  conversationId: string;
+  expectedRevision: number;
+}
+
+export interface DesignContextSnapshot {
+  conversationId: string;
+  revision: number;
+  outfitId: string | null;
+}
+
+export interface ServerDesignContextSnapshot {
+  conversation_id: string;
+  revision: number;
+  outfit_id?: string | null;
+  constraints: ServerStylingConstraints;
+}
+
+export interface LinkedDesignResult {
+  kind: 'purchase_decision' | 'packing_list';
+  resourceId: string;
+  sourceRevision: number;
+  summary: string;
+}
+
+export interface ServerLinkedDesignResult {
+  kind: string;
+  resource_id: string;
+  source_revision: number;
+  summary: string;
 }
 
 export interface ServerDesignBrief {
@@ -1009,6 +1043,7 @@ export interface AskConversationMessage {
   itemRefs?: string[];
   itemRefSnapshots?: AskItemRefSnapshot[];
   tripIntent?: AskTripIntent | null;
+  linkedResult?: LinkedDesignResult | null;
 }
 
 export interface AskConversation {
@@ -1031,6 +1066,7 @@ export interface AskBody {
   requestId?: string;
   expectedRevision?: number | null;
   baseOutfitId?: string;
+  referenceInspirationId?: string;
 }
 
 // BE#29 — denormalized snapshot of a referenced wardrobe item, already
@@ -1201,6 +1237,7 @@ export interface PackingList {
   items: PackingEntry[];
   status: PackingListStatus;
   plan: PackingPlan | null;
+  designContext?: DesignContextSnapshot | null;
 }
 
 export interface ServerPackingListResponse {
@@ -1212,6 +1249,7 @@ export interface ServerPackingListResponse {
   items: ServerPackingItem[];
   status: string;
   plan?: ServerPackingPlan | null;
+  design_context?: ServerDesignContextSnapshot | null;
 }
 
 export interface CreatePackingListBody {
@@ -1220,6 +1258,8 @@ export interface CreatePackingListBody {
   scenes: string[];
   weatherHint?: string;
   departureDate?: string;
+  designContext?: DesignContextRef;
+  requestId?: string;
 }
 
 export interface UpdatePackingListBody {
@@ -1447,6 +1487,7 @@ export interface Inspiration {
   sourceType: string;
   learnStatus: string;
   createdAt: string;
+  designReferenceAvailable?: boolean;
 }
 
 export interface ServerInspirationResponse {
@@ -1456,6 +1497,7 @@ export interface ServerInspirationResponse {
   source_type: string;
   learn_status?: string;
   created_at: string;
+  design_reference_available?: boolean;
 }
 
 export interface InspirationList {

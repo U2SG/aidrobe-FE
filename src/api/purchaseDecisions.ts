@@ -10,6 +10,7 @@
 // (codex review, FE#137).
 
 import type { AxiosRequestConfig } from 'axios';
+import type { DesignContextRef } from '@/types/api';
 
 import { apiGet, apiPost } from './client';
 import {
@@ -71,12 +72,16 @@ export async function decidePurchaseCandidate(
   candidateId: string,
   concern: DecisionConcern = 'none',
   config?: AxiosRequestConfig,
+  designContext?: DesignContextRef,
 ): Promise<WardrobeDecision> {
   // Idempotent per candidate: a repeated call replays the first decision and
   // ignores a new concern (contract §5.3) — do not offer "re-evaluate" UI.
   const data = await apiPost<ServerWardrobeDecision>(
     `/v1/purchase-candidates/${candidateId}/decision`,
-    { concern },
+    { concern, design_context: designContext ? {
+      conversation_id: designContext.conversationId,
+      expected_revision: designContext.expectedRevision,
+    } : undefined },
     undefined,
     config,
   );

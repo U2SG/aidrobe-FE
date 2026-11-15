@@ -19,6 +19,7 @@ import { askAidrobe, getAskHistory, sendAskFeedback } from '@/api/ask';
 import { API_BASE_URL, APP_ENV } from '@/api/client';
 import { adoptStyling, getAskConversation } from '@/api/styling';
 import { InlineRetry } from '@/components/feedback/InlineRetry';
+import { StylingExperienceFeedback } from '@/components/feedback/StylingExperienceFeedback';
 import { HeaderIconButton, ScreenHeader } from '@/components/layout/ScreenHeader';
 import { AIOrb } from '@/components/ui/AIOrb';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -37,11 +38,11 @@ import { useAuthStore } from '@/store/auth';
 import { useDevUserStore } from '@/store/devUser';
 import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
-import type { AskBody, AskHistoryEntry, AskScope, DesignBrief, StylingState } from '@/types/api';
+import type { AskBody, AskHistoryEntry, AskScope, DesignBrief, LinkedDesignResult, StylingState } from '@/types/api';
 import type { AskStackParamList } from '@/types/navigation';
 import { httpStatus } from '@/utils/http';
 import {
-  askConversationStorageKey, conversationTurns, enrichConversationTurns, newestDesignBrief, newestStyling, stylingDesignBrief,
+  askConversationStorageKey, conversationTurns, enrichConversationTurns, newestDesignBrief, newestStyling, reconcileLinkedTurns, stylingDesignBrief,
   type AskTurn as Turn,
 } from '@/utils/askConversation';
 import { accessTokenSubject, isAnalyticsUuid } from '@/utils/v3AnalyticsIdentity';
@@ -141,12 +142,14 @@ function formatHistoryDate(value: string, locale: string) {
   return `${date.getMonth() + 1}/${date.getDate()} ${hours}:${minutes}`;
 }
 
-function StylingCard({ styling, brief, busy, onAdopt, onOpen }: {
+function StylingCard({ styling, brief, busy, onAdopt, onOpen, onShopping, onPacking }: {
   styling: StylingState | null;
   brief: DesignBrief | null;
   busy: boolean;
   onAdopt: () => void;
   onOpen: () => void;
+  onShopping?: () => void;
+  onPacking?: () => void;
 }) {
   const { t } = useT();
   const constraints = brief?.constraints ?? styling?.constraints;
@@ -157,6 +160,7 @@ function StylingCard({ styling, brief, busy, onAdopt, onOpen }: {
   const notes = [
     constraints.goal,
     constraints.targetStyle ? t('ask.design.target', { style: constraints.targetStyle }) : null,
+    constraints.referenceInspirationId ? t('ask.reference.used') : null,
     ...constraints.notes,
     constraints.lockedItemIds.length ? t('ask.design.keep', { items: itemNames(constraints.lockedItemIds) }) : null,
     constraints.excludedItemIds.length ? t('ask.design.exclude', { items: itemNames(constraints.excludedItemIds) }) : null,
@@ -180,6 +184,14 @@ function StylingCard({ styling, brief, busy, onAdopt, onOpen }: {
         ) : null}
         <Button label={t('ask.design.open')} onPress={onOpen} disabled={busy || needsUpdate} variant="secondary" style={{ flex: 1 }} />
       </View> : null}
+      {styling && !needsUpdate ? <StylingExperienceFeedback
+        key={styling.outfit.id} outfitId={styling.outfit.id}
+        conversationId={styling.conversationId} revision={styling.revision} disabled={busy}
+      /> : null}
+      {onShopping || onPacking ? <View>
+        {onShopping ? <HeroRow icon="bag" label={t('ask.design.shopping')} onPress={onShopping} /> : null}
+        {onPacking ? <HeroRow icon="suitcase" label={t('ask.design.packing')} onPress={onPacking} /> : null}
+      </View> : null}
     </View>
   );
 }
@@ -191,6 +203,7 @@ function TurnView({
   isFollowUp,
   onPackingHandoff,
   onFeedback,
+  onOpenResult,
 }: {
   turn: Turn;
   onRetry: () => void;
@@ -203,8 +216,21 @@ function TurnView({
   // FE#119 — rate this answer (like/dislike). Absent (pending/local/history
   // without id) hides the row.
   onFeedback?: (kind: 'like' | 'dislike') => void;
+  onOpenResult?: (result: LinkedDesignResult) => void;
 }) {
   const { t } = useT();
+  if (turn.linkedResult) {
+    const linked = turn.linkedResult;
+    return (
+      <View style={{ padding: 14, gap: 10, marginBottom: 16, borderRadius: radius.lg, backgroundColor: T.card }}>
+        <Text style={{ ...type.body, color: T.ink2 }}>{linked.summary}</Text>
+        {onOpenResult && (linked.kind !== 'purchase_decision' || enableV3PurchaseDecision) ? <Button
+          label={t(linked.kind === 'purchase_decision' ? 'ask.design.openPurchase' : 'ask.design.openPacking')}
+          variant="secondary" onPress={() => onOpenResult(linked)}
+        /> : null}
+      </View>
+    );
+  }
   return (
     <View style={{ width: '100%', gap: 10, flexShrink: 0, marginBottom: 16 }}>
       {/* Question bubble */}
@@ -518,6 +544,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [styling, setStyling] = useState<StylingState | null>(null);
   const [designBrief, setDesignBrief] = useState<DesignBrief | null>(null);
+  const [referenceDraftId, setReferenceDraftId] = useState<string | null>(null);
   const expectedRevision = designBrief?.revision ?? styling?.revision;
   const [restoring, setRestoring] = useState(false);
   const [resumeError, setResumeError] = useState(false);
@@ -559,6 +586,9 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         setTurns(enrichConversationTurns(
           conversationTurns(result.messages, t('ask.history.answerFallback')), history,
         ));
+      } else {
+        const restored = conversationTurns(result.messages, t('ask.history.answerFallback'));
+        setTurns((previous) => reconcileLinkedTurns(previous, restored));
       }
       if (storageKey) void AsyncStorage.setItem(storageKey, result.conversationId).catch(() => undefined);
     } catch {
@@ -598,6 +628,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     conversationReadEpoch.current += 1;
     setTurns([]);
     setConversationId(null);
+    setReferenceDraftId(null);
     setStyling(null);
     setDesignBrief(null);
     setInput('');
@@ -627,6 +658,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     navigation.setParams({ resumeConversationId: undefined });
     const epoch = ++conversationEpoch.current;
     setConversationId(null);
+    setReferenceDraftId(null);
     setStyling(null);
     setDesignBrief(null);
     setTurns([]);
@@ -635,6 +667,28 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     adoptionRequest.current = null;
     void restoreConversation(id, epoch, true);
   }, [navigation, route.params?.resumeConversationId, restoreConversation]);
+
+  // A reference is a one-time entrance into a new design. The epoch fences
+  // the startup bookmark read so it cannot restore another conversation over it.
+  useEffect(() => {
+    const id = route.params?.referenceInspirationId;
+    if (!isAnalyticsUuid(id)) return;
+    navigation.setParams({ referenceInspirationId: undefined });
+    conversationEpoch.current += 1;
+    conversationReadEpoch.current += 1;
+    setConversationId(null);
+    setReferenceDraftId(null);
+    setStyling(null);
+    setDesignBrief(null);
+    setTurns([]);
+    setReferenceDraftId(id);
+    setInput(t('ask.reference.draft'));
+    setRestoring(false);
+    setResumeError(false);
+    setResumeTarget(null);
+    setHistoryVisible(false);
+    adoptionRequest.current = null;
+  }, [navigation, route.params?.referenceInspirationId, t]);
 
   const askMutation = useMutation({
     mutationFn: (vars: {
@@ -672,6 +726,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
       // Thread the conversation forward so subsequent sends continue the same
       // multi-turn session on the backend.
       setConversationId(result.conversationId);
+      setReferenceDraftId(null);
       if (result.styling) setStyling((previous) => newestStyling(previous, result.styling ?? null));
       setDesignBrief((previous) => newestDesignBrief(previous, result.designBrief ?? (result.styling ? stylingDesignBrief(result.styling) : null)));
       if (storageKey && result.conversationId) {
@@ -756,6 +811,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     if (!entry.conversationId) return;
     const epoch = ++conversationEpoch.current;
     setConversationId(null);
+    setReferenceDraftId(null);
     setStyling(null);
     setDesignBrief(null);
     setTurns([]);
@@ -768,6 +824,9 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     setHistoryVisible(false);
     navigation.navigate('CreatePackingList', {
       durationDays: entry.tripIntent?.durationDays ?? undefined,
+      designContext: entry.conversationId && (entry.designBrief?.revision ?? entry.styling?.revision) != null ? {
+        conversationId: entry.conversationId, expectedRevision: (entry.designBrief?.revision ?? entry.styling?.revision)!,
+      } : undefined,
     });
   };
 
@@ -804,11 +863,12 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
           requestId: newFlowId(),
           expectedRevision,
           baseOutfitId: conversationId ? undefined : baseOutfitId,
+          referenceInspirationId: conversationId ? undefined : referenceDraftId ?? undefined,
           context: !conversationId && route.params?.targetDate ? { date: route.params.targetDate } : undefined,
         },
       });
     },
-    [askMutation, adoptMutation.isPending, conversationId, expectedRevision, restoring, resumeError, hasFailedTurn, focusedItemId, locale, baseOutfitId, route.params?.targetDate],
+    [askMutation, adoptMutation.isPending, conversationId, expectedRevision, restoring, resumeError, hasFailedTurn, focusedItemId, locale, baseOutfitId, route.params?.targetDate, referenceDraftId],
   );
 
   // V3-010 — a hand-off that promises an outfit has to deliver one, so the
@@ -936,7 +996,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         onBack={() => navigation.goBack()}
         right={
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            {turns.length > 0 || styling || designBrief || resumeError || restoring ? (
+            {turns.length > 0 || styling || designBrief || referenceDraftId || resumeError || restoring ? (
               // Start a fresh conversation without restarting the app: drops
               // the rendered turns and the backend conversation thread.
               <HeaderIconButton
@@ -948,6 +1008,8 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
                   conversationReadEpoch.current += 1;
                   setTurns([]);
                   setConversationId(null);
+                  setReferenceDraftId(null);
+                  setInput('');
                   setStyling(null);
                   setDesignBrief(null);
                   setRestoring(false);
@@ -1105,6 +1167,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
                   ? () =>
                       navigation.navigate('CreatePackingList', {
                         durationDays: turn.tripIntent?.durationDays ?? undefined,
+                        designContext: conversationId && expectedRevision != null ? { conversationId, expectedRevision } : undefined,
                       })
                   : undefined
               }
@@ -1113,6 +1176,10 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
                   ? rateTurn(turn)
                   : undefined
               }
+              onOpenResult={(result) => {
+                if (result.kind === 'purchase_decision') navigation.navigate('ShouldIBuy', { decisionId: result.resourceId });
+                else navigation.navigate('PackingListDetail', { id: result.resourceId });
+              }}
             />
           ))
         )}
@@ -1122,6 +1189,12 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
             brief={designBrief}
             busy={askMutation.isPending || adoptMutation.isPending}
             onAdopt={adoptCurrent}
+            onShopping={enableV3PurchaseDecision && conversationId && expectedRevision != null && !hasFailedTurn && !askMutation.isPending && !adoptMutation.isPending ? () => navigation.navigate('ShouldIBuy', {
+              designContext: { conversationId, expectedRevision },
+            }) : undefined}
+            onPacking={conversationId && expectedRevision != null && !hasFailedTurn && !askMutation.isPending && !adoptMutation.isPending ? () => navigation.navigate('CreatePackingList', {
+              designContext: { conversationId, expectedRevision },
+            }) : undefined}
             onOpen={() => {
               if (!styling || designBrief?.needsOutfitUpdate) return;
               qc.setQueryData(['outfitDetail', styling.outfit.id], styling.outfit);
@@ -1155,6 +1228,15 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
           borderTopColor: colors.separatorSoft,
         }}
       >
+        {referenceDraftId ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <Text style={{ ...type.caption, color: T.ink2, flex: 1 }}>{t('ask.reference.used')}</Text>
+          <Pressable accessibilityRole="button" onPress={() => {
+            setReferenceDraftId(null);
+            if (input === t('ask.reference.draft')) setInput('');
+          }} style={{ minHeight: 44, justifyContent: 'center' }}>
+            <Text style={{ ...type.caption, color: T.accent }}>{t('ask.reference.clear')}</Text>
+          </Pressable>
+        </View> : null}
         {focusedItemId ? (
           <View
             style={{

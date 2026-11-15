@@ -111,7 +111,8 @@ function StyleTagsBar() {
   );
 }
 
-function InspoCard({ item, onDelete }: { item: Inspiration; onDelete: () => void }) {
+function InspoCard({ item, onDelete, onDesign }: { item: Inspiration; onDelete: () => void; onDesign?: () => void }) {
+  const { t } = useT();
   const learned = item.learnStatus === 'learned';
   return (
     <Pressable
@@ -161,6 +162,10 @@ function InspoCard({ item, onDelete }: { item: Inspiration; onDelete: () => void
           </Text>
         </View>
       </View>
+      {onDesign ? <Pressable onPress={onDesign} accessibilityRole="button"
+        style={{ minHeight: 48, justifyContent: 'center', padding: 10, backgroundColor: T.card }}>
+        <Text style={{ ...type.callout, color: T.accent }}>{t('ask.reference.start')}</Text>
+      </Pressable> : null}
     </Pressable>
   );
 }
@@ -234,7 +239,13 @@ export function StyleInspirationsScreen({ navigation }: Props) {
           contentContainerStyle={{ paddingHorizontal: spacing.screen, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
-            <InspoCard item={item} onDelete={() => confirmDelete(item)} />
+            <InspoCard item={item} onDelete={() => confirmDelete(item)}
+              onDesign={item.designReferenceAvailable ? () => navigation.navigate('AskAidrobe', {
+                referenceInspirationId: item.id,
+                resumeConversationId: undefined, focusedItemId: undefined, baseOutfitId: undefined,
+                scope: undefined, targetDate: undefined, autoAsk: undefined,
+              }) : undefined}
+            />
           )}
           ListFooterComponent={
             <Text style={{ ...type.caption, color: T.ink3, textAlign: 'center', marginTop: 8 }}>

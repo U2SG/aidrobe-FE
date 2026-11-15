@@ -1,6 +1,9 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 
-import type { ImportFailureReason, ImportInputType } from './api';
+import type { DesignContextRef, ImportFailureReason, ImportInputType } from './api';
+
+export type ShoppingParams = { designContext?: DesignContextRef; decisionId?: string } | undefined;
+export type PackingCreateParams = { durationDays?: number; designContext?: DesignContextRef } | undefined;
 
 /**
  * Shared by the wardrobe and onboarding stacks — ImportConfirm is the same
@@ -96,13 +99,13 @@ export type SettingsStackParamList = {
   // Profile as a persistent entry point (user-reported entry gap 2026-07-24).
   // Param shapes mirror AskStackParamList so the same screens mount in both stacks.
   PackingList: undefined;
-  PackingListDetail: { id: string };
-  CreatePackingList: { durationDays?: number } | undefined;
+  PackingListDetail: { id: string; expectedDesignContext?: DesignContextRef };
+  CreatePackingList: PackingCreateParams;
   // Same reason as `AskStackParamList.ShouldIBuy`: Profile's tool section is a
   // V2-shell entry point for the same decision (codex review, FE#141).
-  ShouldIBuy: undefined;
+  ShouldIBuy: ShoppingParams;
   // `ShouldIBuy`'s `style_with_existing` hand-off target (codex review, FE#154).
-  AskAidrobe: { focusedItemId?: string; baseOutfitId?: string; targetDate?: string; scope?: 'today'; autoAsk?: string; resumeConversationId?: string } | undefined;
+  AskAidrobe: { focusedItemId?: string; baseOutfitId?: string; targetDate?: string; scope?: 'today'; autoAsk?: string; resumeConversationId?: string; referenceInspirationId?: string } | undefined;
   SenseCheck: undefined;
   WardrobeReport: { period?: string } | undefined;
   // V3-021 — Profile's 形象参考 data controls (V3_SPEC §4.4 + §15). A settings
@@ -122,19 +125,19 @@ export type AskStackParamList = {
   // `autoAsk` is declared here because `AskAidrobeScreen`'s own props are typed
   // against this list — the screen cannot read a param the list omits. No Ask-tab
   // entrance passes it today (V3-010's only caller is Discover-hosted ShouldIBuy).
-  AskAidrobe: { focusedItemId?: string; baseOutfitId?: string; targetDate?: string; scope?: 'today'; autoAsk?: string; resumeConversationId?: string } | undefined;
+  AskAidrobe: { focusedItemId?: string; baseOutfitId?: string; targetDate?: string; scope?: 'today'; autoAsk?: string; resumeConversationId?: string; referenceInspirationId?: string } | undefined;
   SenseCheck: undefined;
   // V3: the Ask tool entrance opens this instead of `SenseCheck` while
   // `enableV3PurchaseDecision` is on. Registered here too because the V2 shell
   // has no Discover tab, so the Discover-only registration left the gated
   // screen unreachable in that shell (codex review, FE#141).
-  ShouldIBuy: undefined;
+  ShouldIBuy: ShoppingParams;
   // `ShouldIBuy`'s photo-setup destination (codex review, FE#154).
   AvatarPhotoSetup: { flowId?: string } | undefined;
   PackingList: undefined;
-  PackingListDetail: { id: string };
+  PackingListDetail: { id: string; expectedDesignContext?: DesignContextRef };
   // `durationDays` prefills the trip length (Ask trip-intent handoff, BE#115).
-  CreatePackingList: { durationDays?: number } | undefined;
+  CreatePackingList: PackingCreateParams;
   Insights: undefined;
   WardrobeReport: { period?: string } | undefined;
 };
@@ -145,14 +148,14 @@ export type DiscoverStackParamList = {
   Insights: undefined;
   WardrobeReport: { period?: string } | undefined;
   PackingList: undefined;
-  PackingListDetail: { id: string };
-  CreatePackingList: { durationDays?: number } | undefined;
+  PackingListDetail: { id: string; expectedDesignContext?: DesignContextRef };
+  CreatePackingList: PackingCreateParams;
   SenseCheck: undefined;
   // V3-009 — the Should-I-Buy decision card. Reached from the same Discover
   // tool entrance as `SenseCheck`, which it replaces while
   // `enableV3PurchaseDecision` is on; `SenseCheck` stays registered so the V2
   // path is intact when the flag is off (its default).
-  ShouldIBuy: undefined;
+  ShouldIBuy: ShoppingParams;
   StyleInspirations: undefined;
   AddInspiration: undefined;
   // `focusedItemId` scopes the Ask to one wardrobe item (scope=item). `scope`
@@ -160,7 +163,7 @@ export type DiscoverStackParamList = {
   // V3-010: `autoAsk` sends that question once on arrival, so a hand-off that
   // promises an outfit delivers one instead of an empty composer. Only the
   // Discover stack declares it — ShouldIBuy, its only caller, lives here.
-  AskAidrobe: { focusedItemId?: string; baseOutfitId?: string; targetDate?: string; scope?: 'today'; autoAsk?: string; resumeConversationId?: string } | undefined;
+  AskAidrobe: { focusedItemId?: string; baseOutfitId?: string; targetDate?: string; scope?: 'today'; autoAsk?: string; resumeConversationId?: string; referenceInspirationId?: string } | undefined;
   // V3-015 — on-demand full-body photo setup (§9.4), pushed from the decision
   // card so `goBack` returns to that same card with its decision intact. No new
   // tab and no avatar area: one more screen on the existing stack, reachable only

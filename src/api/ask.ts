@@ -28,6 +28,7 @@ export async function askAidrobe(body: AskBody): Promise<AskResult> {
     request_id: body.requestId,
     expected_revision: body.expectedRevision ?? undefined,
     base_outfit_id: body.baseOutfitId,
+    constraints: body.referenceInspirationId ? { reference_inspiration_id: body.referenceInspirationId } : undefined,
   }, undefined, { timeout: 60_000 });
   return {
     askSessionId: data.ask_session_id,

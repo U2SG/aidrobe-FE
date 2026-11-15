@@ -25,6 +25,8 @@
  *   `reasons`, `next_actions`) degrades to an empty value, never a throw.
  */
 
+import type { DesignContextSnapshot, ServerDesignContextSnapshot } from '../types/api';
+
 // --- Frozen vocabularies (contract §5.2–§5.3; byte-checked against ---------
 // --- docs/openapi.json by scripts/purchaseDecisionContract.test.ts) --------
 
@@ -128,6 +130,7 @@ export interface ServerWardrobeDecision {
   boundary_note?: string | null;
   next_actions?: string[] | null;
   created_at: string;
+  design_context?: ServerDesignContextSnapshot | null;
 }
 
 // --- Client types (camelCase) -----------------------------------------------
@@ -193,6 +196,7 @@ export interface WardrobeDecision {
   /** Unknown actions are dropped — a button must lead somewhere real. */
   nextActions: DecisionNextAction[];
   createdAt: string;
+  designContext?: DesignContextSnapshot | null;
 }
 
 // --- Mapping ----------------------------------------------------------------
@@ -281,6 +285,11 @@ export function toWardrobeDecision(raw: ServerWardrobeDecision): WardrobeDecisio
       includes(DECISION_NEXT_ACTIONS, a),
     ),
     createdAt: raw.created_at,
+    designContext: raw.design_context ? {
+      conversationId: raw.design_context.conversation_id,
+      revision: raw.design_context.revision,
+      outfitId: raw.design_context.outfit_id ?? null,
+    } : null,
   };
 }
 
