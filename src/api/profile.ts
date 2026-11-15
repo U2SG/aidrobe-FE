@@ -12,6 +12,9 @@ export interface ServerMemoryItem {
   source: 'explicit' | 'feedback' | 'inferred';
   confidence: 'low' | 'medium' | 'high';
   created_at: string;
+  scope?: { scene?: string; day_type?: 'weekday' | 'weekend' };
+  scope_text?: string;
+  expires_at?: string | null;
 }
 
 export interface MemoryItem {
@@ -22,6 +25,8 @@ export interface MemoryItem {
   source: 'explicit' | 'feedback' | 'inferred';
   confidence: 'low' | 'medium' | 'high';
   createdAt: string;
+  scopeText: string;
+  expiresAt: string | null;
 }
 
 function toMemoryItem(item: ServerMemoryItem): MemoryItem {
@@ -33,6 +38,8 @@ function toMemoryItem(item: ServerMemoryItem): MemoryItem {
     source: item.source,
     confidence: item.confidence,
     createdAt: item.created_at,
+    scopeText: item.scope_text ?? '',
+    expiresAt: item.expires_at ?? null,
   };
 }
 

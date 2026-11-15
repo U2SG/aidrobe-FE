@@ -1,4 +1,5 @@
 import { apiPost } from './client';
+import type { RequestSession } from './requestSession';
 import type { AuthTokenResponse } from '@/types/api';
 import { getOrCreateDeviceId } from '@/utils/deviceId';
 
@@ -25,11 +26,11 @@ export async function inviteLogin(inviteCode: string) {
   );
 }
 
-export function refreshToken(refreshTokenValue: string) {
+export function refreshToken(refreshTokenValue: string, requestSession?: RequestSession) {
   return apiPost<AuthTokenResponse>(
     '/v1/auth/refresh',
     { refresh_token: refreshTokenValue },
     undefined,
-    { silentErrorToast: true },
+    { silentErrorToast: true, _requestSession: requestSession },
   );
 }

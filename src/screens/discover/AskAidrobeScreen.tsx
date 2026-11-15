@@ -1,5 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,6 +16,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { askAidrobe, getAskHistory, sendAskFeedback } from '@/api/ask';
+import { API_BASE_URL, APP_ENV } from '@/api/client';
+import { adoptStyling, getAskConversation } from '@/api/styling';
 import { InlineRetry } from '@/components/feedback/InlineRetry';
 import { HeaderIconButton, ScreenHeader } from '@/components/layout/ScreenHeader';
 import { AIOrb } from '@/components/ui/AIOrb';
@@ -29,35 +33,24 @@ import { useWardrobeItemNames } from '@/hooks/useWardrobeItemNames';
 import { enableMvpV2Ui, enableV3PurchaseDecision } from '@/lib/featureFlags';
 import { shoppingEntryRoute } from './shoppingEntryRoute';
 import type { I18nKey } from '@/i18n';
-// useToastStore removed — contextual-entry toasts replaced with real navigation
+import { useAuthStore } from '@/store/auth';
+import { useDevUserStore } from '@/store/devUser';
+import { useToastStore } from '@/store/toast';
 import { colors, radius, shadow, spacing, type } from '@/theme/design';
-import type { AskHistoryEntry, AskItemRefSnapshot, AskScope, AskTripIntent } from '@/types/api';
+import type { AskBody, AskHistoryEntry, AskScope, DesignBrief, StylingState } from '@/types/api';
 import type { AskStackParamList } from '@/types/navigation';
 import { httpStatus } from '@/utils/http';
+import {
+  askConversationStorageKey, conversationTurns, enrichConversationTurns, newestDesignBrief, newestStyling, stylingDesignBrief,
+  type AskTurn as Turn,
+} from '@/utils/askConversation';
+import { accessTokenSubject, isAnalyticsUuid } from '@/utils/v3AnalyticsIdentity';
+import { newFlowId } from '@/utils/v3AnalyticsEvents';
 
 // Typed against the narrow AskStackParamList so this screen mounts in both the
 // V2 Ask tab (exact match) and the V1 Discover stack (its wider navigation is
-// assignable to this narrower requirement). It only ever calls goBack().
+// assignable to this narrower requirement).
 type Props = NativeStackScreenProps<AskStackParamList, 'AskAidrobe'>;
-
-type Turn = {
-  id: string;
-  question: string;
-  answer: string | null;
-  itemRefs: string[];
-  itemRefSnapshots: AskItemRefSnapshot[];
-  pending: boolean;
-  failed?: boolean;
-  // Constraints the multi-turn conversation carried into this answer (BE
-  // deltas.applied_constraints) — shown so continuity is visible, not silent.
-  appliedConstraints?: string[];
-  // BE#115 — multi-day-trip signal from the structured answer; renders the
-  // packing-list handoff row on this turn's answer card.
-  tripIntent?: AskTripIntent | null;
-  // FE#119 — feedback the user gave on this answer (optimistic; reverted on
-  // request failure). Only real (non-local) session ids can be rated.
-  feedback?: 'like' | 'dislike';
-};
 
 const FALLBACK_COMPOSER_HEIGHT = 112;
 const HISTORY_LIMIT = 20;
@@ -131,6 +124,8 @@ function historyToTurn(entry: AskHistoryEntry, answerFallback: string): Turn {
     itemRefSnapshots: entry.itemRefSnapshots,
     pending: false,
     tripIntent: entry.tripIntent,
+    styling: entry.styling,
+    feedbackSessionId: entry.askSessionId,
   };
 }
 
@@ -144,6 +139,49 @@ function formatHistoryDate(value: string, locale: string) {
     return `${date.getMonth() + 1}月${date.getDate()}日 ${hours}:${minutes}`;
   }
   return `${date.getMonth() + 1}/${date.getDate()} ${hours}:${minutes}`;
+}
+
+function StylingCard({ styling, brief, busy, onAdopt, onOpen }: {
+  styling: StylingState | null;
+  brief: DesignBrief | null;
+  busy: boolean;
+  onAdopt: () => void;
+  onOpen: () => void;
+}) {
+  const { t } = useT();
+  const constraints = brief?.constraints ?? styling?.constraints;
+  const names = useWardrobeItemNames([...(constraints?.lockedItemIds ?? []), ...(constraints?.excludedItemIds ?? [])]);
+  if (!constraints) return null;
+  const needsUpdate = brief?.needsOutfitUpdate ?? false;
+  const itemNames = (ids: string[]) => ids.map((id) => names.get(id) ?? t('ask.design.selectedItem')).join(' · ');
+  const notes = [
+    constraints.goal,
+    constraints.targetStyle ? t('ask.design.target', { style: constraints.targetStyle }) : null,
+    ...constraints.notes,
+    constraints.lockedItemIds.length ? t('ask.design.keep', { items: itemNames(constraints.lockedItemIds) }) : null,
+    constraints.excludedItemIds.length ? t('ask.design.exclude', { items: itemNames(constraints.excludedItemIds) }) : null,
+  ].filter((note): note is string => Boolean(note));
+  return (
+    <View style={{ padding: 16, gap: 10, borderRadius: radius.lg, backgroundColor: T.card, marginBottom: 16 }}>
+      <Text style={{ ...type.headline, color: T.ink }}>{t(needsUpdate ? 'ask.design.conditionsSaved' : 'ask.design.current')}</Text>
+      {styling ? <>
+        {needsUpdate ? <Text style={{ ...type.caption, color: T.ink3 }}>{t('ask.design.previous')}</Text> : null}
+        <Text style={{ ...type.body, color: T.ink2 }}>{styling.outfit.title}</Text>
+        <ItemRefsRow ids={styling.outfit.items.map((item) => item.id)} snapshots={[]} />
+      </> : null}
+      {notes.length ? <Text style={{ ...type.caption, color: T.ink2, lineHeight: 20 }}>{notes.join('\n')}</Text> : null}
+      {constraints.exploration ? <Text style={{ ...type.caption, color: T.ink3 }}>{t('ask.design.exploration')}</Text> : null}
+      <Text style={{ ...type.caption, color: T.ink3 }}>
+        {t(needsUpdate ? 'ask.design.needsUpdate' : styling?.status === 'adopted' ? 'ask.design.adopted' : 'ask.design.saved')}
+      </Text>
+      {styling ? <View style={{ flexDirection: 'row', gap: 8 }}>
+        {styling.status !== 'adopted' ? (
+          <Button label={t('ask.design.adopt')} onPress={onAdopt} loading={busy} disabled={busy || needsUpdate} style={{ flex: 1 }} />
+        ) : null}
+        <Button label={t('ask.design.open')} onPress={onOpen} disabled={busy || needsUpdate} variant="secondary" style={{ flex: 1 }} />
+      </View> : null}
+    </View>
+  );
 }
 
 function TurnView({
@@ -222,7 +260,7 @@ function TurnView({
             {turn.failed ? (
               // Retry re-fires the original question (kept on the turn), so the
               // user never has to retype.
-              <InlineRetry onRetry={onRetry} busy={retryBusy} />
+              <InlineRetry onRetry={onRetry} busy={retryBusy} retryLabel={t(turn.conflict ? 'ask.design.reviewCurrent' : 'common.retry')} />
             ) : (
               <ItemRefsRow snapshots={turn.itemRefSnapshots} ids={turn.itemRefs} />
             )}
@@ -463,14 +501,27 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   const { t, locale } = useT();
   const track = useTrack();
   const insets = useSafeAreaInsets();
+  const qc = useQueryClient();
+  const showToast = useToastStore((state) => state.show);
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const devUserId = useDevUserStore((state) => state.userId);
+  const ownerId = accessToken ? accessTokenSubject(accessToken) : APP_ENV !== 'production' ? devUserId : null;
   const focusedItemId = route.params?.focusedItemId;
+  const baseOutfitId = route.params?.baseOutfitId;
   // Scope derives from the entrypoint: focused item → 'item', explicit today
   // param → 'today', otherwise global discover. No forced scene anymore.
   const scope: AskScope = focusedItemId ? 'item' : route.params?.scope === 'today' ? 'today' : 'global';
   const focusedNames = useWardrobeItemNames(focusedItemId ? [focusedItemId] : []);
   const focusedName = focusedItemId ? focusedNames.get(focusedItemId) : undefined;
   const [turns, setTurns] = useState<Turn[]>([]);
+  const hasFailedTurn = turns.some((turn) => turn.failed);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [styling, setStyling] = useState<StylingState | null>(null);
+  const [designBrief, setDesignBrief] = useState<DesignBrief | null>(null);
+  const expectedRevision = designBrief?.revision ?? styling?.revision;
+  const [restoring, setRestoring] = useState(false);
+  const [resumeError, setResumeError] = useState(false);
+  const [resumeTarget, setResumeTarget] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [historyVisible, setHistoryVisible] = useState(false);
   const [contextualSheetVisible, setContextualSheetVisible] = useState(false);
@@ -479,6 +530,47 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   // Conversation generation. Bumped on new-chat / scope change so an in-flight
   // request's late callback can't reseed conversationId/turns (review on #96).
   const conversationEpoch = useRef(0);
+  const conversationReadEpoch = useRef(0);
+  const storageKey = askConversationStorageKey(API_BASE_URL, ownerId, scope, focusedItemId, baseOutfitId);
+  const adoptionRequest = useRef<{ key: string; id: string } | null>(null);
+
+  const restoreConversation = useCallback(async (id: string, epoch: number, replaceTurns: boolean, selectedEntry?: AskHistoryEntry) => {
+    const readEpoch = ++conversationReadEpoch.current;
+    if (replaceTurns) {
+      setRestoring(true);
+      setResumeError(false);
+      setResumeTarget(id);
+    }
+    try {
+      const result = await qc.fetchQuery({
+        queryKey: ['askConversation', ownerId, id],
+        queryFn: () => getAskConversation(id),
+        staleTime: 0,
+      });
+      if (epoch !== conversationEpoch.current || readEpoch !== conversationReadEpoch.current) return;
+      setConversationId(result.conversationId);
+      setStyling((previous) => newestStyling(previous, result.styling));
+      setDesignBrief((previous) => newestDesignBrief(previous, result.designBrief ?? (result.styling ? stylingDesignBrief(result.styling) : null)));
+      if (replaceTurns) {
+        const cachedHistory = qc.getQueryData<AskHistoryEntry[]>([
+          'askHistory', ownerId, scope, focusedItemId ?? null,
+        ]) ?? [];
+        const history = selectedEntry ? [...cachedHistory, selectedEntry] : cachedHistory;
+        setTurns(enrichConversationTurns(
+          conversationTurns(result.messages, t('ask.history.answerFallback')), history,
+        ));
+      }
+      if (storageKey) void AsyncStorage.setItem(storageKey, result.conversationId).catch(() => undefined);
+    } catch {
+      if (replaceTurns && epoch === conversationEpoch.current && readEpoch === conversationReadEpoch.current) {
+        setResumeError(true);
+      }
+    } finally {
+      if (replaceTurns && epoch === conversationEpoch.current && readEpoch === conversationReadEpoch.current) {
+        setRestoring(false);
+      }
+    }
+  }, [ownerId, qc, storageKey, t, scope, focusedItemId]);
 
   useEffect(() => {
     track('ask_viewed', { scope });
@@ -487,7 +579,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   // Key by scope + focusedItemId so focused and global history never share a
   // cache entry — focused mode must not surface global Asks.
   const historyQuery = useQuery({
-    queryKey: ['askHistory', scope, focusedItemId ?? null],
+    queryKey: ['askHistory', ownerId, scope, focusedItemId ?? null],
     queryFn: () =>
       getAskHistory({
         limit: HISTORY_LIMIT,
@@ -502,25 +594,57 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   // If the scope / focused item changes while the screen stays mounted, drop
   // the previous session's turns and conversation thread.
   useEffect(() => {
-    conversationEpoch.current += 1;
+    const epoch = ++conversationEpoch.current;
+    conversationReadEpoch.current += 1;
     setTurns([]);
     setConversationId(null);
-  }, [scope, focusedItemId]);
+    setStyling(null);
+    setDesignBrief(null);
+    setInput('');
+    setResumeError(false);
+    setResumeTarget(null);
+    setHistoryVisible(false);
+    adoptionRequest.current = null;
+    const cleanup = () => { conversationEpoch.current += 1; conversationReadEpoch.current += 1; };
+    if (!storageKey || route.params?.autoAsk) {
+      setRestoring(false);
+      return cleanup;
+    }
+    setRestoring(true);
+    void AsyncStorage.getItem(storageKey).then((id) => {
+      if (epoch !== conversationEpoch.current) return;
+      if (isAnalyticsUuid(id)) return restoreConversation(id, epoch, true);
+      setRestoring(false);
+    }).catch(() => { if (epoch === conversationEpoch.current) setRestoring(false); });
+    return cleanup;
+  }, [storageKey, route.params?.autoAsk, restoreConversation]);
+
+  // A stale outfit can return to its exact conversation, even if another
+  // thread is open in this persistent tab. Consume the navigation intent once.
+  useEffect(() => {
+    const id = route.params?.resumeConversationId;
+    if (!isAnalyticsUuid(id)) return;
+    navigation.setParams({ resumeConversationId: undefined });
+    const epoch = ++conversationEpoch.current;
+    setConversationId(null);
+    setStyling(null);
+    setDesignBrief(null);
+    setTurns([]);
+    setInput('');
+    setHistoryVisible(false);
+    adoptionRequest.current = null;
+    void restoreConversation(id, epoch, true);
+  }, [navigation, route.params?.resumeConversationId, restoreConversation]);
 
   const askMutation = useMutation({
     mutationFn: (vars: {
       tempId: string;
-      question: string;
-      conversationId: string | null;
+      body: AskBody;
       epoch: number;
-    }) =>
-      askAidrobe({
-        question: vars.question,
-        focusedItemId,
-        locale,
-        conversationId: vars.conversationId,
-      }),
+    }) => askAidrobe(vars.body),
     onMutate: (vars) => {
+      conversationReadEpoch.current += 1;
+      void qc.cancelQueries({ queryKey: ['askConversation'] });
       // Idempotent on tempId: a retry reuses the failed turn's own id (already
       // reset to pending by retryTurn), so only a brand-new question appends.
       setTurns((t) =>
@@ -530,11 +654,12 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
               ...t,
               {
                 id: vars.tempId,
-                question: vars.question,
+                question: vars.body.question,
                 answer: null,
                 itemRefs: [],
                 itemRefSnapshots: [],
                 pending: true,
+                requestBody: vars.body,
               },
             ],
       );
@@ -547,6 +672,11 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
       // Thread the conversation forward so subsequent sends continue the same
       // multi-turn session on the backend.
       setConversationId(result.conversationId);
+      if (result.styling) setStyling((previous) => newestStyling(previous, result.styling ?? null));
+      setDesignBrief((previous) => newestDesignBrief(previous, result.designBrief ?? (result.styling ? stylingDesignBrief(result.styling) : null)));
+      if (storageKey && result.conversationId) {
+        void AsyncStorage.setItem(storageKey, result.conversationId).catch(() => undefined);
+      }
       setTurns((t) =>
         t.map((x) =>
           x.id === vars.tempId
@@ -559,6 +689,8 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
                 pending: false,
                 appliedConstraints: result.deltas?.appliedConstraints ?? [],
                 tripIntent: result.tripIntent,
+                styling: result.styling,
+                feedbackSessionId: result.askSessionId,
               }
             : x,
         ),
@@ -576,7 +708,8 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
                 ...x,
                 pending: false,
                 failed: true,
-                answer: code === 503 ? t('ask.error.unavailable') : t('ask.error.generic'),
+                conflict: code === 409,
+                answer: code === 409 ? t('ask.design.conflict') : code === 503 ? t('ask.error.unavailable') : t('ask.error.generic'),
               }
             : x,
         ),
@@ -584,15 +717,50 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     },
   });
 
-  // Resume a past conversation from history: replace the thread with the
-  // selected turn and rebind conversationId so the next send continues it on
-  // the backend. Epoch bump discards any in-flight answer for the old thread.
+  const adoptMutation = useMutation({
+    mutationFn: (vars: { state: StylingState; revision: number; requestId: string; epoch: number }) =>
+      adoptStyling(vars.state.conversationId, vars.revision, vars.requestId, vars.state.constraints.targetDate),
+    onMutate: () => { conversationReadEpoch.current += 1; },
+    onSuccess: (result, vars) => {
+      void qc.invalidateQueries({ queryKey: ['todayRecommendation'] });
+      if (vars.epoch !== conversationEpoch.current) return;
+      setStyling((previous) => newestStyling(previous, result));
+      setDesignBrief((previous) => newestDesignBrief(previous, stylingDesignBrief(result)));
+      qc.setQueryData(['outfitDetail', result.outfit.id], result.outfit);
+      adoptionRequest.current = null;
+      showToast({ message: t('ask.design.adopted'), kind: 'success' });
+    },
+    onError: (error, vars) => {
+      if (vars.epoch !== conversationEpoch.current) return;
+      showToast({ message: t(httpStatus(error) === 409 ? 'ask.design.conflict' : 'ask.design.saveFailed'), kind: 'error' });
+      if (httpStatus(error) === 409) void restoreConversation(vars.state.conversationId, vars.epoch, false);
+    },
+  });
+
+  const adoptCurrent = () => {
+    if (!styling || designBrief?.needsOutfitUpdate || adoptMutation.isPending || askMutation.isPending) return;
+    const revision = expectedRevision ?? styling.revision;
+    const key = styling.conversationId + ':' + revision;
+    if (adoptionRequest.current?.key !== key) adoptionRequest.current = { key, id: newFlowId() };
+    adoptMutation.mutate({ state: styling, revision, requestId: adoptionRequest.current.id, epoch: conversationEpoch.current });
+  };
+
+  useFocusEffect(useCallback(() => {
+    if (!route.params?.resumeConversationId && conversationId && !askMutation.isPending && !adoptMutation.isPending && !restoring && !resumeError) {
+      void restoreConversation(conversationId, conversationEpoch.current, false);
+    }
+  }, [route.params?.resumeConversationId, conversationId, askMutation.isPending, adoptMutation.isPending, restoring, resumeError, restoreConversation]));
+
+  // Resume the complete conversation. Discard late answers from the prior thread.
   const continueFromHistory = (entry: AskHistoryEntry) => {
     if (!entry.conversationId) return;
-    conversationEpoch.current += 1;
-    setConversationId(entry.conversationId);
-    setTurns([historyToTurn(entry, t('ask.history.answerFallback'))]);
+    const epoch = ++conversationEpoch.current;
+    setConversationId(null);
+    setStyling(null);
+    setDesignBrief(null);
+    setTurns([]);
     setHistoryVisible(false);
+    void restoreConversation(entry.conversationId, epoch, true, entry);
   };
 
   // FE#119 — packing handoff from a historical trip answer.
@@ -606,8 +774,11 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   // FE#119 — optimistic like/dislike on an answered turn; revert on failure so
   // the buttons reappear (retriable) instead of failing silently.
   const rateTurn = (turn: Turn) => (kind: 'like' | 'dislike') => {
+    if (!turn.feedbackSessionId) return;
+    const epoch = conversationEpoch.current;
     setTurns((prev) => prev.map((x) => (x.id === turn.id ? { ...x, feedback: kind } : x)));
-    sendAskFeedback(turn.id, kind).catch(() => {
+    sendAskFeedback(turn.feedbackSessionId, kind).catch(() => {
+      if (epoch !== conversationEpoch.current) return;
       setTurns((prev) => prev.map((x) => (x.id === turn.id ? { ...x, feedback: undefined } : x)));
     });
   };
@@ -623,16 +794,21 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   const submitQuestion = useCallback(
     (question: string) => {
       const q = question.trim();
-      if (!q || askMutation.isPending) return;
+      if (!q || askMutation.isPending || adoptMutation.isPending || restoring || resumeError || hasFailedTurn) return;
       setInput('');
       askMutation.mutate({
         tempId: `local-${Date.now()}`,
-        question: q,
-        conversationId,
         epoch: conversationEpoch.current,
+        body: {
+          question: q, focusedItemId, locale, conversationId, designMode: true,
+          requestId: newFlowId(),
+          expectedRevision,
+          baseOutfitId: conversationId ? undefined : baseOutfitId,
+          context: !conversationId && route.params?.targetDate ? { date: route.params.targetDate } : undefined,
+        },
       });
     },
-    [askMutation, conversationId],
+    [askMutation, adoptMutation.isPending, conversationId, expectedRevision, restoring, resumeError, hasFailedTurn, focusedItemId, locale, baseOutfitId, route.params?.targetDate],
   );
 
   // V3-010 — a hand-off that promises an outfit has to deliver one, so the
@@ -649,17 +825,15 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   const autoAsk = route.params?.autoAsk;
   const autoAskedRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!autoAsk) return;
-    const key = `${focusedItemId ?? ''}::${autoAsk}`;
+    if (!autoAsk || route.params?.resumeConversationId) return;
+    const key = `${ownerId ?? ''}::${focusedItemId ?? ''}::${baseOutfitId ?? ''}::${autoAsk}`;
     if (autoAskedRef.current === key) return;
-    if (askMutation.isPending || turns.length > 0) return;
+    if (askMutation.isPending || adoptMutation.isPending || restoring || resumeError || turns.length > 0) return;
     autoAskedRef.current = key;
     submitQuestion(autoAsk);
-  }, [autoAsk, focusedItemId, askMutation.isPending, turns.length, submitQuestion]);
+  }, [autoAsk, route.params?.resumeConversationId, ownerId, focusedItemId, baseOutfitId, askMutation.isPending, adoptMutation.isPending, restoring, resumeError, turns.length, submitQuestion]);
 
   const send = () => {
-    if (!input.trim()) return;
-    setInput('');
     submitQuestion(input);
   };
 
@@ -668,7 +842,15 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
   // tempId. onMutate is idempotent on tempId so it won't append a duplicate;
   // onSuccess/onError reconcile by id.
   const retryTurn = (turn: Turn) => {
-    if (askMutation.isPending) return;
+    if (askMutation.isPending || adoptMutation.isPending || restoring || resumeError) return;
+    if (turn.conflict && conversationId) {
+      // Review the current look before sending a new edit. Ambiguous network
+      // failures below still retry with their original idempotency key.
+      setInput(turn.question);
+      void restoreConversation(conversationId, conversationEpoch.current, true);
+      return;
+    }
+    if (!turn.requestBody) return;
     setTurns((t) =>
       t.map((x) =>
         x.id === turn.id ? { ...x, pending: true, failed: false, answer: null } : x,
@@ -676,9 +858,8 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     );
     askMutation.mutate({
       tempId: turn.id,
-      question: turn.question,
-      conversationId,
       epoch: conversationEpoch.current,
+      body: turn.requestBody,
     });
   };
 
@@ -736,7 +917,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
     },
   ];
 
-  const isEmpty = turns.length === 0;
+  const isEmpty = turns.length === 0 && !styling && !designBrief;
   // Header sits in normal flow (repo standard — see SenseCheckScreen / ItemDetailScreen;
   // ScreenHeader owns its notch inset). Only the absolutely-positioned composer needs
   // measuring, because its height varies (focused-item chip + multiline input).
@@ -755,7 +936,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         onBack={() => navigation.goBack()}
         right={
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            {turns.length > 0 ? (
+            {turns.length > 0 || styling || designBrief || resumeError || restoring ? (
               // Start a fresh conversation without restarting the app: drops
               // the rendered turns and the backend conversation thread.
               <HeaderIconButton
@@ -764,9 +945,16 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
                   // Bump the epoch so any in-flight request's late callback is
                   // discarded and can't reseed this fresh chat.
                   conversationEpoch.current += 1;
+                  conversationReadEpoch.current += 1;
                   setTurns([]);
                   setConversationId(null);
+                  setStyling(null);
+                  setDesignBrief(null);
+                  setRestoring(false);
+                  setResumeError(false);
+                  setResumeTarget(null);
                   setInput('');
+                  if (storageKey) void AsyncStorage.removeItem(storageKey).catch(() => undefined);
                 }}
                 accessibilityLabel={t('ask.newConversation')}
               />
@@ -793,7 +981,19 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
         onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
         keyboardShouldPersistTaps="handled"
       >
-        {isEmpty ? (
+        {restoring ? (
+          <View style={{ alignItems: 'center', paddingVertical: 32, gap: 12 }}>
+            <ActivityIndicator color={T.accent} />
+            <Text style={{ ...type.callout, color: T.ink3 }}>{t('ask.design.restoring')}</Text>
+          </View>
+        ) : resumeError ? (
+          <View style={{ paddingVertical: 24, gap: 12 }}>
+            <Text style={{ ...type.body, color: T.ink2 }}>{t('ask.design.resumeFailed')}</Text>
+            <Button label={t('common.retry')} onPress={() => {
+              if (resumeTarget) void restoreConversation(resumeTarget, conversationEpoch.current, true);
+            }} />
+          </View>
+        ) : isEmpty ? (
           <View style={{ paddingTop: 8, paddingBottom: 24 }}>
             {/* Screen subtitle */}
             <Text style={{ ...type.callout, color: T.ink3, marginBottom: 24, lineHeight: 22 }}>
@@ -898,7 +1098,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
               key={turn.id}
               turn={turn}
               onRetry={() => retryTurn(turn)}
-              retryBusy={askMutation.isPending}
+              retryBusy={askMutation.isPending || adoptMutation.isPending || restoring}
               isFollowUp={idx > 0}
               onPackingHandoff={
                 turn.tripIntent?.isTrip
@@ -909,13 +1109,33 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
                   : undefined
               }
               onFeedback={
-                !turn.pending && !turn.failed && !turn.id.startsWith('local-')
+                !turn.pending && !turn.failed && turn.feedbackSessionId
                   ? rateTurn(turn)
                   : undefined
               }
             />
           ))
         )}
+        {(styling || designBrief) && !restoring && !resumeError ? (
+          <StylingCard
+            styling={styling}
+            brief={designBrief}
+            busy={askMutation.isPending || adoptMutation.isPending}
+            onAdopt={adoptCurrent}
+            onOpen={() => {
+              if (!styling || designBrief?.needsOutfitUpdate) return;
+              qc.setQueryData(['outfitDetail', styling.outfit.id], styling.outfit);
+              navigation.getParent()?.navigate('TodayTab', {
+                screen: 'OutfitDetail', params: {
+                  outfitId: styling.outfit.id,
+                  conversationId: styling.conversationId,
+                  stylingStatus: styling.status,
+                  recommendationDate: styling.recommendationDate ?? styling.constraints.targetDate ?? undefined,
+                },
+              } as never);
+            }}
+          />
+        ) : null}
       </ScrollView>
 
       {/* Input bar */}
@@ -967,6 +1187,9 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
             </Pressable>
           </View>
         ) : null}
+        {hasFailedTurn ? (
+          <Text style={{ ...type.caption, color: T.ink3, marginBottom: 8 }}>{t('ask.design.resolveFailedTurn')}</Text>
+        ) : null}
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10 }}>
           <TextInput
             value={input}
@@ -995,7 +1218,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
             accessibilityRole="button"
             accessibilityLabel={t('ask.send')}
             onPress={send}
-            disabled={input.trim().length === 0 || askMutation.isPending}
+            disabled={input.trim().length === 0 || askMutation.isPending || adoptMutation.isPending || restoring || resumeError || hasFailedTurn}
             style={{
               width: 46,
               height: 46,
@@ -1003,7 +1226,7 @@ export function AskAidrobeScreen({ navigation, route }: Props) {
               backgroundColor: colors.label,
               alignItems: 'center',
               justifyContent: 'center',
-              opacity: input.trim().length === 0 || askMutation.isPending ? 0.42 : 1,
+              opacity: input.trim().length === 0 || askMutation.isPending || adoptMutation.isPending || restoring || resumeError || hasFailedTurn ? 0.42 : 1,
             }}
           >
             <SystemIcon name="chevronRight" size={20} color={colors.inverse} />

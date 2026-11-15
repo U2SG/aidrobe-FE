@@ -83,7 +83,7 @@ function toContext(c?: ServerTodayContext | null): TodayContext | null {
   };
 }
 
-function toOutfit(outfit: ServerOutfitResponse): OutfitSummary {
+export function toOutfit(outfit: ServerOutfitResponse): OutfitSummary {
   return {
     id: outfit.outfit_id,
     variant: outfit.type,

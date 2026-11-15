@@ -1,24 +1,14 @@
 import { apiGet, apiPost } from './client';
+import { toAskMetadata } from './askMetadata';
+import { toDesignBrief, toStyling } from './styling';
 import type {
   AskBody,
   AskHistoryEntry,
-  AskItemRefSnapshot,
   AskResult,
   AskScope,
   ServerAskHistoryItem,
-  ServerAskItemRefSnapshot,
   ServerAskResponse,
 } from '@/types/api';
-
-function mapSnapshots(rows?: ServerAskItemRefSnapshot[]): AskItemRefSnapshot[] {
-  return (rows ?? []).map((s) => ({
-    itemId: s.item_id,
-    name: s.name,
-    category: s.category,
-    colorMain: s.color_main,
-    thumbnailUrl: s.thumbnail_url ?? null,
-  }));
-}
 
 // V4 M15 — natural-language Q&A over the user's wardrobe / outfit context.
 export async function askAidrobe(body: AskBody): Promise<AskResult> {
@@ -34,13 +24,16 @@ export async function askAidrobe(body: AskBody): Promise<AskResult> {
     focused_item_id: body.focusedItemId ?? null,
     locale: body.locale ?? null,
     conversation_id: body.conversationId ?? null,
-  });
+    design_mode: body.designMode ?? false,
+    request_id: body.requestId,
+    expected_revision: body.expectedRevision ?? undefined,
+    base_outfit_id: body.baseOutfitId,
+  }, undefined, { timeout: 60_000 });
   return {
     askSessionId: data.ask_session_id,
     conversationId: data.conversation_id ?? null,
     answer: data.answer,
-    itemRefs: data.item_refs,
-    itemRefSnapshots: mapSnapshots(data.item_ref_snapshots),
+    ...toAskMetadata(data),
     tokensUsed: data.tokens_used,
     hasWardrobeContext: data.has_wardrobe_context ?? false,
     deltas: data.deltas
@@ -51,9 +44,8 @@ export async function askAidrobe(body: AskBody): Promise<AskResult> {
       : null,
     recommendationId: data.recommendation_id ?? null,
     sourceSurface: data.source_surface ?? 'ask',
-    tripIntent: data.trip_intent?.is_trip
-      ? { isTrip: true, durationDays: data.trip_intent.duration_days ?? null }
-      : null,
+    styling: data.styling ? toStyling(data.styling) : null,
+    designBrief: data.design_brief ? toDesignBrief(data.design_brief) : null,
   };
 }
 
@@ -79,12 +71,10 @@ export async function getAskHistory(query: AskHistoryQuery = {}): Promise<AskHis
     conversationId: item.conversation_id ?? null,
     question: item.question,
     answer: item.answer ?? null,
-    itemRefs: item.item_refs ?? [],
-    itemRefSnapshots: mapSnapshots(item.item_ref_snapshots),
+    ...toAskMetadata(item),
     createdAt: item.created_at,
-    tripIntent: item.trip_intent?.is_trip
-      ? { isTrip: true, durationDays: item.trip_intent.duration_days ?? null }
-      : null,
+    styling: item.styling ? toStyling(item.styling) : null,
+    designBrief: item.design_brief ? toDesignBrief(item.design_brief) : null,
   }));
 }
 

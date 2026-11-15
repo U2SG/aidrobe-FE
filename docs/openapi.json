@@ -593,6 +593,112 @@
       }
     },
     "/v1/import-tasks": {
+      "get": {
+        "tags": [
+          "import-tasks"
+        ],
+        "summary": "List Pending Import Tasks",
+        "description": "List this account's imports. Defaults to tasks waiting for confirmation.",
+        "operationId": "list_pending_import_tasks_v1_import_tasks_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportStatus"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-User-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseModel_list_ImportTaskResponse__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "import-tasks"
@@ -662,6 +768,81 @@
         },
         "responses": {
           "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseModel_ImportTaskResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/import-tasks/{task_id}/retry": {
+      "post": {
+        "tags": [
+          "import-tasks"
+        ],
+        "summary": "Retry Import Task",
+        "operationId": "retry_import_task_v1_import_tasks__task_id__retry_post",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-User-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -1353,6 +1534,156 @@
         }
       }
     },
+    "/v1/wardrobe-items/{item_id}/recognize": {
+      "post": {
+        "tags": [
+          "wardrobe"
+        ],
+        "summary": "Recognize Wardrobe Item",
+        "operationId": "recognize_wardrobe_item_v1_wardrobe_items__item_id__recognize_post",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-User-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseModel_WardrobeRecognitionResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/wardrobe-items/{item_id}/product-image": {
+      "post": {
+        "tags": [
+          "wardrobe"
+        ],
+        "summary": "Request Wardrobe Product Image",
+        "operationId": "request_wardrobe_product_image_v1_wardrobe_items__item_id__product_image_post",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-User-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseModel_WardrobeItemResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/wardrobe-items/{item_id}/wear-history": {
       "get": {
         "tags": [
@@ -2016,6 +2347,91 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ResponseModel_OutfitResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/recommendations/outfits/{outfit_id}/revisions": {
+      "post": {
+        "tags": [
+          "recommendations"
+        ],
+        "summary": "Revise Outfit",
+        "operationId": "revise_outfit_v1_recommendations_outfits__outfit_id__revisions_post",
+        "parameters": [
+          {
+            "name": "outfit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Outfit Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-User-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviseOutfitRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StylingResponse"
                 }
               }
             }
@@ -4557,12 +4973,86 @@
       }
     },
     "/v1/outfits/{outfit_id}/share-asset": {
+      "get": {
+        "tags": [
+          "outfit-visual"
+        ],
+        "summary": "Get Generated Outfit Image",
+        "description": "Look up an existing generated image without creating any work.",
+        "operationId": "get_generated_outfit_image_v1_outfits__outfit_id__share_asset_get",
+        "parameters": [
+          {
+            "name": "outfit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Outfit Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-User-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutfitVisualAssetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "outfit-visual"
         ],
         "summary": "Create Outfit Share Asset",
-        "description": "Create or reuse the deterministic board for an owned outfit.",
+        "description": "Create or reuse an outfit board. The opt-in generation mode uses GPT image editing.",
         "operationId": "create_outfit_share_asset_v1_outfits__outfit_id__share_asset_post",
         "parameters": [
           {
@@ -4573,6 +5063,16 @@
               "type": "string",
               "format": "uuid",
               "title": "Outfit Id"
+            }
+          },
+          {
+            "name": "generate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Generate"
             }
           },
           {
@@ -7345,6 +7845,251 @@
         }
       }
     },
+    "/v1/ask/conversations/{conversation_id}": {
+      "get": {
+        "tags": [
+          "ask"
+        ],
+        "summary": "Get Conversation",
+        "operationId": "get_conversation_v1_ask_conversations__conversation_id__get",
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-User-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskConversationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ask/conversations/{conversation_id}/outfit-revisions": {
+      "post": {
+        "tags": [
+          "ask"
+        ],
+        "summary": "Create Outfit Revision",
+        "operationId": "create_outfit_revision_v1_ask_conversations__conversation_id__outfit_revisions_post",
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-User-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOutfitRevisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StylingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ask/conversations/{conversation_id}/adopt": {
+      "post": {
+        "tags": [
+          "ask"
+        ],
+        "summary": "Adopt Styling",
+        "operationId": "adopt_styling_v1_ask_conversations__conversation_id__adopt_post",
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-User-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdoptStylingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StylingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/ask/{ask_session_id}/feedback": {
       "post": {
         "tags": [
@@ -7617,6 +8362,38 @@
         ],
         "title": "AdminAsyncJobListResponse"
       },
+      "AdoptStylingRequest": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Request Id"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_id",
+          "expected_revision"
+        ],
+        "title": "AdoptStylingRequest"
+      },
       "AppleLoginRequest": {
         "properties": {
           "id_token": {
@@ -7720,12 +8497,170 @@
         "type": "object",
         "title": "AskConversationDeltas"
       },
+      "AskConversationMessage": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "ask_session_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ask Session Id"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "styling": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StylingResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "design_brief": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DesignBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "item_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Item Refs"
+          },
+          "item_ref_snapshots": {
+            "items": {
+              "$ref": "#/components/schemas/AskItemRefSnapshot"
+            },
+            "type": "array",
+            "title": "Item Ref Snapshots"
+          },
+          "trip_intent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AskTripIntent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "role",
+          "content",
+          "created_at"
+        ],
+        "title": "AskConversationMessage"
+      },
+      "AskConversationResponse": {
+        "properties": {
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conversation Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "styling": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StylingResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "design_brief": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DesignBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/AskConversationMessage"
+            },
+            "type": "array",
+            "title": "Messages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "conversation_id"
+        ],
+        "title": "AskConversationResponse"
+      },
       "AskHistoryItem": {
         "properties": {
           "ask_session_id": {
             "type": "string",
             "format": "uuid",
             "title": "Ask Session Id"
+          },
+          "styling": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StylingResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "design_brief": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DesignBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "conversation_id": {
             "anyOf": [
@@ -7886,6 +8821,57 @@
               }
             ],
             "title": "Conversation Id"
+          },
+          "design_mode": {
+            "type": "boolean",
+            "title": "Design Mode",
+            "default": false
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
+          "expected_revision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Revision"
+          },
+          "base_outfit_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Outfit Id"
+          },
+          "constraints": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StylingConstraints"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -7900,6 +8886,26 @@
             "type": "string",
             "format": "uuid",
             "title": "Ask Session Id"
+          },
+          "styling": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StylingResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "design_brief": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DesignBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "conversation_id": {
             "anyOf": [
@@ -8755,6 +9761,13 @@
               }
             ],
             "title": "Confirmed Item Id"
+          },
+          "possible_duplicates": {
+            "items": {
+              "$ref": "#/components/schemas/ImportDuplicateHint"
+            },
+            "type": "array",
+            "title": "Possible Duplicates"
           }
         },
         "type": "object",
@@ -9056,7 +10069,6 @@
               "$ref": "#/components/schemas/ConfirmItemInput"
             },
             "type": "array",
-            "minItems": 1,
             "title": "Items"
           },
           "dismiss_remaining": {
@@ -9392,6 +10404,68 @@
         ],
         "title": "CreateOutfitPlanRequest"
       },
+      "CreateOutfitRevisionRequest": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Request Id"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Revision"
+          },
+          "replace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutfitItemReplacementRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "locked_item_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array",
+                "maxItems": 8
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locked Item Ids"
+          },
+          "excluded_item_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array",
+                "maxItems": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excluded Item Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_id",
+          "expected_revision"
+        ],
+        "title": "CreateOutfitRevisionRequest"
+      },
       "CreatePackingListRequest": {
         "properties": {
           "destination": {
@@ -9634,6 +10708,29 @@
           "deleted"
         ],
         "title": "DeleteWardrobeItemResponse"
+      },
+      "DesignBrief": {
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "title": "Revision"
+          },
+          "constraints": {
+            "$ref": "#/components/schemas/StylingConstraints"
+          },
+          "needs_outfit_update": {
+            "type": "boolean",
+            "title": "Needs Outfit Update"
+          }
+        },
+        "type": "object",
+        "required": [
+          "revision",
+          "constraints",
+          "needs_outfit_update"
+        ],
+        "title": "DesignBrief",
+        "description": "Current accepted conditions, including turns without a complete outfit."
       },
       "FavoriteOutfitResponse": {
         "properties": {
@@ -10142,6 +11239,47 @@
         ],
         "title": "IdleItemResponse"
       },
+      "ImportDuplicateHint": {
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Item Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_id",
+          "title"
+        ],
+        "title": "ImportDuplicateHint"
+      },
+      "ImportStatus": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "processing",
+          "waiting_confirm",
+          "completed",
+          "failed"
+        ],
+        "title": "ImportStatus"
+      },
       "ImportTaskResponse": {
         "properties": {
           "task_id": {
@@ -10168,8 +11306,7 @@
               "$ref": "#/components/schemas/CandidateItem"
             },
             "type": "array",
-            "title": "Candidate Items",
-            "default": []
+            "title": "Candidate Items"
           },
           "error_code": {
             "anyOf": [
@@ -10192,6 +11329,17 @@
               }
             ],
             "title": "Error Message"
+          },
+          "retryable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retryable"
           }
         },
         "type": "object",
@@ -10454,6 +11602,30 @@
           "created_at": {
             "type": "string",
             "title": "Created At"
+          },
+          "scope": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Scope"
+          },
+          "scope_text": {
+            "type": "string",
+            "title": "Scope Text",
+            "default": ""
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
           }
         },
         "type": "object",
@@ -10840,6 +12012,26 @@
           "offset"
         ],
         "title": "OutfitHistoryResponse"
+      },
+      "OutfitItemReplacementRequest": {
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Item Id"
+          },
+          "replacement_item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Replacement Item Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_id",
+          "replacement_item_id"
+        ],
+        "title": "OutfitItemReplacementRequest"
       },
       "OutfitPlanCalendarResponse": {
         "properties": {
@@ -11586,6 +12778,49 @@
         ],
         "title": "PdfStyleSourceResponse"
       },
+      "PreferenceOverride": {
+        "properties": {
+          "preference_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preference Id"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PreferenceOverride"
+      },
       "PresignUploadRequest": {
         "properties": {
           "file_name": {
@@ -11982,6 +13217,7 @@
       "RecommendationGenerationSource": {
         "type": "string",
         "enum": [
+          "designer",
           "nightly",
           "departure",
           "read_time",
@@ -13262,6 +14498,32 @@
         "type": "object",
         "title": "ResponseModel[WardrobeListResponse]"
       },
+      "ResponseModel_WardrobeRecognitionResponse_": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WardrobeRecognitionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "ResponseModel[WardrobeRecognitionResponse]"
+      },
       "ResponseModel_WearOutfitResponse_": {
         "properties": {
           "code": {
@@ -13287,6 +14549,36 @@
         },
         "type": "object",
         "title": "ResponseModel[WearOutfitResponse]"
+      },
+      "ResponseModel_list_ImportTaskResponse__": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code",
+            "default": 0
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "ok"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ImportTaskResponse"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "title": "ResponseModel[list[ImportTaskResponse]]"
       },
       "ResurfaceInsightResponse": {
         "properties": {
@@ -13322,6 +14614,32 @@
         ],
         "title": "ResurfaceInsightResponse",
         "description": "BE#80 — one lightweight \"you haven't worn this in a while, and it fits\ntoday\" nudge. Absent when there's no genuine candidate (never fabricated)."
+      },
+      "ReviseOutfitRequest": {
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Item Id"
+          },
+          "replacement_item_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Replacement Item Id"
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_id",
+          "replacement_item_id",
+          "request_id"
+        ],
+        "title": "ReviseOutfitRequest"
       },
       "SenseCheckHistoryItem": {
         "properties": {
@@ -13770,6 +15088,177 @@
           "trend"
         ],
         "title": "StyleTrendResponse"
+      },
+      "StylingConstraints": {
+        "properties": {
+          "locked_item_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Locked Item Ids"
+          },
+          "excluded_item_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Excluded Item Ids"
+          },
+          "goal": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 600
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Notes"
+          },
+          "target_style": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Style"
+          },
+          "exploration": {
+            "type": "boolean",
+            "title": "Exploration",
+            "default": false
+          },
+          "preference_overrides": {
+            "items": {
+              "$ref": "#/components/schemas/PreferenceOverride"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Preference Overrides"
+          },
+          "scene": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "commute",
+                  "formal",
+                  "casual",
+                  "date",
+                  "travel"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scene"
+          },
+          "target_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Date"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "StylingConstraints"
+      },
+      "StylingResponse": {
+        "properties": {
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conversation Id"
+          },
+          "revision": {
+            "type": "integer",
+            "title": "Revision"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "adopted"
+            ],
+            "title": "Status"
+          },
+          "outfit": {
+            "$ref": "#/components/schemas/OutfitResponse"
+          },
+          "constraints": {
+            "$ref": "#/components/schemas/StylingConstraints"
+          },
+          "recommendation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommendation Id"
+          },
+          "recommendation_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommendation Revision"
+          },
+          "recommendation_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommendation Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "conversation_id",
+          "revision",
+          "status",
+          "outfit",
+          "constraints"
+        ],
+        "title": "StylingResponse"
       },
       "TodayContextResponse": {
         "properties": {
@@ -15140,6 +16629,29 @@
           "total"
         ],
         "title": "WardrobeListResponse"
+      },
+      "WardrobeRecognitionResponse": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "color_main": {
+            "type": "string",
+            "title": "Color Main"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "category",
+          "color_main"
+        ],
+        "title": "WardrobeRecognitionResponse"
       },
       "WardrobeReportResponse": {
         "properties": {
