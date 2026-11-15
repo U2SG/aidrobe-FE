@@ -50,7 +50,7 @@ export const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use((config) => {
   config._requestSession ??= currentRequestSession();
   if (!sessionIsCurrent(config._requestSession)) {
-    throw new axios.CanceledError('Authentication session changed', config);
+    throw new axios.CanceledError('Authentication session changed');
   }
   // V3-008: while a "should I buy this" flow is active, every request carries
   // its flow id so BE-emitted analytics join the FE events of the same flow
@@ -100,7 +100,7 @@ async function signOutReset(session: RequestSession): Promise<void> {
 apiClient.interceptors.response.use(
   (response: AxiosResponse<ApiEnvelope<unknown>>) => {
     if (response.config._requestSession && !sessionIsCurrent(response.config._requestSession)) {
-      throw new axios.CanceledError('Authentication session changed', response.config);
+      throw new axios.CanceledError('Authentication session changed');
     }
     const body = response.data;
     if (body && typeof body === 'object' && 'code' in body && 'data' in body) {

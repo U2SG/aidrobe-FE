@@ -146,7 +146,7 @@ export function OutfitDetailScreen({ navigation, route }: Props) {
     retry: 1,
   });
 
-  const itemBriefs = outfitQuery.data?.items ?? [];
+  const itemBriefs = useMemo(() => outfitQuery.data?.items ?? [], [outfitQuery.data?.items]);
   const itemQueries = useQueries({
     queries: itemBriefs.map((b) => ({
       queryKey: ['wardrobeItem', b.id],
